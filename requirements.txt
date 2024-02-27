@@ -5,3 +5,5 @@ packaging
 pybind11
 regex
 tensorboardX
+python-etcd
+requests
