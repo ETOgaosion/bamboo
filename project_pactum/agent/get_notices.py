@@ -1,36 +1,50 @@
 import os
-import requests
 import signal
 import time
+import sys
+import json
+import matplotlib.pyplot as plt
+import random
+import logging
 
-def get_auth_token(ttl):
-    get_token_header = {
-        "X-aws-ec2-metadata-token-ttl-seconds": str(ttl)
-    }
-    response = requests.put("http://169.254.169.254/latest/api/token", headers=get_token_header)
+_log_fmt = logging.Formatter("%(levelname)s %(asctime)s %(message)s")
+_log_handler = logging.StreamHandler(sys.stderr)
+_log_handler.setFormatter(_log_fmt)
 
-    token = ''
-    if response.status_code == 200:
-        token = response.content
-    else:
-        print('Getting token failed with code {}'.format(response.status_code))
+log = logging.getLogger(__name__)
+log.propagate = False
+log.setLevel(logging.INFO)
+log.addHandler(_log_handler)
 
-    return token
+logger = logging.getLogger('project_pactum.etcd')
+
+# define a funtion to read data from spot-advicer-data.json in this directory(use system package to generate the path, do not use hard code), read data into python datastructure
+def read_data():
+    file_path = os.path.join(sys.path[0], 'data/spot-advisor-data.json')
+    with open(file_path, 'r') as f:
+        data = json.load(f)
+    return data
+
+avg = 0
+
+def calc_avg_r():
+    if avg == 0:
+        data = read_data()
+        size = 0
+        total = 0
+        for instances in data["spot_advisor"]:
+            for OS in data["spot_advisor"][instances]:
+                for inst_type in data["spot_advisor"][instances][OS]:
+                    size += 1
+                    total += data["spot_advisor"][instances][OS][inst_type]["r"]
+        avg = total/size
+        print(avg)
+        logger.info(avg)
+    return avg
 
 def check_for_preemption():
-    token = get_auth_token(21600)
-
     while True:
-        get_action_header = {
-            "X-aws-ec2-metadata-token": token,
-        }
-        response = requests.get('http://169.254.169.254/latest/meta-data/spot/instance-action', headers=get_action_header)
-
-        http_code = response.status_code
-
-        if http_code == 401:
-            token = get_auth_token(30)
-        elif http_code == 200:
+        if random.uniform(0, 1) <= avg:
             os.kill(os.getpid(), signal.SIGTERM)
             break
         else:

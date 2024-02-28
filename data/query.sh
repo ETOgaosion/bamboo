@@ -1,0 +1,1 @@
+jq '.spot_advisor | to_entries[] | .key as $key | .value.Linux."c5d.9xlarge" as $res | {$key, Linux: {"c5d.9xlarge": $res}}' spot-advisor-data.json > c5d.9xlarge.dat

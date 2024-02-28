@@ -15,7 +15,7 @@ cmd="""export PROJECT_PACTUM_LOGGING_WARNING='etcd.client,etcd.lock,torch.distri
 	&& \
 	export PYTHONPATH=${CURRENT_PATH}/project-pactum:\${PYTHONPATH} \
 	&& \
-	python -m project_pactum.run \
+	python -m pdb -m project_pactum.run \
 	--rdzv_backend=etcd-v2 \
 	--rdzv_endpoint=$RDZV_IP:2379 \
 	--rdzv_id=$ID \

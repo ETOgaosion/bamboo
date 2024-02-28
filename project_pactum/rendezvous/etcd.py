@@ -658,6 +658,7 @@ class EtcdRendezvous(object):
         # Initially active_version is ephemeral - this is to handle the
         # possibility that might fail to complete the setup transaction,
         # i.e. the transition "setup" -> "joinable".
+        logger.warning(self.get_path("/rdzv/active_version"))
         active_version = self.client.write(
             key=self.get_path("/rdzv/active_version"),
             value=json.dumps({"status": "setup"}),
@@ -805,6 +806,7 @@ class EtcdRendezvous(object):
         num_stages = default_num_stages
         num_pipelines = num_participants // default_num_stages
         num_active_nodes = num_pipelines * num_stages
+        logger.info(f'num_active_nodes: {num_active_nodes}')
         if num_participants < default_num_stages:
             raise TooFewNodesException()
 

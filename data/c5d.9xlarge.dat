@@ -1,0 +1,258 @@
+{
+  "key": "ap-southeast-4",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 89,
+      "r": 2
+    }
+  }
+}
+{
+  "key": "ca-west-1",
+  "Linux": {
+    "c5d.9xlarge": null
+  }
+}
+{
+  "key": "me-central-1",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 79,
+      "r": 2
+    }
+  }
+}
+{
+  "key": "eu-central-2",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 87,
+      "r": 2
+    }
+  }
+}
+{
+  "key": "ap-south-2",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 80,
+      "r": 2
+    }
+  }
+}
+{
+  "key": "me-south-1",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 84,
+      "r": 2
+    }
+  }
+}
+{
+  "key": "ap-southeast-3",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 89,
+      "r": 3
+    }
+  }
+}
+{
+  "key": "ap-northeast-3",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 87,
+      "r": 2
+    }
+  }
+}
+{
+  "key": "ap-east-1",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 89,
+      "r": 2
+    }
+  }
+}
+{
+  "key": "eu-south-2",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 71,
+      "r": 2
+    }
+  }
+}
+{
+  "key": "il-central-1",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 58,
+      "r": 2
+    }
+  }
+}
+{
+  "key": "eu-south-1",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 90,
+      "r": 2
+    }
+  }
+}
+{
+  "key": "af-south-1",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 77,
+      "r": 2
+    }
+  }
+}
+{
+  "key": "eu-west-3",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 57,
+      "r": 1
+    }
+  }
+}
+{
+  "key": "ca-central-1",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 78,
+      "r": 1
+    }
+  }
+}
+{
+  "key": "eu-north-1",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 84,
+      "r": 0
+    }
+  }
+}
+{
+  "key": "us-west-1",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 63,
+      "r": 0
+    }
+  }
+}
+{
+  "key": "eu-west-2",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 51,
+      "r": 1
+    }
+  }
+}
+{
+  "key": "sa-east-1",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 66,
+      "r": 3
+    }
+  }
+}
+{
+  "key": "ap-northeast-2",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 68,
+      "r": 1
+    }
+  }
+}
+{
+  "key": "ap-south-1",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 64,
+      "r": 0
+    }
+  }
+}
+{
+  "key": "us-east-2",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 65,
+      "r": 0
+    }
+  }
+}
+{
+  "key": "eu-central-1",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 58,
+      "r": 0
+    }
+  }
+}
+{
+  "key": "ap-southeast-2",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 67,
+      "r": 0
+    }
+  }
+}
+{
+  "key": "eu-west-1",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 63,
+      "r": 0
+    }
+  }
+}
+{
+  "key": "us-west-2",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 49,
+      "r": 1
+    }
+  }
+}
+{
+  "key": "us-east-1",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 54,
+      "r": 0
+    }
+  }
+}
+{
+  "key": "ap-southeast-1",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 57,
+      "r": 4
+    }
+  }
+}
+{
+  "key": "ap-northeast-1",
+  "Linux": {
+    "c5d.9xlarge": {
+      "s": 63,
+      "r": 0
+    }
+  }
+}

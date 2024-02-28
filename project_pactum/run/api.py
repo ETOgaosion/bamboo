@@ -15,7 +15,7 @@ from torch.distributed.elastic.utils.logging import get_logger
 
 from project_pactum.rendezvous.etcd import create_rdzv_handler
 
-logger = get_logger()
+logger = get_logger(__name__)
 
 @dataclass
 class ProjectPactumLaunchConfig:
@@ -161,6 +161,7 @@ def _get_addr_and_port(
     return (master_addr, master_port)
 
 def config_from_args(args) -> Tuple[ProjectPactumLaunchConfig, Union[Callable, str], List[str]]:
+    logger.info(f"args: {args}")
     import os
     from torch.distributed.run import parse_min_max_nnodes, determine_local_world_size, get_rdzv_endpoint
     from torch.distributed.elastic.rendezvous.utils import _parse_rendezvous_config
@@ -258,12 +259,22 @@ def launch_agent(
         run_id = str(uuid.uuid4().int)
         logger.warning(f"config has no run_id, generate a new one: {run_id}")
         config.run_id = run_id
-
     entrypoint_name = _get_entrypoint_name(entrypoint, args)
+
+    assert config.nproc_per_node == 1
+
+    rdzv_parameters = RendezvousParameters(
+        backend=config.rdzv_backend,
+        endpoint=config.rdzv_endpoint,
+        run_id=config.run_id,
+        min_nodes=config.min_nodes,
+        max_nodes=config.max_nodes,
+        **config.rdzv_configs,
+    )
 
     logger.info(
         f"Starting elastic_operator with launch configs:\n"
-        f"  entrypoint             : {entrypoint_name}\n"
+        f"  entrypoint             : {entrypoint}\n"
         f"  min_nodes              : {config.min_nodes}\n"
         f"  max_nodes              : {config.max_nodes}\n"
         f"  nproc_per_node         : {config.nproc_per_node}\n"
@@ -277,17 +288,6 @@ def launch_agent(
         f"  metrics_cfg            : {config.metrics_cfg}\n"
         f"  max_pipe_parallel_size : {config.max_pipe_parallel_size}\n"
         f"  default_pipeline_size  : {config.default_num_stages}\n"
-    )
-
-    assert config.nproc_per_node == 1
-
-    rdzv_parameters = RendezvousParameters(
-        backend=config.rdzv_backend,
-        endpoint=config.rdzv_endpoint,
-        run_id=config.run_id,
-        min_nodes=config.min_nodes,
-        max_nodes=config.max_nodes,
-        **config.rdzv_configs,
     )
 
     agent = None

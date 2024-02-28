@@ -16,6 +16,7 @@ Ensure you have the following requirements:
 
 - Python 3.7
 - PyTorch 1.10.0
+- etcd 2.x (2.3.6 recommended, but you cannot run it as a systemctl service, open a tmux session and run it)
 
 Documentation has the following requirements:
 
