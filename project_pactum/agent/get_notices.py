@@ -39,15 +39,14 @@ def calc_avg_r():
                     total += data["spot_advisor"][instances][OS][inst_type]["r"]
         avg = total/size
         print(avg)
-        logger.info(avg)
+        logger.info(f'avg:{avg}')
     return avg
 
 def check_for_preemption():
     while True:
-        if random.uniform(0, 1) <= avg:
+        rand = random.uniform(0, 1)
+        if rand <= 1:
+            logger.info(str(time.time()) + ", " + str(rand) + ", Preemption detected\n")
             os.kill(os.getpid(), signal.SIGTERM)
-            break
-        else:
-            pass
 
         time.sleep(3)

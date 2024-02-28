@@ -223,9 +223,10 @@ class ProjectPactumAgent(SimpleElasticAgent):
             else:
                 raise Exception(f"[{role}] Worker group in {state.name} state")
 
-    def _drain_preempting_workers(self):
-        for pid in self._pcontext.pids().values():
-            os.kill(pid, signal.SIGTERM)
+    def _drain_preempting_workers(self, signum, frame):
+        if self._pcontext is not None:
+            for pid in self._pcontext.pids().values():
+                os.kill(pid, signal.SIGTERM)
 
     def _assign_worker_ranks(
         self, store, group_rank: int, group_world_size: int, spec: WorkerSpec,
