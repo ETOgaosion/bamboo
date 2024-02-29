@@ -25,7 +25,7 @@ def read_data():
         data = json.load(f)
     return data
 
-avg = 0
+avg = 0.016649590654474076
 
 def calc_avg_r():
     if avg == 0:
@@ -45,8 +45,10 @@ def calc_avg_r():
 def check_for_preemption():
     while True:
         rand = random.uniform(0, 1)
-        if rand <= 1:
-            logger.info(str(time.time()) + ", " + str(rand) + ", Preemption detected\n")
+        logger.info(str(time.time()) + ", " + str(rand) + ", rand generation")
+        if rand <= 0.5:
+            logger.info(str(time.time()) + ", " + str(rand) + ", Preemption detected")
             os.kill(os.getpid(), signal.SIGTERM)
-
-        time.sleep(3)
+            break
+        else:
+            time.sleep(3)

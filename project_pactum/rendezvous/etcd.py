@@ -123,7 +123,7 @@ def _get_socket_with_port() -> socket.socket:
             return s
         except OSError as e:
             s.close()
-            log.info("Socket creation attempt failed.", exc_info=e)
+            log.warning("Socket creation attempt failed.", exc_info=e)
     raise RuntimeError("Failed to create a socket")
 
 
@@ -237,7 +237,7 @@ class EtcdRendezvousHandler(RendezvousHandler):
         # set the world size as the workers that are assigned coordinates
         world_size = len([info for info in global_decision if len(info.active_coordinates) != 0])
 
-        log.info("Creating EtcdStore as the c10d::Store implementation")
+        log.warning("Creating EtcdStore as the c10d::Store implementation")
         store = self._rdzv_impl.setup_kv_store(rdzv_version)
 
         return store, rank, world_size, num_pipelines, num_stages, global_decision
@@ -334,7 +334,7 @@ class EtcdRendezvousHandler(RendezvousHandler):
         _, state = self._rdzv_impl.get_rdzv_state()
         rdzv_version = state['version']
 
-        log.info("Creating EtcdStore as the c10d::Store implementation")
+        log.warning("Creating EtcdStore as the c10d::Store implementation")
         store = self._rdzv_impl.setup_kv_store(rdzv_version)
 
         return store
@@ -394,7 +394,7 @@ class EtcdRendezvous(object):
         last_call_timeout,
     ):
         self.client = client
-        log.info("Etcd machines: " + str(self.client.machines))
+        log.warning("Etcd machines: " + str(self.client.machines))
 
         self._prefix = prefix
         self._run_id = run_id
@@ -473,7 +473,7 @@ class EtcdRendezvous(object):
             if time.time() > self._rendezvous_deadline:
                 raise RendezvousTimeoutError()
 
-            log.info("Attempting to join next rendezvous")
+            log.warning("Attempting to join next rendezvous")
             try:
                 # Dis-own our lease in the previous rendezvous, if exists
                 if self._lease_this_rank_stop is not None:
@@ -491,11 +491,11 @@ class EtcdRendezvous(object):
                 time.sleep(1)
 
             except RendezvousTimeoutError:
-                log.info("Rendezvous timeout occured in EtcdRendezvousHandler")
+                log.warning("Rendezvous timeout occured in EtcdRendezvousHandler")
                 raise
 
             except RendezvousClosedError:
-                log.info(
+                log.warning(
                     f"Rendezvous for run_id={self._run_id} was observed to be closed"
                 )
                 raise
@@ -508,7 +508,7 @@ class EtcdRendezvous(object):
                 # to avoid spamming etcd
                 # FIXME: there are a few things that fall under this like
                 # etcd.EtcdKeyNotFound, etc, which could be handled more explicitly.
-                log.info("Rendezvous attempt failed, will retry. Reason:")
+                log.warning("Rendezvous attempt failed, will retry. Reason:")
                 traceback.print_exc()
 
                 time.sleep(1)
@@ -535,12 +535,12 @@ class EtcdRendezvous(object):
         try:
             active_version = self.try_create_rendezvous()
             state = json.loads(active_version.value)
-            log.info("New rendezvous state created: " + str(state))
+            log.warning("New rendezvous state created: " + str(state))
         except etcd.EtcdAlreadyExist:
             active_version, state = self.get_rdzv_state()
             # Note: it is possible for above query to fail (etcd.EtcdKeyNotFound),
             # but this is ok for us - just means we'll restart from beginning.
-            log.info("Observed existing rendezvous state: " + str(state))
+            log.warning("Observed existing rendezvous state: " + str(state))
 
         if state["status"] == "closed":
             raise RendezvousClosedError()
@@ -564,7 +564,7 @@ class EtcdRendezvous(object):
         # Failure to join will propagate an exception, causing a re-entry.
         active_version, this_rank = self.join_rendezvous(expected_version)
         state = json.loads(active_version.value)
-        log.info(
+        log.warning(
             "Joined rendezvous version {} as rank {}. Full state: {}".format(
                 state["version"], this_rank, state
             )
@@ -580,13 +580,13 @@ class EtcdRendezvous(object):
         # when min_num_workers is reached.
 
         if this_rank == self._num_min_workers - 1 and state["status"] == "joinable":
-            log.info("Rank {} is responsible for join last call.".format(this_rank))
+            log.warning("Rank {} is responsible for join last call.".format(this_rank))
             last_call_deadline = time.time() + self._last_call_timeout
             self.handle_join_last_call(expected_version, last_call_deadline)
-            log.info("Rank {} finished join last call.".format(this_rank))
+            log.warning("Rank {} finished join last call.".format(this_rank))
 
         # Wait for rendezvous state to be frozen, which means a fixed set of peers
-        log.info("Waiting for remaining peers.")
+        log.warning("Waiting for remaining peers.")
         active_version = self.wait_for_peers(expected_version)
         state = json.loads(active_version.value)
 
@@ -604,14 +604,14 @@ class EtcdRendezvous(object):
         which would then successfully conclude this rendezvous.
         """
 
-        log.info("All peers arrived. Confirming membership.")
+        log.warning("All peers arrived. Confirming membership.")
         self.confirm_membership(expected_version, this_rank, previous_global_rank)
 
-        log.info("Waiting for confirmations from all peers.")
+        log.warning("Waiting for confirmations from all peers.")
         active_version = self.wait_for_final(expected_version)
         state = json.loads(active_version.value)
 
-        log.info(
+        log.warning(
             "Rendezvous version {} is complete. Final state: {}".format(
                 state["version"], state
             )
@@ -637,14 +637,14 @@ class EtcdRendezvous(object):
         #   1. if it's no longer final -> bail out and re-try
         #   2. if keep alives are missing, destroy it and bail out.
         active_state = self.announce_self_waiting(expected_version)
-        log.info(
+        log.warning(
             "Added self to waiting list. Rendezvous full state: {}".format(
                 active_state.value
             )
         )
 
         self.wait_for_rendezvous_to_free(expected_version)
-        log.info("Previously existing rendezvous state changed. Will re-try joining.")
+        log.warning("Previously existing rendezvous state changed. Will re-try joining.")
 
     def try_create_rendezvous(self):
         """
@@ -752,7 +752,7 @@ class EtcdRendezvous(object):
                 return active_version, this_rank
 
             except etcd.EtcdCompareFailed:
-                log.info("Join rendezvous CAS unsuccessful, retrying")
+                log.warning("Join rendezvous CAS unsuccessful, retrying")
 
     def wait_for_peers(self, expected_version):
         """
@@ -806,7 +806,8 @@ class EtcdRendezvous(object):
         num_stages = default_num_stages
         num_pipelines = num_participants // default_num_stages
         num_active_nodes = num_pipelines * num_stages
-        logger.info(f'num_active_nodes: {num_active_nodes}')
+        logger.warning(f'num_active_nodes: {num_active_nodes}')
+        logger.warning(f'num_participants: {num_participants}')
         if num_participants < default_num_stages:
             raise TooFewNodesException()
 
@@ -982,7 +983,7 @@ class EtcdRendezvous(object):
                 return active_version
 
             except etcd.EtcdCompareFailed:
-                log.info("Confirm membership CAS unsuccessful, retrying")
+                log.warning("Confirm membership CAS unsuccessful, retrying")
 
     def wait_for_final(self, expected_version):
         """
@@ -1031,7 +1032,7 @@ class EtcdRendezvous(object):
                 return active_version
 
             except etcd.EtcdCompareFailed:
-                log.info("Announce self as waiting CAS unsuccessful, retrying")
+                log.warning("Announce self as waiting CAS unsuccessful, retrying")
 
     def get_rank_coordinates_for_version(self, state, version, previous_version=None):
         rank_coordinates = {}
@@ -1192,11 +1193,11 @@ class EtcdRendezvous(object):
             #     if key not in keep_alive_keys:
             #         # This participant didn't renew their lease. We'll declare this
             #         # rendezvous version as dead (but only if it hadn't changed)
-            #         log.info("Keep-alive key {} is not renewed.".format(key))
-            #         log.info(
+            #         log.warning("Keep-alive key {} is not renewed.".format(key))
+            #         log.warning(
             #             "Rendevous version {} is incomplete. ".format(expected_version)
             #         )
-            #         log.info("Attempting to destroy it.")
+            #         log.warning("Attempting to destroy it.")
 
             #         # Compare-and-delete operation. Throws if compare failed,
             #         # which means rendezvous was already destroyed/re-created/closed,
@@ -1206,7 +1207,7 @@ class EtcdRendezvous(object):
             #             prevValue=active_version.value,
             #         )
 
-            #         log.info(
+            #         log.warning(
             #             "Destroyed rendezvous version {} successfully.".format(
             #                 expected_version
             #             )
@@ -1283,7 +1284,7 @@ class EtcdRendezvous(object):
                     # We successfully made this rendezvous frozen.
                     return
                 except etcd.EtcdCompareFailed:
-                    log.info("Join last-call transition CAS unsuccessful. Will retry")
+                    log.warning("Join last-call transition CAS unsuccessful. Will retry")
                     cas_delay()
                     active_version, state = self.get_rdzv_state()
                     continue
@@ -1309,7 +1310,7 @@ class EtcdRendezvous(object):
                     etcd_index=active_version.etcd_index + 1, timeout=timeout
                 )
             except etcd.EtcdCompareFailed:
-                log.info("Join last-call TTL refresh CAS unsuccessful, will retry")
+                log.warning("Join last-call TTL refresh CAS unsuccessful, will retry")
                 cas_delay()
                 active_version, state = self.get_rdzv_state()
 
@@ -1336,7 +1337,7 @@ class EtcdRendezvous(object):
                 return
 
             except etcd.EtcdCompareFailed:
-                log.info("Set closed CAS unsuccessful, retrying")
+                log.warning("Set closed CAS unsuccessful, retrying")
                 cas_delay()
 
     def get_rdzv_state(self):
@@ -1434,7 +1435,7 @@ class EtcdRendezvous(object):
                 )
                 return
             except etcd.EtcdCompareFailed:
-                log.info("Store extra_data CAS unsuccessful, retrying")
+                log.warning("Store extra_data CAS unsuccessful, retrying")
                 time.sleep(0.1)
 
     def load_extra_data(self, rdzv_version, key, timeout=None):
@@ -1557,7 +1558,7 @@ def create_rdzv_handler(params: RendezvousParameters) -> RendezvousHandler:
         cert - client cert to access etcd, only makes sense with https.
         key - client key to access etcd, only makes sense with https.
     """
-    logger.info('Start create_rdzv_handler')
+    logger.warning('Start create_rdzv_handler')
 
     client = _create_etcd_client(params)
 
@@ -1572,5 +1573,5 @@ def create_rdzv_handler(params: RendezvousParameters) -> RendezvousHandler:
         timeout=params.get_as_int("timeout", _DEFAULT_TIMEOUT),
         last_call_timeout=params.get_as_int("last_call_timeout", _DEFAULT_LAST_CALL_TIMEOUT),
     )
-    logger.info('End create_rdzv_handler')
+    logger.warning('End create_rdzv_handler')
     return EtcdRendezvousHandler(rdzv_impl=rdzv)

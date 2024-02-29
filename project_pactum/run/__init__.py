@@ -241,7 +241,6 @@ def run(args):
 
 def main(args):
     from project_pactum.core.base import setup_logging
-
     setup_logging()
     options = parse(args)
     run(options)

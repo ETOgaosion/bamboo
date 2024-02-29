@@ -7,3 +7,6 @@ regex
 tensorboardX
 python-etcd
 requests
+chardet
+protobuf==3.20
+urllib3

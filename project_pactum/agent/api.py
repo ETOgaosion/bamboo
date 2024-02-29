@@ -9,13 +9,12 @@ import sys
 import tempfile
 import threading
 import time
+import random
 
 from colorama import Fore
 
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
-
-from .get_notices import check_for_preemption
 
 global should_stop
 should_stop = False
@@ -52,7 +51,8 @@ class ProjectPactumAgent(SimpleElasticAgent):
         start_method="spawn",
         exit_barrier_timeout: float = 300,
         log_dir: Optional[str] = None,
-        extra_env=None,
+        extra_env = None,
+        probability = 0.016649590654474076
     ):
         super().__init__(spec, exit_barrier_timeout)
         self._start_method = start_method
@@ -64,11 +64,24 @@ class ProjectPactumAgent(SimpleElasticAgent):
         # Register the SIGTERM (15) signal to kill the workers
         signal.signal(signal.SIGTERM, self._drain_preempting_workers)
         preemption_checker = threading.Thread(
-            target=check_for_preemption
+            target=self.check_for_preemption
         )
         preemption_checker.daemon = True
         preemption_checker.start()
 
+
+    def check_for_preemption(self):
+        while True:
+            rand = random.uniform(0, 1)
+            log.warning(str(time.time()) + ", " + str(rand) + ", ready ? " + str(self._check_ready()))
+            # if rand <= self.probability:
+            if rand <= 0.5 and self._check_ready():
+                log.warning(str(time.time()) + ", " + str(rand) + ", Preemption detected")
+                os.kill(os.getpid(), signal.SIGTERM)
+                break
+            else:
+                time.sleep(3)
+            
     def signal(self, signum, frame):
         role = self._worker_group.spec.role
         worker_pids = {w.id for w in self._worker_group.workers}
@@ -223,9 +236,14 @@ class ProjectPactumAgent(SimpleElasticAgent):
             else:
                 raise Exception(f"[{role}] Worker group in {state.name} state")
 
+    def _check_ready(self) -> bool:
+        return self._pcontext is not None
+
     def _drain_preempting_workers(self, signum, frame):
+        log.info("hit\n")
         if self._pcontext is not None:
             for pid in self._pcontext.pids().values():
+                log.warn(f"Draining worker pid={pid} due to preemption")
                 os.kill(pid, signal.SIGTERM)
 
     def _assign_worker_ranks(

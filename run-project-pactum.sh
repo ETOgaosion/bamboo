@@ -5,17 +5,20 @@ CURRENT_PATH=$(pwd)
 RDZV_IP=${1:-localhost}
 ID=encoder${2}
 NUM_STAGES=${3}
-NUM_STAGES=${NUM_STAGES:-4}
+NUM_STAGES=${NUM_STAGES:-1}
 
-MODEL=${CURRENT_PATH}/project-pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer
+MODEL=${CURRENT_PATH}/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer
 
 echo "ARGS $RDZV_IP $ID $NUM_STAGES $MODEL"
 
+etcdctl rm --dir --recursive /torchelastic
+
 cmd="""export PROJECT_PACTUM_LOGGING_WARNING='etcd.client,etcd.lock,torch.distributed.distributed_c10d' \
+	export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	&& \
 	export PYTHONPATH=${CURRENT_PATH}/project-pactum:\${PYTHONPATH} \
 	&& \
-	python -m pdb -m project_pactum.run \
+	python -m project_pactum.run \
 	--rdzv_backend=etcd-v2 \
 	--rdzv_endpoint=$RDZV_IP:2379 \
 	--rdzv_id=$ID \

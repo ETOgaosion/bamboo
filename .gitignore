@@ -6,3 +6,5 @@ __pycache__/
 *.pyc
 
 /.dockerversion
+tmp/
+project_pactum/external/deepspeed/deepspeed.egg-info/

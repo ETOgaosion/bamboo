@@ -359,7 +359,8 @@ def launch_agent(
             )
 
         result = agent.run()
-        events.record(agent.get_agent_status_event(WorkerState.SUCCEEDED))
+        # get_agent_status_event API has expired
+        # events.record(agent.get_agent_status_event(WorkerState.SUCCEEDED))
         if result.is_failed():
             # ChildFailedError is treated specially by @record
             # if the error files for the failed children exist
@@ -375,7 +376,9 @@ def launch_agent(
         raise
     except Exception:
         if agent:
-            events.record(agent.get_agent_status_event(WorkerState.FAILED))
+            # get_agent_status_event API has expired
+            # events.record(agent.get_agent_status_event(WorkerState.FAILED))
+            pass
         else:
             events.record(_construct_event(config))
         raise

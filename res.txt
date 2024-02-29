@@ -1,0 +1,79 @@
+ARGS localhost encoder 1 /home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer
+RUNNING CMD export PROJECT_PACTUM_LOGGING_WARNING='etcd.client,etcd.lock,torch.distributed.distributed_c10d' 	export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python 	&& 	export PYTHONPATH=/home/gaoziyuan/project/bamboo/project-pactum:${PYTHONPATH} 	&& 	python -m project_pactum.run 	--rdzv_backend=etcd-v2 	--rdzv_endpoint=localhost:2379 	--rdzv_id=encoder 	--nnodes=1:64 	--nproc_per_node=1 	--project-pactum 	--max-pipe-parallel-size=24 	--default-num-stages=1 	/home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer.py 	--backend=nccl 	--redundancy_level=1 	 	--deepspeed 	--deepspeed_config /home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer.json
+[1;36m[0.044 p7554/t139889337845568 INFO root][m [36mUsing nproc_per_node=1.[m
+[1;33m[0.044 p7554/t139889337845568 WARNING project_pactum.etcd][m [33mStart create_rdzv_handler[m
+WARNING 2024-03-01 01:06:26,722 Etcd machines: ['http://localhost:2379', 'http://localhost:4001']
+[1;33m[0.058 p7554/t139889337845568 WARNING project_pactum.etcd][m [33mEnd create_rdzv_handler[m
+[1;33m[0.089 p7554/t139884505224960 WARNING project_pactum.agent.api][m [33m1709226386.7645547, 0.07901933022364727, ready ? False[m
+WARNING 2024-03-01 01:06:26,764 Attempting to join next rendezvous
+[1;33m[0.090 p7554/t139889337845568 WARNING project_pactum.etcd][m [33m/torchelastic/p2p/run_encoder/rdzv/active_version[m
+WARNING 2024-03-01 01:06:26,772 New rendezvous state created: {'status': 'joinable', 'version': '1', 'participants': []}
+WARNING 2024-03-01 01:06:26,855 Joined rendezvous version 1 as rank 0. Full state: {'status': 'joinable', 'version': '1', 'participants': [0]}
+WARNING 2024-03-01 01:06:26,855 Rank 0 is responsible for join last call.
+[1;33m[3.093 p7554/t139884505224960 WARNING project_pactum.agent.api][m [33m1709226389.768117, 0.23202128707569725, ready ? False[m
+WARNING 2024-03-01 01:06:31,873 Rank 0 finished join last call.
+WARNING 2024-03-01 01:06:31,873 Waiting for remaining peers.
+WARNING 2024-03-01 01:06:31,876 All peers arrived. Confirming membership.
+[1;33m[5.272 p7554/t139889337845568 WARNING project_pactum.etcd][m [33mnum_active_nodes: 1[m
+[1;33m[5.272 p7554/t139889337845568 WARNING project_pactum.etcd][m [33mnum_participants: 1[m
+WARNING 2024-03-01 01:06:31,954 Waiting for confirmations from all peers.
+WARNING 2024-03-01 01:06:31,956 Rendezvous version 1 is complete. Final state: {'status': 'final', 'version': '1', 'participants': [0], 'keep_alives': ['/torchelastic/p2p/run_encoder/rdzv/v_1/rank_0'], 'num_workers_waiting': 0, 'previous_version': '-1', 'num_pipelines': '1', 'num_stages': '1'}
+WARNING 2024-03-01 01:06:31,961 Creating EtcdStore as the c10d::Store implementation
+[1;33m[6.096 p7554/t139884505224960 WARNING project_pactum.agent.api][m [33m1709226392.771647, 0.8476890963234542, ready ? True[m
+[1;33m[0.313 p7690/t140310055294784 WARNING project_pactum.etcd][m [33mStart create_rdzv_handler[m
+http://localhost:2379/v2/machines
+http://localhost:2379/v2/machines
+WARNING 2024-03-01 01:06:33,727 Etcd machines: ['http://localhost:2379', 'http://localhost:4001']
+[1;33m[0.331 p7690/t140310055294784 WARNING project_pactum.etcd][m [33mEnd create_rdzv_handler[m
+WARNING 2024-03-01 01:06:33,741 Creating EtcdStore as the c10d::Store implementation
+[2024-03-01 01:06:33,742] [INFO] [distributed.py:52:init_distributed] Initializing torch distributed with backend: nccl
+STARTING WITH RANK = 0 and world size = 1 and init_method = None
+[1;33m[9.100 p7554/t139884505224960 WARNING project_pactum.agent.api][m [33m1709226395.7753265, 0.7454966066292538, ready ? True[m
+[1;35m[2.959 p7690/t140310055294784 DEBUG deepspeed.utils.distributed][m [35m★☆★☆★☆★☆★☆★ FINISHED DIST INITIALIZATION ★☆★☆★☆★☆★☆★[m
+SEED_LAYERS=False BASE_SEED=1234 SEED_FN=None
+[2024-03-01 01:06:36,556] [INFO] [module.py:581:_partition_layers] Partitioning pipeline stages with method uniform
+parts=[0, 10]
+stage=0 layers=10
+     0: EncoderLayer
+     1: EncoderLayer
+     2: EncoderLayer
+     3: EncoderLayer
+     4: EncoderLayer
+     5: EncoderLayer
+     6: EncoderLayer
+     7: EncoderLayer
+     8: LayerNorm
+     9: <lambda>
+  loss: MSELoss
+[1;33m[12.102 p7554/t139884505224960 WARNING project_pactum.agent.api][m [33m1709226398.7778635, 0.1603054857564944, ready ? True[m
+[1;33m[12.103 p7554/t139884505224960 WARNING project_pactum.agent.api][m [33m1709226398.7782242, 0.1603054857564944, Preemption detected[m
+[1;33m[12.103 p7554/t139889337845568 WARNING torch.distributed.elastic.agent.server.api][m [33mReceived 15 death signal, shutting down workers[m
+[1;33m[12.103 p7554/t139889337845568 WARNING torch.distributed.elastic.multiprocessing.api][m [33mSending process 7690 closing signal SIGTERM[m
+Traceback (most recent call last):
+  File "/home/gaoziyuan/miniconda3/envs/Bamboo/lib/python3.7/runpy.py", line 193, in _run_module_as_main
+    "__main__", mod_spec)
+  File "/home/gaoziyuan/miniconda3/envs/Bamboo/lib/python3.7/runpy.py", line 85, in _run_code
+    exec(code, run_globals)
+  File "/home/gaoziyuan/project/bamboo/project_pactum/run/__main__.py", line 5, in <module>
+    project_pactum.run.main(sys.argv[1:])
+  File "/home/gaoziyuan/project/bamboo/project_pactum/run/__init__.py", line 246, in main
+    run(options)
+  File "/home/gaoziyuan/project/bamboo/project_pactum/run/__init__.py", line 240, in run
+    )(*cmd_args)
+  File "/home/gaoziyuan/project/bamboo/project_pactum/run/api.py", line 107, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/home/gaoziyuan/miniconda3/envs/Bamboo/lib/python3.7/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 346, in wrapper
+    return f(*args, **kwargs)
+  File "/home/gaoziyuan/project/bamboo/project_pactum/run/api.py", line 361, in launch_agent
+    result = agent.run()
+  File "/home/gaoziyuan/miniconda3/envs/Bamboo/lib/python3.7/site-packages/torch/distributed/elastic/metrics/api.py", line 129, in wrapper
+    result = f(*args, **kwargs)
+  File "/home/gaoziyuan/miniconda3/envs/Bamboo/lib/python3.7/site-packages/torch/distributed/elastic/agent/server/api.py", line 709, in run
+    result = self._invoke_run(role)
+  File "/home/gaoziyuan/project/bamboo/project_pactum/agent/api.py", line 180, in _invoke_run
+    time.sleep(monitor_interval)
+  File "/home/gaoziyuan/miniconda3/envs/Bamboo/lib/python3.7/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 62, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 7554 got signal: 15
+http://localhost:2379/v2/machines
+http://localhost:2379/v2/machines
