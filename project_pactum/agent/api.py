@@ -61,8 +61,6 @@ class ProjectPactumAgent(SimpleElasticAgent):
         self._log_dir = self._make_log_dir(log_dir, rdzv_run_id)
         self._extra_env = extra_env
 
-        # Register the SIGTERM (15) signal to kill the workers
-        signal.signal(signal.SIGTERM, self._drain_preempting_workers)
         preemption_checker = threading.Thread(
             target=self.check_for_preemption
         )
@@ -240,10 +238,9 @@ class ProjectPactumAgent(SimpleElasticAgent):
         return self._pcontext is not None
 
     def _drain_preempting_workers(self, signum, frame):
-        log.info("hit\n")
         if self._pcontext is not None:
             for pid in self._pcontext.pids().values():
-                log.warn(f"Draining worker pid={pid} due to preemption")
+                log.warning(f"Draining worker pid={pid} due to preemption")
                 os.kill(pid, signal.SIGTERM)
 
     def _assign_worker_ranks(
@@ -405,6 +402,9 @@ class ProjectPactumAgent(SimpleElasticAgent):
             redirects=spec.redirects,
             tee=spec.tee,
         )
+        
+        # Register the SIGTERM (15) signal to kill the workers
+        signal.signal(signal.SIGTERM, self._drain_preempting_workers)
 
         return self._pcontext.pids()
 

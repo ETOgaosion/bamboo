@@ -1,0 +1,4232 @@
+diff --color -bur --no-dereference ../DeepSpeed/deepspeed/constants.py project_pactum/external/deepspeed/deepspeed/constants.py
+--- ../DeepSpeed/deepspeed/constants.py	2024-02-29 16:06:19.482162961 +0800
++++ project_pactum/external/deepspeed/deepspeed/constants.py	2024-02-27 18:33:42.613165353 +0800
+@@ -13,7 +13,8 @@
+ # (only if NCCL_BLOCKING_WAIT or NCCL_ASYNC_ERROR_HANDLING is set to 1).
+ # To make an attempt at backwards compatibility with THD, we use an
+ # extraordinarily high default timeout, given that THD did not have timeouts.
+-default_pg_timeout = timedelta(minutes=30)
++# PROJECT-PACTUM: Change default timeout from 30 minutes to 10 seconds
++default_pg_timeout = timedelta(seconds=10)
+ 
+ INFERENCE_GENERIC_MODE = 'generic'
+ INFERENCE_SPECIALIZED_MODE = 'specialized'
+diff --color -bur --no-dereference ../DeepSpeed/deepspeed/__init__.py project_pactum/external/deepspeed/deepspeed/__init__.py
+--- ../DeepSpeed/deepspeed/__init__.py	2024-03-02 20:09:48.885895259 +0800
++++ project_pactum/external/deepspeed/deepspeed/__init__.py	2024-02-27 18:33:42.613165353 +0800
+@@ -70,7 +70,10 @@
+                dist_init_required: Optional[bool] = None,
+                collate_fn=None,
+                config=None,
+-               config_params=None):
++               config_params=None,
++               redundancy_level=0,
++               sync_save=False,
++               eager_recovery=False):
+     """Initialize the DeepSpeed Engine.
+ 
+     Arguments:
+@@ -151,7 +154,10 @@
+                                 dist_init_required=dist_init_required,
+                                 collate_fn=collate_fn,
+                                 config=config,
+-                                config_params=config_params)
++                                config_params=config_params,
++                                redundancy_level=redundancy_level,
++                                sync_save=sync_save,
++                                eager_recovery=eager_recovery)
+ 
+     return_items = [
+         engine,
+diff --color -bur --no-dereference ../DeepSpeed/deepspeed/moe/layer.py project_pactum/external/deepspeed/deepspeed/moe/layer.py
+--- ../DeepSpeed/deepspeed/moe/layer.py	2024-03-02 20:09:54.193885243 +0800
++++ project_pactum/external/deepspeed/deepspeed/moe/layer.py	2024-02-27 18:33:42.613165353 +0800
+@@ -21,6 +21,7 @@
+                  expert,
+                  num_experts=1,
+                  k=1,
++                 output_dropout_prob=0.0,
+                  capacity_factor=1.,
+                  eval_capacity_factor=1.,
+                  min_capacity=4,
+@@ -36,6 +37,8 @@
+ 
+             k (int, optional): default=1, top-k gating value, only supports k=1 or k=2.
+ 
++            output_dropout_prob (float, optional): default=0.0, output dropout probability.
++
+             capacity_factor (float, optional): default=1.0, the capacity of the expert at training time.
+ 
+             eval_capacity_factor (float, optional): default=1.0, the capacity of the expert at eval time.
+@@ -71,6 +74,8 @@
+                                       num_local_experts,
+                                       group=groups.get_expert_parallel_group())
+ 
++        self.dropout = torch.nn.Dropout(output_dropout_prob)
++
+     def forward(self, hidden_states, used_token=None):
+         """ MoE forward
+ 
+@@ -88,4 +93,5 @@
+             * exp_counts (int): expert count
+         """
+         output = self.deepspeed_moe(hidden_states, used_token)
++        output = self.dropout(output)
+         return output, self.deepspeed_moe.l_aux, self.deepspeed_moe.exp_counts
+diff --color -bur --no-dereference ../DeepSpeed/deepspeed/ops/sparse_attention/matmul.py project_pactum/external/deepspeed/deepspeed/ops/sparse_attention/matmul.py
+--- ../DeepSpeed/deepspeed/ops/sparse_attention/matmul.py	2024-03-02 20:09:54.193885243 +0800
++++ project_pactum/external/deepspeed/deepspeed/ops/sparse_attention/matmul.py	2024-02-27 18:33:42.613165353 +0800
+@@ -173,7 +173,7 @@
+                     'TN': block * pack,
+                     'TMN': block * block * pack * pack,
+                     'BLOCK': block,
+-                    'TK': TK[0],
++                    'TK': 32,
+                     'TYPE': dtype,
+                     'STRIDE_AM': '1' if trans_a else 'lda',
+                     'STRIDE_AK': 'lda' if trans_a else '1',
+diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/dataloader.py project_pactum/external/deepspeed/deepspeed/runtime/dataloader.py
+--- ../DeepSpeed/deepspeed/runtime/dataloader.py	2024-03-02 20:09:54.197885235 +0800
++++ project_pactum/external/deepspeed/deepspeed/runtime/dataloader.py	2024-02-27 18:33:42.613165353 +0800
+@@ -22,6 +22,7 @@
+         return self
+ 
+     def __next__(self):
++        self.data_iter = iter(self.loader)
+         try:
+             batch = next(self.data_iter)
+         except StopIteration:
+diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/engine.py project_pactum/external/deepspeed/deepspeed/runtime/engine.py
+--- ../DeepSpeed/deepspeed/runtime/engine.py	2024-03-02 20:13:34.873539864 +0800
++++ project_pactum/external/deepspeed/deepspeed/runtime/engine.py	2024-02-27 18:33:42.617165349 +0800
+@@ -1,20 +1,25 @@
+ '''
+ Copyright 2019 The Microsoft DeepSpeed Team
+ '''
++
++import threading
++import collections
+ import os
+ import re
+ import stat
+ import math
++from typing import Dict, List
+ import torch
+ import warnings
+ import hashlib
+ import torch.distributed as dist
++import time
+ from collections import defaultdict, OrderedDict
+ from shutil import copyfile
+ 
+ from torch.nn.modules import Module
+ from torch.nn.parameter import Parameter
+-from torch.optim import Optimizer
++from torch.optim import Optimizer, optimizer
+ from torch.optim.lr_scheduler import _LRScheduler
+ from torch.distributed.distributed_c10d import _get_global_rank
+ from tensorboardX import SummaryWriter
+@@ -113,8 +118,10 @@
+                  collate_fn=None,
+                  config=None,
+                  config_params=None,
+-                 dont_change_device=False):
++                 dont_change_device=False,
++                 rdzv_handler=None):
+         super(DeepSpeedEngine, self).__init__()
++        self.init_args = args
+         self.dont_change_device = dont_change_device
+         self.client_optimizer = optimizer
+         self.client_model_parameters = model_parameters
+@@ -141,6 +148,43 @@
+         self.has_moe_layers = False
+         self.num_experts = None
+ 
++        ## HACK: passing this to instances to let them know they're joining an already running job
++        self.join = 'PROJECT_PACTUM_JOIN' in os.environ
++        if 'PROJECT_PACTUM_ENABLED' in os.environ:
++            self.max_pipe_parallel_size = os.environ['PROJECT_PACTUM_MAX_PIPE_PARALLEL_SIZE']
++            if rdzv_handler is None:
++                import json
++                from torch.distributed.elastic.rendezvous import RendezvousParameters
++                from project_pactum.rendezvous.etcd import create_rdzv_handler
++                rdzv_backend = 'etcd-v2'
++                rdzv_endpoint = os.environ['PROJECT_PACTUM_ENDPOINT']
++                run_id = os.environ['PROJECT_PACTUM_RUN_ID']
++                min_nodes = int(os.environ['PROJECT_PACTUM_MIN_NODES'])
++                max_nodes = int(os.environ['PROJECT_PACTUM_MAX_NODES'])
++                rdzv_configs = json.loads(os.environ['PROJECT_PACTUM_RDZV_CONFIGS'])
++                rdzv_configs['last_call_timeout'] = 2
++                rdzv_parameters = RendezvousParameters(
++                    backend=rdzv_backend,
++                    endpoint=rdzv_endpoint,
++                    run_id=run_id,
++                    min_nodes=min_nodes,
++                    max_nodes=max_nodes,
++                    **rdzv_configs,
++                )
++                self.rdzv_handler = create_rdzv_handler(rdzv_parameters)
++                logger.info('Started rendezvous handler')
++            else:
++                self.rdzv_handler = rdzv_handler
++
++            self.global_store = self.rdzv_handler.setup_kv_store()
++            world_size = dist.get_world_size()
++            for rank in range(world_size):
++                self.global_store.set(str(rank), '0')
++                self.global_store.set(f'fail-step-{rank}', '[]')
++
++            self.global_store.set('failures', '{}')
++            self.fail_lock = self.rdzv_handler.create_lock('fail-lock')
++
+         # for debug purposes - can then debug print: debug_get_module_name(module)
+         debug_extract_module_and_param_names(model)
+ 
+@@ -216,12 +260,13 @@
+ 
+         # Bookkeeping for csr support
+         self.csr_tensor_module_names = set()
+-        if self.sparse_gradients_enabled():
+-            for name, module in self.module.named_modules():
+-                if isinstance(module, torch.nn.Embedding):
+-                    self.csr_tensor_module_names.add(name + ".weight")
+-                    logger.info("Will convert {} to sparse (csr) "
+-                                "tensor during training".format(name))
++        # NOTE: Temporarily disable for development
++        # if self.sparse_gradients_enabled():
++        #     for name, module in self.module.named_modules():
++        #         if isinstance(module, torch.nn.Embedding):
++        #             self.csr_tensor_module_names.add(name + ".weight")
++        #             logger.info("Will convert {} to sparse (csr) "
++        #                         "tensor during training".format(name))
+ 
+         self.save_non_zero_checkpoint = False
+         self.save_zero_checkpoint = False
+@@ -246,6 +291,71 @@
+         self.flatten = util_ops.flatten
+         self.unflatten = util_ops.unflatten
+ 
++        self.ps_counter = 0
++        self.ps_map: Dict[int, List[int]] = collections.defaultdict(dict)
++
++    def get_named_state(self, stage_id):
++        # TODO(pengzhan): Split optimizer state in different stages
++        sd = self.optimizer.state_dict()
++        for param, state_dict in sd['state'].items():
++            if param not in self.ps_map[stage_id]:
++                continue
++            for state_key, state_tensor in state_dict.items():
++                yield f'{param}.{state_key}', state_tensor
++
++    def update_state(self, model_parameters, buffer):
++        assert isinstance(self.optimizer, FusedAdam)
++
++        legacy_sd = self.optimizer.state_dict()
++
++        buffered_sd = {'state': collections.defaultdict(dict)}
++        for key, value in buffer.items():
++            param, state_key = key.split('.')
++            param = int(param)
++            buffered_sd['state'][param][state_key] = \
++                value.detach().clone().to(self.device, non_blocking=True)
++
++        merged_sd = {}
++        merged_sd['param_groups'] = legacy_sd['param_groups']
++
++        num_params = 0
++        for pg in merged_sd['param_groups']:
++            num_params = len(pg['params'])
++            pg['params'] = \
++                [i for i in
++                 range(len(pg['params']) + len(buffered_sd['state'].keys()))]
++        merged_sd['state'] = legacy_sd['state']
++        for i, state in buffered_sd['state'].items():
++            state_idx = i + num_params
++            merged_sd['state'][state_idx] = state
++
++        self._configure_optimizer(None, model_parameters)
++        self.optimizer.load_state_dict(merged_sd)
++
++    def verify_optimizer(self):
++        optim_state = self.optimizer.state
++        param_group = self.optimizer.param_groups[0]['params']
++
++        for i, param in enumerate(param_group):
++            param_optim_state = optim_state[param]
++
++            param_size = param.size()
++            for v in param_optim_state.values():
++                if isinstance(v, torch.Tensor):
++                    assert v.size() == param_size
++
++    def allocate_state(self, model_parameters, state_buffer):
++        # TODO(pengzhan): Handle other optimizer. Currently, this is a hack
++        # version where the state key is copied from FusedAdam class
++        state_keys = ['exp_avg', 'exp_avg_sq']
++        for i, p in enumerate(model_parameters):
++            for state_key in state_keys:
++                state_buffer[f'{i}.{state_key}'] = \
++                    torch.ones_like(p)
++
++    def update_optimizer(self, model_parameters):
++        self._configure_optimizer(None, model_parameters)
++
+     def get_batch_info(self):
+         """ Get all training batch related settings.
+ 
+@@ -1155,6 +1265,8 @@
+                 or self.is_iterable_style_dataset(dataset)):
+             raise ValueError("Training data must be a torch Dataset")
+ 
++        num_local_io_workers = 0
++
+         if data_sampler is None and (route == ROUTE_PREDICT or route == ROUTE_EVAL):
+             data_sampler = torch.utils.data.SequentialSampler(dataset)
+ 
+@@ -1288,11 +1400,7 @@
+ 
+         return loss
+ 
+-    def allreduce_gradients(self, bucket_size=MEMORY_OPT_ALLREDUCE_SIZE):
+-        # Pass (PP) gas boundary flag to optimizer (required for zero)
+-        self.optimizer.is_gradient_accumulation_boundary = self.is_gradient_accumulation_boundary(
+-        )
+-
++    def allreduce_gradients(self, stage_id, bucket_size=MEMORY_OPT_ALLREDUCE_SIZE):
+         # ZeRO stage 2 communicates during non gradient accumulation boundaries as well
+         if self.zero_optimization_partition_gradients():
+             self.optimizer.overlapping_partition_gradients_reduce_epilogue()
+@@ -1303,7 +1411,7 @@
+                 self.optimizer.reduce_gradients(
+                     pipeline_parallel=self.pipeline_parallelism)
+             else:
+-                self.buffered_allreduce_fallback(elements_per_buffer=bucket_size)
++                self.buffered_allreduce_fallback(stage_id, elements_per_buffer=bucket_size)
+ 
+     def backward(self, loss, allreduce_gradients=True, release_loss=False):
+         r"""Execute backward pass on the loss
+@@ -1614,10 +1722,10 @@
+     def _report_progress(self, step):
+         lr = self.get_lr()
+         mom = self.get_mom()
+-        log_dist(f'step={step}, skipped={self.skipped_steps}, lr={lr}, mom={mom}',
+-                 ranks=[0])
++        # log_dist(f'step={step}, skipped={self.skipped_steps}, lr={lr}, mom={mom}',
++        #          ranks=[0])
+ 
+-    def allreduce_bucket(self, bucket, dp_group):
++    def allreduce_bucket(self, bucket):
+         tensor = self.flatten(bucket)
+ 
+         tensor_to_allreduce = tensor
+@@ -1629,46 +1737,42 @@
+             if self.gradient_predivide_factor() != 1.0:
+                 tensor_to_allreduce.mul_(1. / self.gradient_predivide_factor())
+ 
+-            dist.all_reduce(tensor_to_allreduce, group=dp_group)
++            dist.all_reduce(tensor_to_allreduce, group=self.data_parallel_group)
++
+             if self.gradient_average:
+-                if self.gradient_predivide_factor() != dist.get_world_size(
+-                        group=dp_group):
++                if self.gradient_predivide_factor() != self.dp_world_size:
+                     tensor_to_allreduce.mul_(self.gradient_predivide_factor() /
+-                                             dist.get_world_size(group=dp_group))
++                                             self.dp_world_size)
+         else:
+-            tensor_to_allreduce.div_(dist.get_world_size(group=dp_group))
+-            dist.all_reduce(tensor_to_allreduce, group=dp_group)
++            tensor_to_allreduce.div_(self.dp_world_size)
++            dist.all_reduce(tensor_to_allreduce, group=self.data_parallel_group)
+ 
+         if self.allreduce_always_fp32() and tensor is not tensor_to_allreduce:
+             tensor.copy_(tensor_to_allreduce)
+ 
+         return tensor
+ 
+-    def allreduce_and_copy(self, small_bucket, dp_group):
+-        allreduced = self.allreduce_bucket(small_bucket, dp_group)
++    def allreduce_and_copy(self, small_bucket):
++        allreduced = self.allreduce_bucket(small_bucket)
+         for buf, synced in zip(small_bucket, self.unflatten(allreduced, small_bucket)):
+             buf.copy_(synced)
+ 
+-    def allreduce_no_retain(self, bucket, dp_group, numel_per_bucket=500000000):
++    def allreduce_no_retain(self, bucket, numel_per_bucket=500000000):
+         small_bucket = []
+         numel = 0
+         for tensor in bucket:
+             small_bucket.append(tensor)
+             numel = numel + tensor.numel()
+             if numel > numel_per_bucket:
+-                self.allreduce_and_copy(small_bucket, dp_group)
++                self.allreduce_and_copy(small_bucket)
+                 small_bucket = []
+                 numel = 0
+         if len(small_bucket) > 0:
+-            self.allreduce_and_copy(small_bucket, dp_group)
++            self.allreduce_and_copy(small_bucket)
+ 
+-    def buffered_allreduce_fallback(self, grads=None, elements_per_buffer=500000000):
+-        grads, expert_grads = [], []
+-        for param_name, param in self.module.named_parameters():
+-            if hasattr(param, 'allreduce') and not param.allreduce:
+-                is_moe_param = True
+-            else:
+-                is_moe_param = False
++    def buffered_allreduce_fallback(self, stage_id, grads=None, elements_per_buffer=500000000):
++        grads = []
++        for param_name, param in self.module.get_named_param(stage_id):
+             if param.grad is None:
+                 # In cases where there is an imbalance of empty grads across
+                 # ranks we must create empty grads, this will ensure that every
+@@ -1678,86 +1782,52 @@
+                 param.grad = torch.zeros(param.size(),
+                                          dtype=param.dtype,
+                                          device=param.device)
+-                if is_moe_param:
+-                    expert_grads.append(param.grad.data)
+-                else:
+                     grads.append(param.grad.data)
+             else:
+                 grad_data = param.grad.data
+                 if self.sparse_gradients_enabled(
+                 ) and param_name in self.csr_tensor_module_names:
+-                    if is_moe_param:
+-                        expert_grads.append(CSRTensor(grad_data))
+-                    else:
+                         grads.append(CSRTensor(grad_data))
+                 else:
+-                    if is_moe_param:
+-                        expert_grads.append(grad_data)
+-                    else:
+                         grads.append(grad_data)
+ 
+         split_buckets = split_half_float_double_csr(grads)
+-        for i, bucket_tuple in enumerate(split_buckets):
+-            bucket_type, bucket = bucket_tuple
+-
+-            if self.pipeline_parallelism:
+-                dp_group = self.mpu.get_data_parallel_group()
+-            else:
+-                dp_group = groups.get_data_parallel_group()
+-
+-            if bucket_type == CSRTensor.type():
+-                # TODO: do we have to do something here?
+-                self.csr_allreduce_no_retain(bucket, dp_group=dp_group)
+-                #groups.get_data_parallel_group() if self.pipeline_parallelism else self.mpu.get_data_parallel_group())
+-            else:
+-                self.allreduce_no_retain(
+-                    bucket,
+-                    dp_group=dp_group,
+-                    #groups.get_data_parallel_group(),
+-                    numel_per_bucket=elements_per_buffer)
+ 
+-        if self.has_moe_layers:
+-            expert_split_buckets = split_half_float_double_csr(expert_grads)
+-            for i, bucket_tuple in enumerate(expert_split_buckets):
++        self.data_parallel_group = self.mpu.get_data_parallel_group(stage_id)
++        for i, bucket_tuple in enumerate(split_buckets):
+                 bucket_type, bucket = bucket_tuple
+                 if bucket_type == CSRTensor.type():
+-                    # TODO: do we have to do something here?
+-                    self.csr_allreduce_no_retain(bucket,
+-                                                 groups.get_expert_data_parallel_group())
+-                else:
+-                    # Separate between diff groups
+-                    self.allreduce_no_retain(
+-                        bucket,
+-                        dp_group=groups.get_expert_data_parallel_group(),
+-                        numel_per_bucket=elements_per_buffer)
++                self.csr_allreduce_no_retain(bucket)
++            else:
++                self.allreduce_no_retain(bucket, numel_per_bucket=elements_per_buffer)
+ 
+-    def csr_allreduce_no_retain(self, bucket, dp_group):
+-        allreduced_csrs = self.csr_allreduce_bucket(bucket, dp_group)
++    def csr_allreduce_no_retain(self, bucket):
++        allreduced_csrs = self.csr_allreduce_bucket(bucket)
+         # Densify csr tensor and copy back to original location
+         for csr in allreduced_csrs:
+             dense_tensor = csr.to_dense()
+             csr.orig_dense_tensor.copy_(dense_tensor)
+ 
+-    def csr_allreduce_bucket(self, bucket, dp_group):
++    def csr_allreduce_bucket(self, bucket):
+         csr_list = []
+         for csr in bucket:
+-            csr_list.append(self.csr_allreduce(csr, dp_group))
++            csr_list.append(self.csr_allreduce(csr))
+         return csr_list
+ 
+-    def csr_allreduce(self, csr, dp_group):
++    def csr_allreduce(self, csr):
+         # Pre-divide for fp16 stability
+-        csr.values.div_(dist.get_world_size(group=dp_group))
++        csr.values.div_(self.dp_world_size)
+ 
+-        indices_device_list = self.csr_all_gather(csr.indices, dp_group)
+-        values_device_list = self.csr_all_gather(csr.values, dp_group)
++        indices_device_list = self.csr_all_gather(csr.indices)
++        values_device_list = self.csr_all_gather(csr.values)
+ 
+         csr.indices = torch.cat(indices_device_list)
+         csr.values = torch.cat(values_device_list)
+         return csr
+ 
+-    def csr_all_gather(self, value, dp_group):
++    def csr_all_gather(self, value):
+         my_size = torch.LongTensor([value.size()[0]]).to(self.device)
+-        all_sizes = self.all_gather_scalar(my_size, dp_group)
++        all_sizes = self.all_gather_scalar(my_size)
+         max_size = torch.cat(all_sizes).max()
+         fill_size = (max_size - my_size)
+ 
+@@ -1765,20 +1835,16 @@
+         if value.dim() == 1:
+             if fill_size > 0:
+                 value = torch.cat([value, value.new_zeros(fill_size)])
+-            tensor_list = [
+-                value.new_zeros(max_size)
+-                for _ in range(dist.get_world_size(group=dp_group))
+-            ]
++            tensor_list = [value.new_zeros(max_size) for _ in range(self.dp_world_size)]
+         else:
+             if fill_size > 0:
+                 value = torch.cat([value, value.new_zeros(fill_size, value.size()[1])])
+             tensor_list = [
+                 value.new_zeros(max_size,
+-                                value.size()[1])
+-                for _ in range(dist.get_world_size(group=dp_group))
++                                value.size()[1]) for _ in range(self.dp_world_size)
+             ]
+ 
+-        dist.all_gather(tensor_list, value, group=dp_group)
++        dist.all_gather(tensor_list, value, group=self.data_parallel_group)
+         tensors = []
+         for dev_idx, t in enumerate(tensor_list):
+             size = all_sizes[dev_idx][0]
+@@ -1788,12 +1854,9 @@
+ 
+         return tensors
+ 
+-    def all_gather_scalar(self, value, dp_group):
+-        tensor_list = [
+-            value.new_zeros(value.size())
+-            for _ in range(dist.get_world_size(group=dp_group))
+-        ]
+-        dist.all_gather(tensor_list, value, group=dp_group)
++    def all_gather_scalar(self, value):
++        tensor_list = [value.new_zeros(value.size()) for _ in range(self.dp_world_size)]
++        dist.all_gather(tensor_list, value, group=self.data_parallel_group)
+         return tensor_list
+ 
+     def module_state_dict(self, destination=None, prefix='', keep_vars=False):
+diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/pipe/engine.py project_pactum/external/deepspeed/deepspeed/runtime/pipe/engine.py
+--- ../DeepSpeed/deepspeed/runtime/pipe/engine.py	2024-03-02 20:08:07.078106481 +0800
++++ project_pactum/external/deepspeed/deepspeed/runtime/pipe/engine.py	2024-02-29 16:20:56.578891193 +0800
+@@ -1,39 +1,76 @@
+ # Copyright 2019 The Microsoft DeepSpeed Team
+ 
++from ast import expr_context
++from datetime import timedelta
++from glob import glob
++from posixpath import join
++from re import M, S
+ import time
+-import logging
++import collections
+ import copy
++import datetime
++import io
++import json
++import logging
++import numpy as np
+ import os
++import signal
++import sys
+ 
+-from types import MethodType
++from colorama import Fore
+ 
+-from numpy import prod
++from types import MethodType
++from typing import Dict, List, Optional, Tuple
++from requests import delete
+ 
+ import torch
++from torch.cuda import default_stream, stream
++from torch.distributed.distributed_c10d import _get_global_rank
++from torch.autograd import grad
+ import torch.nn as nn
+-import torch.optim as optim
+ import torch.distributed as dist
+ 
++import deepspeed
+ from deepspeed.utils.logging import logger
+ from deepspeed.utils.timer import SynchronizedWallClockTimer, ThroughputTimer
+ 
+ from deepspeed.inference.engine import InferenceEngine
++from deepspeed.runtime.pipe.topology import PipeDataParallelTopology
+ from ..engine import DeepSpeedEngine, MEMORY_OPT_ALLREDUCE_SIZE
+-from ..utils import PartitionedTensor, ensure_directory_exists
++from ..utils import PartitionedTensor, deserialize_object, ensure_directory_exists, serialize_object
+ from ..dataloader import RepeatingLoader
+ 
+-from .module import PipelineModule, PipelineError, TiedLayerSpec
+-from . import p2p
++from .module import LayerSpec, PipelineModule, PipelineError, TiedLayerSpec
++from . import p2p_direct as p2p
+ from . import schedule
++from . import redundancy
++
++def ns_to_s(ns):
++    return ns / 1000000000
+ 
+ TARGET_ID = -2
+ LOG_STAGE = -2
+ DATA_PARALLEL_ID = -2
+ 
++class PreemptionError(Exception):
++    def __init__(self):
++        pass
++
++class PeerFailureError(Exception):
++    def __init__(self):
++        pass
++
+ 
+ def is_even(number):
+     return number % 2 == 0
+ 
++global should_stop
++should_stop = False
++
++def sig_handler(signum, frame):
++    print('[Engine] Signal handler called with signal', signum)
++    global should_stop
++    should_stop = True
+ 
+ mem_alloced = 0
+ mem_cached = 0
+@@ -43,18 +80,38 @@
+     return tensor.numel() * tensor.element_size()
+ 
+ 
++class PrevStageException(Exception):
++    ...
++
++
++class NextStageException(Exception):
++    ...
++
++
++class AllReduceException(Exception):
++    def __init__(self, src, *args: object) -> None:
++        super().__init__(*args)
++        # Exception source pipeline
++        self.src = src
++
++
+ class PipelineEngine(DeepSpeedEngine):
+     """ A training engine hybrid pipeline, data, and model parallel training.
+ 
+     This engine is created by ``deepspeed.initialize()`` when a :class:`PipelineModule`
+     is provided.
+     """
+-    def __init__(self, *super_args, **super_kwargs):
++    def __init__(self, *super_args, redundancy_level=0, sync_save=False,
++                 eager_recovery=False, prev_state={}, **super_kwargs):
+         super().__init__(*super_args, **super_kwargs)
+         assert isinstance(self.module, PipelineModule), "model must base PipelineModule"
+ 
+         assert self.zero_optimization_stage() < 2, "ZeRO-2 and ZeRO-3 are incompatible with pipeline parallelism"
+ 
++        signal.signal(signal.SIGTERM, sig_handler)
++
++        self.join = False
++
+         # We schedule the all-reduces, so disable it in super().backward()
+         self.enable_backward_allreduce = False
+ 
+@@ -85,8 +142,45 @@
+         #  Set Stage Inf
+         self.num_stages = self.grid.pipe_parallel_size
+         self.stage_id = self.grid.get_stage_id()
+-        self.prev_stage = self.stage_id - 1
+-        self.next_stage = self.stage_id + 1
++        self.prev_stage = self._dec(self.stage_id)
++        self.next_stage = self._inc(self.stage_id)
++        self.stage_ids = [self.stage_id]
++
++        global_decisions = self.rdzv_handler.get_global_decision()
++        for info in global_decisions:
++            if info.rank == self.global_rank:
++                self.coordinates = info.active_coordinates
++
++        #self.gloo_pg = dist.new_group(backend='gloo')
++        if not self.is_first(global_decisions):
++            self.join = True
++            prev_num_stages = self.find_prev_number_stages(global_decisions)
++            old_parts = self.module.get_new_partition(prev_num_stages)
++
++            recv_decisions = self.get_recv_decisions(old_parts, self.module.parts, global_decisions)
++            send_decisions = self.get_send_decisions(recv_decisions)
++
++            received_state = self.transfer_layers(recv_decisions, send_decisions, prev_state)
++            self.module.load_layers(received_state)
++            self.load_optimizer_state(received_state, prev_state)
++            #self.verify_optimizer()
++
++            #self.compare_model_state()
++
++        self.global_steps = self.rdzv_handler.get_current_step()
++
++        # Set redundancy related config
++        if redundancy_level > 1:
++            raise NotImplementedError(
++                f'R level {redundancy_level} > 1 is not supported now.')
++        self.redundancy_level = redundancy_level
++
++        if eager_recovery and redundancy_level == 0:
++            raise Exception(
++                "Must set redundancy level to enable eager recovery")
++        self.eager_recovery = eager_recovery
++
++        self.init_redundancy()
+ 
+         self.data_iterator = None
+         self.batch_fn = None
+@@ -113,50 +207,40 @@
+         self.is_pipe_partitioned = self.is_model_parallel
+         self.is_grad_partitioned = False
+ 
+-        model_parameters = filter(lambda p: p.requires_grad, self.module.parameters())
+-        num_params = sum([p.numel() for p in model_parameters])
+-        unique_params = num_params
+-        # Subtract tied parameters if we don't own them
+-        if self.module.tied_comms:
+-            tied_params = 0
+-            for key, d in self.module.tied_comms.items():
+-                if self.global_rank != min(d['ranks']):
+-                    tied_params += sum(p.numel() for p in d['module'].parameters())
+-            unique_params -= tied_params
+-        params_tensor = torch.LongTensor(data=[num_params,
+-                                               unique_params]).to(self.device)
+-        dist.all_reduce(params_tensor, group=self.grid.get_model_parallel_group())
+-        params_tensor = params_tensor.tolist()
+-        total_params = params_tensor[0]
+-        unique_params = params_tensor[1]
+-        if self.grid.data_parallel_id == 0:
+-            logger.info(f'RANK={self.global_rank} '
+-                        f'STAGE={self.stage_id} '
+-                        f'LAYERS={self.module._local_stop - self.module._local_start} '
+-                        f'[{self.module._local_start}, {self.module._local_stop}) '
+-                        f'STAGE_PARAMS={num_params} ({num_params/1e6:0.3f}M) '
+-                        f'TOTAL_PARAMS={total_params} ({total_params/1e6:0.3f}M) '
+-                        f'UNIQUE_PARAMS={unique_params} ({unique_params/1e6:0.3f}M)')
++        # NOTE: Temporarily disable for development
++        # model_parameters = filter(lambda p: p.requires_grad, self.module.parameters())
++        # num_params = sum([p.numel() for p in model_parameters])
++        # unique_params = num_params
++        # # Subtract tied parameters if we don't own them
++        # if self.module.tied_comms:
++        #     tied_params = 0
++        #     for key, d in self.module.tied_comms.items():
++        #         if self.global_rank != min(d['ranks']):
++        #             tied_params += sum(p.numel() for p in d['module'].parameters())
++        #     unique_params -= tied_params
++        # params_tensor = torch.LongTensor(data=[num_params,
++        #                                        unique_params]).to(self.device)
++        # dist.all_reduce(params_tensor, group=self.grid.get_model_parallel_group())
++        # params_tensor = params_tensor.tolist()
++        # total_params = params_tensor[0]
++        # unique_params = params_tensor[1]
++        # if self.grid.data_parallel_id == 0:
++        #     logger.info(f'RANK={self.global_rank} '
++        #                 f'STAGE={self.stage_id} '
++        #                 f'LAYERS={self.module._local_stop - self.module._local_start} '
++        #                 f'[{self.module._local_start}, {self.module._local_stop}) '
++        #                 f'STAGE_PARAMS={num_params} ({num_params/1e6:0.3f}M) '
++        #                 f'TOTAL_PARAMS={total_params} ({total_params/1e6:0.3f}M) '
++        #                 f'UNIQUE_PARAMS={unique_params} ({unique_params/1e6:0.3f}M)')
+ 
+         #intialize peer-2-peer communication and allreduce groups
+         if self.is_pipe_parallel:
+-            p2p.init_process_groups(self.grid)
++            p2p.init_process_groups(self.grid, self.device)
+ 
+-        # Pipeline buffers
+-        self.num_pipe_buffers = 0
+-        self.pipe_buffers = {
+-            'inputs' : [],   # batch input and received activations
+-            'labels' : [],   # labels from batch input
+-            'outputs' : [],  # activations
+-            'output_tensors' : [], # tensor object to preserve backward graph
+-        }
+-        self.pipe_recv_buf = None
+-        self.grad_layer = None
++        self.init_pipe_buffers()
+ 
+-        self.meta_buffer = None
+-
+-        self.first_output_send = True
+-        self.first_gradient_send = True
++        self.enable_mem_status = False
++        self.recv_weights_work = []
+ 
+         #stores the loss for the current micro batch being processed
+         self.loss = torch.tensor(0.0).to(self.device)
+@@ -170,7 +254,6 @@
+             self.module.activation_checkpoint_interval = self._config.pipeline[
+                 'activation_checkpoint_interval']
+ 
+-        if self.is_last_stage():
+             self.loss_model = self.module.loss_fn
+ 
+         # Initialize pipeline communicators. Just send a 0.
+@@ -185,6 +268,30 @@
+             if not self.is_last_stage():
+                 p2p.send(self.loss, self.next_stage)
+ 
++        # Initialize schedule constructor
++        self._generate_sched = lambda \
++            stage_id=self.stage_id: \
++            schedule.TrainSchedule(
++                micro_batches=self.micro_batches,
++                stages=self.num_stages,
++                stage_id=stage_id)
++
++        if self.r_stage_ids:
++            # TODO(pengzhan): There should be a loop for each r_stage. To
++            # simplify implementation, assume there is only one r_stage.
++            schedule_cls = schedule.EagerRecoverySchedule if self.eager_recovery else \
++                           schedule.LazyRecoverySchedule
++            self._generate_sched = lambda \
++                schedule_cls=schedule_cls, \
++                stage_id=self.next_stage, \
++                curr_sched=self._generate_sched: \
++                    schedule_cls(
++                        curr_sched(),
++                        schedule.TrainSchedule(
++                            micro_batches=self.micro_batches,
++                            stages=self.num_stages,
++                            stage_id=stage_id))
++
+         # XXX look into timer reporting timing
+         # Initialize some timers because of early weirdness.
+         if self.wall_clock_breakdown():
+@@ -201,6 +308,577 @@
+             self.timers('step_microstep').start()
+             self.timers('step_microstep').stop()
+ 
++    def _inc(self, stage_id):
++        return (stage_id + 1) % self.num_stages
++
++    def _dec(self, stage_id):
++        return (stage_id - 1 + self.num_stages) % self.num_stages
++
++    def init_redundancy(self):
++        self.r_stage_ids = redundancy.get_redundant_stage_ids(
++            self.redundancy_level, self.stage_id, self.num_stages)
++        self.r_user_stage_ids = redundancy.get_redundant_user_stage_ids(
++            self.redundancy_level, self.stage_id, self.num_stages)
++
++        # parameter buffer and optimizer state buffer
++        self.param_buffers: Dict[int, Dict[str, nn.Tensor]] = \
++            collections.defaultdict(dict)
++        self.state_buffers: Dict[int, Dict[str, nn.Tensor]] = \
++            collections.defaultdict(dict)
++
++        # guide optimizer distinguish param in different stages
++        num_param = \
++            len([_ for _ in self.module.get_named_param(self.stage_id)])
++        self.ps_map[self.stage_id] = [i for i in range(num_param)]
++        self.ps_counter += num_param
++
++        # prepare for weight sync and redundant computation
++        if self.redundancy_level > 0:
++            for stage_id in self.r_stage_ids:
++                device = 'cpu'
++                if self.eager_recovery:
++                    self.module.build_layers(stage_id)
++                    device = self.device
++
++                self.module.allocate_param(
++                    stage_id, self.param_buffers[stage_id],
++                    device)
++                super().allocate_state(
++                    self.param_buffers[stage_id].values(),
++                    self.state_buffers[stage_id])
++
++            self.grid.init_fallback_group(self.redundancy_level)
++
++    def init_pipe_buffers(self):
++        # Pipeline buffers
++        self.num_pipe_buffers = 0
++        self.pipe_buffers: Dict[str, List[nn.Tensor]] = \
++            collections.defaultdict(list)
++        self.pipe_buffers = {
++            'data': [],                     # data from batch input
++            'label': [],                    # labels from batch input
++            f'input_{self.stage_id}': [],   # received activations
++            f'output_{self.stage_id}': [],  # computed activations
++            # 'output_tensors': [],  # tensor object to preserve backward graph
++        }
++        # For all stages except first stage, we will store gradient of retired
++        # input tensor in this buffer, which can be used to recover if previous
++        # node fails.
++        if self.stage_id != 0:
++            self.pipe_buffers[f'input_grad_{self.stage_id}'] = []
++        # For eager recovery, we also need to create buffer for r_stage.
++        if self.eager_recovery:
++            for stage_id in self.r_stage_ids:
++                self.pipe_buffers[f'input_{stage_id}'] = []
++                self.pipe_buffers[f'output_{stage_id}'] = []
++
++        # Create mutables
++        self.pipe_recv_buf = None
++        self.ping_tensor = torch.randn([1]).cuda()
++        self.ping_buffer = torch.randn([1]).cuda()
++        self.grad_layer = None
++        self.meta_buffer = None
++
++        # The last stage will never send actual activation so
++        # `first_output_send` will remain True. But if the first node
++        # failed, it will start to send actual activations. In this case,
++        # we should skip send tensor meta.
++        self.first_output_send = True if self.stage_id != self.num_stages - 1 else False
++        self.first_gradient_send = True
++
++    def log(self, msg, color=None):
++        output = f'[ {self.global_rank:02d}|{self.global_steps:02d} ] {msg}'
++        if color is not None:
++            print_color = Fore.RED
++            if color == 'r':
++                print_color = Fore.RED
++            elif color == 'b':
++                print_color = Fore.RED
++            elif color == 'lb':
++                print_color = Fore.LIGHTCYAN_EX
++            elif color == 'g':
++                print_color = Fore.GREEN
++            elif color == 'lg':
++                print_color = Fore.LIGHTGREEN_EX
++            print(print_color + output + Fore.RESET)
++        else:
++            print(output)
++
++    def trigger_kill(self, dp_id, stage_id, step, fatal=False):
++        if self.global_steps == step and \
++          self.grid.get_data_parallel_id() == dp_id and \
++          self.stage_id == stage_id:
++            if fatal:
++                self.log('FAILING', color='r')
++                sys.exit(13)
++            else:
++                self.log('PREEMPTION SOON', color='r')
++                os.kill(os.getpid(), signal.SIGTERM)
++
++    def should_kill(self, dp_id, stage_id):
++        return self.grid.get_data_parallel_id() == dp_id and \
++          self.stage_id == stage_id
++
++    def is_first(self, globlal_decisions):
++        '''
++            Check if this is the first initialization of the cluster
++            or if there are existing nodes which have more up to date
++            state
++        '''
++        for info in globlal_decisions:
++            if len(info.previous_coordinates) != 0:
++                return False
++
++        return True
++
++    def find_prev_number_stages(self, global_decisions):
++        num_prev_stages = 0
++        for info in global_decisions:
++            for dp_id, s_id in info.previous_coordinates:
++                num_prev_stages = max(num_prev_stages, s_id)
++
++        return num_prev_stages + 1
++
++    def add_optimizer_state(self, l_id, lyr, state):
++        optim_state = state[l_id][1]
++        if hasattr(lyr, 'parameters'):
++            for j, p in enumerate(lyr.parameters()):
++                self.optimizer.state[p] = optim_state[j]
++
++    def load_optimizer_state(self, recvd_state, prev_state={}):
++        bucket = self.module.func_buckets[self.stage_id]
++        for i, l_id in enumerate(range(self.module.parts[self.stage_id], self.module.parts[self.stage_id + 1])):
++            if l_id in prev_state:
++                lyr = bucket[i]
++                self.add_optimizer_state(l_id, lyr, prev_state)
++                continue
++
++            if l_id in recvd_state:
++                lyr = bucket[i]
++                self.add_optimizer_state(l_id, lyr, recvd_state)
++                continue
++
++    def write_model_state(self, shared_storage='/mnt/efs/verify-transfer'):
++        for stage, bucket in self.module.func_buckets.items():
++            start = self.module.parts[stage]
++
++            for i, layer in enumerate(bucket):
++                if not hasattr(layer, 'state_dict'):
++                    continue
++
++                all_layer_info = {}
++                for k, v in layer.state_dict().items():
++                    all_layer_info[k] = { 'param': v }
++                    for p in layer.parameters():
++                        if p.data_ptr() == v.data_ptr():
++                            all_layer_info[k]['state'] = self.optimizer.state[p]
++
++                torch.save(all_layer_info, f'{shared_storage}/layer{i + start}.json')
++
++    def compare_model_state(self, shared_storage='/mnt/efs/verify-transfer'):
++        for stage, bucket in self.module.func_buckets.items():
++            start = self.module.parts[stage]
++
++            for i, layer in enumerate(bucket):
++                if not hasattr(layer, 'state_dict'):
++                    continue
++
++                all_layer_info = {}
++                for k, v in layer.state_dict().items():
++                    all_layer_info[k] = { 'param': v }
++                    for p in layer.parameters():
++                        if p.data_ptr() == v.data_ptr():
++                            all_layer_info[k]['state'] = self.optimizer.state[p]
++
++                previous_state = torch.load(f'{shared_storage}/layer{i + start}.json')
++
++                ## Make sure that previous state and transferred state are EXACTLY the same
++                assert len(previous_state) == len(all_layer_info)
++                for k in previous_state:
++                    assert k in all_layer_info
++
++                    ## Make sure that it has BOTH 'param' and 'state' entries
++                    assert len(previous_state[k]) == len(all_layer_info[k])
++
++                    assert torch.equal(previous_state[k]['param'], all_layer_info[k]['param'])
++
++                    try:
++                        for state_tensor_name in previous_state[k]['state']:
++                            assert torch.equal(previous_state[k]['state'][state_tensor_name], all_layer_info[k]['state'][state_tensor_name])
++                    except KeyError as e:
++                        print(f'Failed on layer {i + start} with parameter {k}')
++                        print(previous_state[k]['state'])
++                        print()
++                        print(all_layer_info[k]['state'])
++                        raise e
++
++    def transfer_layers(self, recv_decisions, send_decisions={}, prev_state={}):
++        received_state = {}
++
++        ## Implement sync transfer protocol that I just though of
++        my_send_decicions = send_decisions[self.global_rank] if self.global_rank in send_decisions else {}
++        my_recv_decisions = recv_decisions[self.global_rank] if self.global_rank in recv_decisions else {}
++        for rank in range(self.world_size):
++            if rank == self.global_rank:
++                for dst_rank, layer_idxs in my_send_decicions.items():
++                    if len(layer_idxs) == 0:
++                        continue
++
++                    self.send_layers(dst_rank, sorted(layer_idxs), prev_state)
++            else:
++                if rank in my_recv_decisions:
++                    src_rank = rank
++                    layer_idxs = my_recv_decisions[rank]
++                    received_state.update(self.recv_layers(src_rank, sorted(layer_idxs)))
++
++        return received_state
++
++    def remove_param_optim_state(self, param):
++        del self.optimizer.state[param]
++
++        for i in range(len(self.optimizer.param_groups[0]['params'])):
++            t = self.optimizer.param_groups[0]['params'][i]
++            ## Annoying way to find the parameters in the param groups
++            ## Have to compare the underlying data ptr
++            if t.data_ptr() == param.data_ptr():
++                del self.optimizer.param_groups[0]['params'][i]
++                break
++
++    def get_layer_and_optim_state(self, stage_part_start, func_bucket, delete_state):
++        bucket_state = {}
++        for i, lyr in enumerate(func_bucket):
++            if not hasattr(lyr, 'state_dict'):
++                bucket_state[stage_part_start + i] = ({}, [])
++                continue
++
++            lyr_optim_state = []
++            if hasattr(lyr, 'parameters'):
++                for p in lyr.parameters():
++                    lyr_optim_state.append(self.optimizer.state[p])
++                    if delete_state:
++                        self.remove_param_optim_state(p)
++
++            bucket_state[stage_part_start + i] = (lyr.state_dict(), lyr_optim_state)
++
++        return bucket_state
++
++    def get_model_state(self, delete_state=True):
++        model_state = {}
++        for stage_id in self.stage_ids:
++            stage_part_start = self.module.parts[stage_id]
++            stage_partition = self.module.func_buckets.get(stage_id, None)
++            model_state.update(self.get_layer_and_optim_state(stage_part_start, stage_partition, delete_state))
++
++        return model_state
++
++    def get_recv_decisions(self, old_parts, new_parts, global_decisions):
++        recv_decisions = {}
++        for info in global_decisions:
++            if len(info.active_coordinates) == 0:
++                continue
++
++            rank = info.rank
++            rank_recv_decisions = {}
++            my_stage = info.active_coordinates[0][1]
++            needed_layers = set(range(new_parts[my_stage], new_parts[my_stage + 1]))
++
++            if len(info.previous_coordinates) != 0:
++                prev_stages = [s_id for dp_id, s_id in info.previous_coordinates]
++                prev_partition = set(range(old_parts[min(prev_stages)], old_parts[max(prev_stages) + 1]))
++                needed_layers.difference_update(prev_partition)
++
++            for other_info in global_decisions:
++                other_rank = other_info.rank
++
++                if len(other_info.previous_coordinates) == 0:
++                    continue
++
++                other_prev_stages = [s_id for dp_id, s_id in other_info.previous_coordinates]
++                part_start = old_parts[min(other_prev_stages)]
++                part_end = old_parts[max(other_prev_stages) + 1]
++                other_prev_part = set(range(part_start, part_end))
++
++                intersect = needed_layers.intersection(other_prev_part)
++                if len(intersect) == 0: continue
++
++                rank_recv_decisions[other_rank] = intersect
++                needed_layers.difference_update(intersect)
++                if len(needed_layers) == 0:
++                    break
++
++            recv_decisions[rank] = rank_recv_decisions
++
++            assert len(needed_layers) == 0
++
++        return recv_decisions
++
++    def get_send_decisions(self, recv_decisions):
++        send_decisions = {}
++        for recving_rank, recv_info in recv_decisions.items():
++            for sending_rank, layers in recv_info.items():
++                if sending_rank not in send_decisions:
++                    send_decisions[sending_rank] = {}
++
++                send_decisions[sending_rank][recving_rank] = layers
++
++        return send_decisions
++
++    def reset_process_groups(self, store):
++        dist.destroy_process_group()
++        deepspeed.init_distributed(self.dist_backend, rank=self.global_rank, world_size=self.world_size, store=store)
++
++    def reconfigure_cluster(self, store, global_decisions, recvd_state):
++        self.rdzv_handler.write('/rdzv/cluster_status', 'init')
++        self.rdzv_handler.write('/rdzv/last_reconfig', self.global_steps)
++
++        my_prev_state = self.get_model_state()
++        my_prev_state.update(recvd_state)
++
++        self.reset_process_groups(store)
++
++        custom_proc_topology = PipeDataParallelTopology(self.num_stages, self.num_pipelines, global_decisions)
++        model = PipelineModule(layers=self.module._layer_specs,
++                                     loss_fn=self.module.loss_fn,
++                                     num_stages=self.num_stages,
++                                     topology=custom_proc_topology,
++                                     partition_method=self.module.partition_method,
++                                     activation_checkpoint_interval=self.module.activation_checkpoint_interval)
++
++        ## Re-init pipeline engine for consistency
++        self.__init__(
++            args=self.init_args,
++            model=model,
++            training_data=self.training_data,
++            mpu=model.mpu(),
++            model_parameters=[p for p in model.parameters() if p.requires_grad],
++            redundancy_level=self.redundancy_level,
++            eager_recovery=self.init_args.eager,
++            prev_state=my_prev_state,
++            rdzv_handler=self.rdzv_handler,
++        )
++
++    def save_shadow_node_state(self, failures):
++        transfer_needed = False
++        for fail_rank in failures:
++            recv_decisions = {}
++            send_decisions = {}
++            recv_node_index = 0
++            if failures[fail_rank] == self.global_steps:
++                prev_rdzv_state = self.rdzv_handler.get_previous_state()
++                rank_coordinates = self.rdzv_handler.get_rank_coordinates_for_version(prev_rdzv_state, prev_rdzv_state["version"])
++
++                failing_shadow_node = False
++                for rank, coordinates in rank_coordinates.items():
++                    if rank == fail_rank and len(coordinates) == 2:
++                        failing_shadow_node = True
++                        break
++
++                if not failing_shadow_node:
++                    continue
++
++                ## A layer transfer should be triggered. To be safe just do it all the time
++                ## as opposed to only when its an active node
++                send_node = int(rank)
++                recv_node = -1
++
++                available_nodes = []
++                coords_to_send = []
++                for rank, coordinates in rank_coordinates.items():
++                    ## Create list of nodes that can recv these layers
++                    ## Not about to fail and not already failed
++                    if str(rank) not in failures and self.global_store.get(str(rank)) == b'0':
++                        available_nodes.append(rank)
++
++                    if failures.get(str(rank), -1) == self.global_steps:
++                        coords_to_send = coordinates
++
++                recv_node = int(available_nodes[recv_node_index])
++                recv_node_index += 1
++                existing_stages = []
++                for rank, coordinates in rank_coordinates.items():
++                    if rank == recv_node:
++                        existing_stages = [s_id for dp_id, s_id in coordinates]
++                        break
++
++                stages_to_send = [s_id for dp_id, s_id in coords_to_send if s_id not in existing_stages]
++                if not stages_to_send:
++                    continue
++
++                assert recv_node != -1
++                layers_to_transfer = set(range(self.module.parts[min(stages_to_send)], self.module.parts[max(stages_to_send) + 1]))
++                rank_recv_decisions = {}
++                rank_recv_decisions[send_node] = layers_to_transfer
++                rank_send_decisions = {}
++                rank_send_decisions[recv_node] = layers_to_transfer
++                recv_decisions[recv_node] = rank_recv_decisions
++                send_decisions[send_node] = rank_send_decisions
++
++                transfer_needed = True
++
++                new_coordinates = [[0, s_id] for s_id in stages_to_send]
++                updated_coordinates = rank_coordinates[str(recv_node)]
++                updated_coordinates.extend(new_coordinates)
++
++                self.rdzv_handler.update_coordinates_for_version(prev_rdzv_state["version"], recv_node, updated_coordinates)
++
++        recvd_state = {}
++        if transfer_needed:
++            state_to_transfer = self.get_model_state(delete_state=False)
++            recvd_state = self.transfer_layers(recv_decisions, send_decisions, state_to_transfer)
++
++        return recvd_state
++
++    def check_preemptions(self, failures):
++        ## Check all ranks that you will have to communicate with in an iteration
++        ## Your all-reduce group + previous and next stage in the pipeline
++        prev_stage_rank = self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.prev_stage) if self.prev_stage >= 0 else -1
++        next_stage_rank = self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.next_stage) if self.next_stage < self.num_stages else -1
++        ranks_to_check = self.grid.current_dp_group + [prev_stage_rank, next_stage_rank]
++        for rank in ranks_to_check:
++            rank_key = str(rank)
++
++            if rank_key not in failures:
++                continue
++
++            if self.global_steps != failures[rank_key]:
++                continue
++
++            if rank == self.global_rank:
++                self.global_store.set(str(self.global_rank), '1')
++                sys.exit(13)
++
++            ## NextStageException
++            if self.next_stage < self.num_stages and rank == self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.next_stage):
++                self.log('Next node is going to fail. Using fallback schedule', color='r')
++                if self.next_stage not in self.param_buffers or \
++                    self.next_stage not in self.state_buffers:
++                    raise RuntimeError(
++                        "Doesn't have param or state to recover"
++                    )
++
++                # Map coordinate of next node to the rank of this node.
++                next_rank = self.grid.stage_to_global(self.next_stage)
++                next_coord = self.grid.topology().get_coord(next_rank)
++                self.grid.topology().modify_mapping(rank=self.global_rank, **next_coord._asdict())
++                failed_step = 0
++
++                # Re-generate schedule
++                self._generate_sched = lambda \
++                    stage_id=self.next_stage, \
++                    curr_sched=self._generate_sched, \
++                    failed_step=failed_step, \
++                    curr_step=0: \
++                    schedule.NextStageFailoverSchedule(
++                        curr_sched(),
++                        schedule.TrainSchedule(
++                            micro_batches=self.micro_batches,
++                            stages=self.num_stages,
++                            stage_id=stage_id),
++                        failed_step=failed_step,
++                        curr_step=curr_step)
++
++                # Update module and funcs.
++                if not self.eager_recovery:
++                    self.module.build_layers(
++                        self.next_stage, self.param_buffers[self.next_stage])
++
++                # Update optimizer state
++                super().update_state(
++                    [p for p in self.module.parameters()
++                        if p.requires_grad],
++                    self.state_buffers[self.next_stage])
++
++                # Reset buffer
++                self.param_buffers.pop(self.next_stage)
++                self.state_buffers.pop(self.next_stage)
++
++                # Update current stage information
++                self.stage_ids.append(self.next_stage)
++                self.r_stage_ids = []
++
++                # Setup pipe buffer for next stage.
++                if not self.eager_recovery:
++                    self.pipe_buffers[f'input_{self.next_stage}'] = []
++                    self.pipe_buffers[f'output_{self.next_stage}'] = []
++
++                # Update global decision
++                self.coordinates.append([self.grid.get_data_parallel_id(), self.next_stage])
++                self.rdzv_handler.update_coordinates(self.global_rank, self.coordinates)
++
++                # Update neighboring stage information
++                self.next_stage = self._inc(self.next_stage)
++
++                # FIXME(pengzhan): There are several cases I have not
++                # implemented yet. For a 4 node pipeline (0,1,2,3) with
++                # 4 model stages (A,B,C,D):
++                # 1. Node 1 fails at iteration n, and Node 0 takes its work.
++                # Then Node 2 fails at iteration n+1. Recovery requires Node 2
++                # to send weight (stage C) to Node 0.
++                # 2. Node 2 fails at iteration n, and Node 1 takes its work.
++                # Then Node 1 fails at iteration n+1. Recovery requires Node 1
++                # to send weights (stage B and C) to Node 0.
++
++            ## PrevStageException
++            elif self.prev_stage >= 0 and rank == self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.prev_stage):
++                self.log('Previous node is going to fail. Using fallback schedule', color='r')
++                # Map coordinate of previous node to the rank of the node
++                # in front of previous node.
++                prev_rank = self.grid.stage_to_global(self.prev_stage)
++                prev_coord = self.grid.topology().get_coord(prev_rank)
++                fallback_rank = self.grid.stage_to_global(self._dec(self.prev_stage))
++                self.grid.topology().modify_mapping(rank=fallback_rank, **prev_coord._asdict())
++
++                failed_step = 0
++                self._generate_sched = lambda \
++                    stage_id=self.prev_stage, \
++                    curr_sched=self._generate_sched, \
++                    failed_step=failed_step, \
++                    curr_step=0:             \
++                    schedule.PrevStageFailoverSchedule(
++                        schedule.TrainSchedule(
++                            micro_batches=self.micro_batches,
++                            stages=self.num_stages,
++                            stage_id=stage_id),
++                        curr_sched(),
++                        failed_step=failed_step,
++                        curr_step=curr_step)
++
++            ## AllReduceException
++            else:
++                self.log('Node in my AllReduce group is going to fail. Using fallback group', color='r')
++                # FIXME(pengzhan): Support recursive recovery. Here we assume
++                # the topology has not been changed, so we can get corrent rank
++                # exceptional node and its previous node. Consider what will
++                # happen if we have changed the topology.
++                src = self.grid._topo.get_coord(rank=rank).data
++                coord = self.grid.topology().get_coord(self.global_rank)
++                except_coord = coord._replace(data=src)
++                failed_rank = self.grid.topology().get_rank(**except_coord._asdict())
++                self.grid.current_dp_group = self.grid.dp_fallback_groups[failed_rank]
++                #if except_coord.pipe == 0:
++                #    raise NotImplementedError(
++                #        "First stage exception can not be handled now")
++
++                # Use failover schedule, which basically skip steps before
++                # failed step.
++                self._generate_sched = lambda \
++                    curr_sched=self._generate_sched, \
++                    curr_step=0,                    \
++                    failed_step=0:                  \
++                    schedule.AllReduceFailoverSchedule(
++                        curr_sched(),
++                        [[] for _ in curr_sched()],
++                        failed_step=failed_step)
++
++                # Map coordinate of exceptional node to the rank of the node
++                # in front of exceptional node in its pipeline.
++                prev_coord = except_coord._replace(pipe=self._dec(except_coord.pipe))
++                prev_rank = self.grid.topology().get_rank(**prev_coord._asdict())
++                self.grid.topology().modify_mapping(prev_rank, **except_coord._asdict())
++
++                # Change data-parallel group
++                self.grid.set_fallback_group(src)
++
+     def _build_data_iter(self, dataset):
+         sampler = torch.utils.data.distributed.DistributedSampler(
+             dataset,
+@@ -212,6 +890,142 @@
+         pipe_dataloader = RepeatingLoader(pipe_dataloader)
+         self.set_dataloader(pipe_dataloader)
+ 
++    def send_layers(self, dst_rank, layer_idxs, state):
++        """ Move a number of layers from this rank to dst rank
++
++        Args:
++            dst_rank (int): the destination rank that is receiving layers
++            layer_idxs (list): The global ids of the layers
++            state (dict): Dict of { layer_idx: }
++        """
++        print(Fore.LIGHTYELLOW_EX, f"TRANSFERRING {', '.join([str(idx) for idx in layer_idxs])} TO", dst_rank, Fore.RESET)
++        layer_bucket = []
++        optim_bucket = []
++        for idx in layer_idxs:
++            layer_state = state[idx][0]
++            optim_state = state[idx][1]
++
++            #print('LAYER STATE {}'.format(layer_state))
++            for param_tensor in layer_state.values():
++                #self.log(f'PARAM TENSOR {param_tensor}')
++                layer_bucket.append(param_tensor)
++
++            for optim_dict in optim_state:
++                for tensor_value in optim_dict.values():
++                    optim_bucket.append(tensor_value)
++
++        layer_tensor = self.flatten(layer_bucket).cuda()
++        optim_tensor = self.flatten(optim_bucket).cuda()
++
++        self.log(f'SIZE OF LAYER TENSOR {layer_tensor.size()}', color='lg')
++        self.log(f'SIZE OF OPTIM TENSOR {optim_tensor.size()}', color='lg')
++        #group = None if layer_tensor.is_cuda else self.gloo_pg
++
++        ## Send the layers and optimizer state
++        dist.send(layer_tensor, dst=dst_rank) #, group=group)
++        dist.send(optim_tensor, dst=dst_rank) #, group=group)
++
++    def recv_layers(self, src_rank, layer_idxs):
++        """ Receive a set of layers from rank src
++        Args:
++            layer_idxs (list): The global ids of the layers to move
++            src_rank (int): The source rank that is sending the layers
++        """
++        ## JOHN: Start with a simple implementation but hope to eventually use the
++        ## same bucketing technique used in the all-reduce to speed up
++        layer_bucket = []
++        optim_state_bucket = []
++
++        print(Fore.LIGHTYELLOW_EX, f"RECEIVING {', '.join([str(idx) for idx in layer_idxs])} FROM", src_rank, Fore.RESET)
++        layer_state_dicts = []
++        for idx in layer_idxs:
++            layer = self.module._layer_specs[idx]
++
++            if not hasattr(layer, 'parameters'):
++                layer_state_dicts.append({})
++                continue
++            layer_state_dicts.append(layer.state_dict())
++
++            for p in layer.parameters():
++                layer_bucket.append(torch.ones_like(p))
++
++                ## Hardcoded for the FusedAdam optimizer which has two optim state
++                ## tensors for every parameter
++                for _ in range(2):
++                    optim_state_bucket.append(torch.ones_like(p))
++
++        layer_tensor = self.flatten(layer_bucket).cuda()
++        optim_tensor = self.flatten(optim_state_bucket).cuda()
++
++        self.log(f'SIZE OF LAYER TENSOR {layer_tensor.size()}', color='lg')
++        self.log(f'SIZE OF OPTIM TENSOR {optim_tensor.size()}', color='lg')
++        #group = None if layer_tensor.is_cuda else self.gloo_pg
++
++        dist.recv(layer_tensor, src=src_rank) #, group=group)
++        dist.recv(optim_tensor, src=src_rank) #, group=group)
++
++        recvd_state = {}
++
++        index = 0
++        received_lsds = self.unflatten(layer_tensor, layer_bucket)
++        for i in range(len(layer_state_dicts)):
++            sd = layer_state_dicts[i]
++            if len(sd) == 0:
++                continue
++
++            for k in sd:
++                sd[k] = received_lsds[index]
++                index += 1
++
++            recvd_state[layer_idxs[i]] = [sd, []]
++
++        received_optim_tensors = self.unflatten(optim_tensor, optim_state_bucket)
++        index = 0
++        state_keys = ['exp_avg', 'exp_avg_sq']
++        assert len(received_optim_tensors) % len(state_keys) == 0
++        for i in range(len(layer_state_dicts)):
++            sd = layer_state_dicts[i]
++            if len(sd) == 0:
++                continue
++
++            optim_state_dicts_list = []
++            for v in sd.values():
++                optim_state_dict = {}
++                for k in state_keys:
++                    assert v.size() == received_optim_tensors[index].size()
++                    optim_state_dict[k] = received_optim_tensors[index]
++                    index += 1
++
++                optim_state_dicts_list.append(optim_state_dict)
++
++            recvd_state[layer_idxs[i]][1] = optim_state_dicts_list
++
++        return recvd_state
++
++    def get_optimizer_state(self, layers):
++        optim_state_dicts = []
++        for l in layers:
++            if hasattr(l, 'parameters'):
++                for p in l.parameters():
++                    optim_state_dicts.append(self.optimizer.state[p])
++            else:
++                optim_state_dicts.append({})
++
++        return serialize_object(optim_state_dicts, to_cuda=True)
++
++    def remove_optimizer_state(self, layers):
++        for l in layers:
++            for p in l.parameters():
++                del self.optimizer.state[p]
++
++                for i in range(len(self.optimizer.param_groups[0]['params'])):
++                    t = self.optimizer.param_groups[0]['params'][i]
++                    ## Annoying way to find the parameters in the param groups
++                    ## Have to compare the underlying data ptr
++                    if t.data_ptr() == p.data_ptr():
++                        del self.optimizer.param_groups[0]['params'][i]
++                        break
++
+     def _exec_reduce_tied_grads(self):
+         # We need to run this first to write to self.averaged_gradients;
+         # since this class turns `enable_backward_allreduce` off,
+@@ -225,12 +1039,17 @@
+             self.optimizer.overlapping_partition_gradients_reduce_epilogue()
+         self.module.allreduce_tied_weight_gradients()
+ 
+-    def _exec_reduce_grads(self):
++    def _exec_reduce_grads(self, stage_id):
+         self._force_grad_boundary = True
+         if self.pipeline_enable_backward_allreduce:
+-            self.allreduce_gradients(bucket_size=MEMORY_OPT_ALLREDUCE_SIZE)
++            self.allreduce_gradients(stage_id, bucket_size=MEMORY_OPT_ALLREDUCE_SIZE)
+         self._force_grad_boundary = False
+ 
++    def _clean_pipe_buffers(self):
++        for key in self.pipe_buffers:
++            self.pipe_buffers[key] = []
++        self.num_pipe_buffers = 0
++
+     def _reserve_pipe_buffers(self, num_buffers):
+         """Ensure that each pipeline buffer has at least ``num_buffers`` slots.
+ 
+@@ -239,15 +1058,15 @@
+         Args:
+             num_buffers (int): The number of buffers to reserve.
+         """
+-        if self.num_pipe_buffers >= num_buffers:
+-            return
+-
+-        num_added = num_buffers - self.num_pipe_buffers
+         for key in self.pipe_buffers:
++            if len(self.pipe_buffers[key]) >= num_buffers:
++                continue
++            num_added = num_buffers - len(self.pipe_buffers[key])
+             self.pipe_buffers[key].extend([None] * num_added)
+-        self.num_pipe_buffers = num_buffers
++        self.num_pipe_buffers = max(self.num_pipe_buffers, num_buffers)
+ 
+-    def train_batch(self, data_iter=None):
++    def train_batch(self, data_iter=None, debug=False, mem_status=False,
++                    mem_log=False):
+         """Progress the pipeline to train the next batch of data. The engine will ingest
+         ``self.train_batch_size()`` total samples collectively across all workers.
+ 
+@@ -271,36 +1090,309 @@
+         Returns:
+             The arithmetic mean of the losses computed this batch.
+         """
++        self.rdzv_handler.write('/rdzv/cluster_status', 'train')
++        self.log(f'STARTING BATCH {self.global_steps} with coordinates {self.coordinates}')
++
++        global should_stop
++        if should_stop:
++            self.log('------- EXITING', color='r')
++            failures = json.loads(self.global_store.get('failures'))
++            already_deleted = []
++            for rank, step in failures.items():
++                if step < self.global_steps:
++                    already_deleted.append(rank)
++
++            for rank in already_deleted:
++                del failures[rank]
++
++            failures[self.global_rank] = self.global_steps + 1
++            self.global_store.set('failures', json.dumps(failures))
++            should_stop = False
++
++        failures = json.loads(self.global_store.get('failures'))
++        self.log(f'FAILURES {failures}', color='r')
++
++        start_step = time.time()
++
+         if not torch._C.is_grad_enabled():
+             raise RuntimeError(
+                 f'train_batch() requires gradients enabled. Use eval_batch() instead.')
+ 
++        self.enable_mem_status = mem_status
++
+         if data_iter:
+             self.set_dataiterator(data_iter)
+ 
+         self.module.train()
+         self.total_loss = None
+         self._compute_loss = True
++        if not self.join and self.rdzv_handler.should_reconfigure(self.global_steps, failures):
++            ## If a shadow node is going to fail make sure we get its state before it dies
++            ## TODO: Make sure this only happens when the state is not available in another
++            ##      pipeline
++            recvd_state = self.save_shadow_node_state(failures)
++
++            if failures.get(str(self.global_rank), -1) == self.global_steps:
++                print("We are reconfiguring and I will die soon anyway. I'm leaving")
++                self.global_store.set(str(self.global_rank), '1')
++                sys.exit(13)
++
++            self.log(f'Triggered a reconfiguration on global step {self.global_steps}')
++            store, rank, world_size, num_pipelines, num_stages, global_decision = self.rdzv_handler.next_rendezvous(self.global_rank)
++            self.log(f'Rendezvous complete! rank: {rank}, world_size: {world_size}, num_pipelines: {num_pipelines}, num_stages: {num_stages}')
++            self.log(f'Global decision, {global_decision}')
++            self.global_rank = rank
++            self.world_size = world_size
++            self.global_store = store
++            self.num_pipelines = num_pipelines
++            self.num_stages = num_stages
++
++            for info in global_decision:
++                if info.rank == rank:
++                    if len(info.active_coordinates) == 0:
++                        self.log(f"-------- I'M LEAVING!!", color=True)
++                        sys.exit(125)
++
++            Spec = collections.namedtuple('WorkerSpec', ['role', 'local_world_size'])
++            spec = Spec('default', 1)
++            self.rdzv_handler.assign_worker_ranks(store, rank, world_size, spec, num_pipelines, num_stages, global_decision)
++            if self.global_rank == 0:
++                self.rdzv_handler.set_master_addr_port(store)
++            master_addr, master_port = self.rdzv_handler.get_master_addr_port(store)
++
++            self.reconfigure_cluster(store, global_decision, recvd_state)
++            failures = {}
++
++        self.check_preemptions(failures)
++
++        if self.join:
++            self.join = False
+ 
+         # Do the work
+         self.timers('train_batch').start()
+-        sched = schedule.TrainSchedule(micro_batches=self.micro_batches,
++
++        # First trail
++        sched = self._generate_sched()
++        schedule_status: Optional[Tuple[int, Exception]] = \
++            self._exec_schedule(sched, debug=debug)
++
++        if schedule_status is None:
++            if debug:
++                print('[DEBUG Pipeline] Finish one iteration')
++        else:
++            if debug:
++                print(f'[DEBUG Pipeline] Failed at step {schedule_status[0]} '
++                      f'due to {schedule_status[1]}')
++
++            self.rdzv_handler.write('/rdzv/last_reconfig', self.global_steps)
++
++            failed_step = 0
++            if type(schedule_status[1]) == NextStageException:
++                if self.next_stage not in self.param_buffers or self.next_stage not in self.state_buffers:
++                    raise RuntimeError("Doesn't have param or state to recover")
++
++                # Map coordinate of next node to the rank of this node.
++                next_rank = self.grid.stage_to_global(self.next_stage)
++                next_coord = self.grid.topology().get_coord(next_rank)
++                self.grid.topology().modify_mapping(rank=self.global_rank, **next_coord._asdict())
++
++                # Coordinate failed step
++                self.fail_lock.acquire(blocking=True, lock_ttl=10)
++                fail_step = json.loads(self.global_store.get(f'fail-step-{next_rank}'))
++                fail_step.append(schedule_status[0])
++                self.log(f'FAIL STEP {next_rank} = {fail_step}')
++                self.global_store.set(f'fail-step-{next_rank}', json.dumps(fail_step))
++                self.fail_lock.release()
++
++                if self.next_stage != self.num_stages - 1:
++                    while len(fail_step) < 2:
++                        self.fail_lock.acquire(blocking=True, lock_ttl=10)
++                        fail_step = json.loads(self.global_store.get(f'fail-step-{next_rank}'))
++                        self.fail_lock.release()
++
++                failed_step = min(fail_step)
++                self.log(f'FINAL VERSION OF FAIL STEP = {fail_step}. Got FAILED_STEP = {failed_step}')
++
++                # Re-generate schedule
++                self._generate_sched = lambda \
++                    stage_id=self.next_stage, \
++                    curr_sched=self._generate_sched, \
++                    failed_step=failed_step, \
++                    curr_step=schedule_status[0]: \
++                    schedule.NextStageFailoverSchedule(
++                        curr_sched(),
++                        schedule.TrainSchedule(
++                            micro_batches=self.micro_batches,
+                                        stages=self.num_stages,
+-                                       stage_id=self.stage_id)
+-        self._exec_schedule(sched)
++                            stage_id=stage_id),
++                        failed_step=failed_step,
++                        curr_step=curr_step)
++
++                # Update module and funcs.
++                if not self.eager_recovery:
++                    self.module.build_layers(self.next_stage, self.param_buffers[self.next_stage])
++
++                # Update optimizer state
++                super().update_state(
++                    [p for p in self.module.parameters() if p.requires_grad],
++                    self.state_buffers[self.next_stage])
++
++                # Reset buffer
++                self.param_buffers.pop(self.next_stage)
++                self.state_buffers.pop(self.next_stage)
++
++                # Update current stage information
++                self.stage_ids.append(self.next_stage)
++                self.r_stage_ids = []
++
++                # Setup pipe buffer for next stage.
++                if not self.eager_recovery:
++                    self.pipe_buffers[f'input_{self.next_stage}'] = []
++                    self.pipe_buffers[f'output_{self.next_stage}'] = []
++
++                # Update neighboring stage information
++                self.next_stage = self._inc(self.next_stage)
++
++                # FIXME(pengzhan): There are several cases I have not
++                # implemented yet. For a 4 node pipeline (0,1,2,3) with
++                # 4 model stages (A,B,C,D):
++                # 1. Node 1 fails at iteration n, and Node 0 takes its work.
++                # Then Node 2 fails at iteration n+1. Recovery requires Node 2
++                # to send weight (stage C) to Node 0.
++                # 2. Node 2 fails at iteration n, and Node 1 takes its work.
++                # Then Node 1 fails at iteration n+1. Recovery requires Node 1
++                # to send weights (stage B and C) to Node 0.
++
++            elif type(schedule_status[1]) == PrevStageException:
++                # Map coordinate of previous node to the rank of the node
++                # in front of previous node.
++                prev_rank = self.grid.stage_to_global(self.prev_stage)
++                prev_coord = self.grid.topology().get_coord(prev_rank)
++                fallback_rank = self.grid.stage_to_global(self._dec(self.prev_stage))
++                self.grid.topology().modify_mapping(rank=fallback_rank, **prev_coord._asdict())
++
++                # Coordinate failed step
++                self.fail_lock.acquire(blocking=True, lock_ttl=10)
++                fail_step = json.loads(self.global_store.get(f'fail-step-{prev_rank}'))
++                fail_step.append(schedule_status[0])
++                self.log(f'FAIL STEP {prev_rank} = {fail_step}')
++                self.global_store.set(f'fail-step-{prev_rank}', json.dumps(fail_step))
++                self.fail_lock.release()
++
++                if self.prev_stage != 0:
++                    while len(fail_step) < 2:
++                        self.fail_lock.acquire(blocking=True, lock_ttl=10)
++                        fail_step = json.loads(self.global_store.get(f'fail-step-{prev_rank}'))
++                        self.fail_lock.release()
++
++                failed_step = min(fail_step)
++                self.log(f'FINAL VERSION OF FAIL STEP = {fail_step}. Got FAILED_STEP = {failed_step}')
++
++                self._generate_sched = lambda \
++                    stage_id=self.prev_stage, \
++                    curr_sched=self._generate_sched, \
++                    failed_step=failed_step, \
++                    curr_step=schedule_status[0]: \
++                    schedule.PrevStageFailoverSchedule(
++                        schedule.TrainSchedule(
++                            micro_batches=self.micro_batches,
++                            stages=self.num_stages,
++                            stage_id=stage_id),
++                        curr_sched(),
++                        failed_step=failed_step,
++                        curr_step=curr_step)
++
++            elif type(schedule_status[1]) == AllReduceException:
++                # FIXME(pengzhan): Support recursive recovery. Here we assume
++                # the topology has not been changed, so we can get corrent rank
++                # exceptional node and its previous node. Consider what will
++                # happen if we have changed the topology.
++                src = schedule_status[1].src
++                coord = self.grid.topology().get_coord(self.global_rank)
++                except_coord = coord._replace(data=src)
++                failed_rank = self.grid.topology().get_rank(**except_coord._asdict())
++                self.grid.current_dp_group = self.grid.dp_fallback_groups[failed_rank]
++                if except_coord.pipe == 0:
++                    raise NotImplementedError(
++                        "First stage exception can not be handled now")
++
++                # Use failover schedule, which basically skip steps before
++                # failed step.
++                self._generate_sched = lambda \
++                    curr_sched=self._generate_sched, \
++                    curr_step=0,                    \
++                    failed_step=schedule_status[0]: \
++                    schedule.AllReduceFailoverSchedule(
++                        curr_sched(),
++                        [[] for _ in curr_sched()],
++                        failed_step=failed_step)
++
++                # Map coordinate of exceptional node to the rank of the node
++                # in front of exceptional node in its pipeline.
++                prev_coord = except_coord._replace(pipe=except_coord.pipe-1)
++                prev_rank = self.grid.topology().get_rank(**prev_coord._asdict())
++                self.grid.topology().modify_mapping(prev_rank, **except_coord._asdict())
++
++                # Change data-parallel group
++                self.grid.set_fallback_group(src)
++
++            else:  # Unknown exception
++                raise Exception(schedule_status[1])
++
++            # Second trail
++            sched = self._generate_sched()
++            schedule_status = self._exec_schedule(sched, debug=debug)
++
++            if schedule_status is None:
++                if debug:
++                    print('[DEBUG Pipeline] Finish one iteration')
++
++                self._generate_sched = lambda \
++                    sched=self._generate_sched: \
++                    sched(failed_step=0, curr_step=0)
++            else:
++                raise Exception(schedule_status[1])
++
++        if self.recv_weights_work:
++            for work in self.recv_weights_work:
++                work.wait()
++        self.recv_weights_work = []
++
++        # TODO(pengzhan): iterative trail
++        # completed = False
++        # while not completed:
++        #     sched = self._generate_sched()
++        #     schedule_status: Optional[Tuple[int, Exception]] = \
++        #         self._exec_schedule(sched, debug=debug)
++        #     if schedule_status is None:
++        #         ...
++        #     else:
++        #         ...
++
+         self.agg_train_loss = self._aggregate_total_loss()
+ 
+         self.timers('train_batch').stop()
+ 
+-        if self.global_steps % self.steps_per_print() == 0:
+-            if self.global_rank == 0:
+                 elapsed = self.timers('train_batch').elapsed(reset=True)
+                 iter_time = elapsed / self.steps_per_print()
+                 tput = self.train_batch_size() / iter_time
+-                print(f'steps: {self.global_steps} '
+-                      f'loss: {self.agg_train_loss:0.4f} '
+-                      f'iter time (s): {iter_time:0.3f} '
+-                      f'samples/sec: {tput:0.3f}')
++        if self.global_steps % self.steps_per_print() == 0:
++            msg = f'steps: {self.global_steps} ' \
++                  f'loss: {self.agg_train_loss:0.4f} ' \
++                  f'iter time (s): {iter_time:0.3f} ' \
++                  f'samples/sec: {tput:0.3f}'
++            if mem_log:
++                torch.cuda.synchronize()
++                peak_alloc = torch.cuda.max_memory_allocated()
++                peak_reserve = torch.cuda.max_memory_reserved()
++                curr_alloc = torch.cuda.memory_allocated()
++                curr_reserve = torch.cuda.memory_reserved()
++                msg += f' peak alloc (MB): {peak_alloc / (1024**2):.3f} ' \
++                       f'peak reverse (MB): {peak_reserve / (1024**2):.3f} ' \
++                       f'curr alloc (MB): {curr_alloc / (1024**2):.3f} ' \
++                       f'peak reverse (MB): {curr_reserve / (1024**2):.3f} '
++            logger.info(msg)
++            logger.handlers[0].flush()
+ 
+         # Tensorboard
+         if self.tensorboard_enabled():
+@@ -322,6 +1414,11 @@
+                 'pipe_recv_grad'
+             ])
+ 
++        self._clean_pipe_buffers()
++
++        step_end = time.time()
++        self.log(f'FINISHING BATCH {self.global_steps} at {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} took {step_end - start_step} s')
++
+         # TODO: should return precisely what loss returned and allow others to be queried?
+         return self.agg_train_loss
+ 
+@@ -459,38 +1556,40 @@
+             ## Average loss across all data-parallel groups
+             agg_loss = self.dp_group_loss.clone().detach()
+             #print(f'RANK={self.global_rank} bcast SENDER src={self.global_rank} group={self.grid.pp_group}', flush=True)
+-            if self.is_data_parallel:
+-                dist.all_reduce(agg_loss, group=self.mpu.get_data_parallel_group())
+-                agg_loss /= self.dp_world_size
+-
+-            assert self.global_rank in self.grid.pp_group
+-            losses = torch.Tensor([self.dp_group_loss, agg_loss]).to(self.device)
+-            dist.broadcast(tensor=losses,
+-                           src=self.global_rank,
+-                           group=self.mpu.get_pipe_parallel_group())
++
++            # NOTE: Temporarily disable for development
++            # if self.is_data_parallel:
++            #     dist.all_reduce(agg_loss, group=self.mpu.get_data_parallel_group())
++            #     agg_loss /= self.dp_world_size
++
++            # assert self.global_rank in self.grid.pp_group
++            # losses = torch.Tensor([self.dp_group_loss, agg_loss]).to(self.device)
++            # dist.broadcast(tensor=losses,
++            #                src=self.global_rank,
++            #                group=self.mpu.get_pipe_parallel_group())
+ 
+         else:
++            # NOTE: Temporarily disable for development
+             # Get loss from last stage
+-            src_rank = self.grid.stage_to_global(self.num_stages - 1)
+-            assert src_rank in self.grid.pp_group
+-            losses = torch.Tensor([0., 0.]).to(self.device)
+-            dist.broadcast(tensor=losses,
+-                           src=src_rank,
+-                           group=self.grid.get_pipe_parallel_group())
+-            self.dp_group_loss = losses[0].clone().detach()
+-            agg_loss = losses[1].clone().detach()
++            # src_rank = self.grid.stage_to_global(self.num_stages - 1)
++            # assert src_rank in self.grid.pp_group
++            # losses = torch.Tensor([0., 0.]).to(self.device)
++            # dist.broadcast(tensor=losses,
++            #                src=src_rank,
++            #                group=self.grid.get_pipe_parallel_group())
++            # self.dp_group_loss = losses[0].clone().detach()
++            # agg_loss = losses[1].clone().detach()
++            agg_loss = 0
+ 
+         return agg_loss
+ 
+     def set_dataloader(self, loader):
+         """"""
+-        if self.is_first_stage() or self.is_last_stage():
+             self.training_dataloader = loader
+             self.data_iterator = iter(self.training_dataloader)
+ 
+     def set_dataiterator(self, iterator):
+         """ Store an iterator to sample for training data. """
+-        if self.is_first_stage() or self.is_last_stage():
+             self.training_dataloader = None
+             self.data_iterator = iterator
+ 
+@@ -508,19 +1607,6 @@
+         """
+         return self._force_grad_boundary
+ 
+-    def log_for_device(self, *msg):
+-        if LOG_STAGE == self.stage_id or LOG_STAGE == -1:
+-            if DATA_PARALLEL_ID == self.grid.data_parallel_id or DATA_PARALLEL_ID == -1:
+-                print(
+-                    f'RANK={dist.get_rank()} '
+-                    f'PIPE-ID={self.stage_id} '
+-                    f'DATA-ID={self.grid.data_parallel_id} '
+-                    f'MBATCH-ID={self.microbatch_id} '
+-                    f'STEP-ID={self.log_batch_step_id} '
+-                    '::',
+-                    *msg,
+-                    flush=True)
+-
+     def tput_log(self, *msg):
+         if self.global_rank == 0 and self.global_steps % self.steps_per_print() == 0:
+             print(*msg)
+@@ -537,52 +1623,33 @@
+ 
+         return batch
+ 
+-    def _exec_forward_pass(self, buffer_id):
++    def _exec_forward_pass(self, buffer_id, stage_id):
++        if self.pipe_buffers[f'output_{stage_id}'][buffer_id] is not None:
++            return
++
+         self.tput_timer.start()
+         self.mem_status('BEFORE FWD', reset_max=True)
+ 
+-        if isinstance(self.pipe_buffers['inputs'][buffer_id], tuple):
+-            inputs = tuple(t.clone() for t in self.pipe_buffers['inputs'][buffer_id])
++        input_key = 'data' if stage_id == 0 else f'input_{stage_id}'
++        if isinstance(self.pipe_buffers[input_key][buffer_id], tuple):
++            inputs = tuple(
++                t.clone() for t in self.pipe_buffers[input_key][buffer_id])
+         else:
+-            inputs = self.pipe_buffers['inputs'][buffer_id].clone()
+-
+-        # collect the partitioned input from the previous stage
+-        if self.is_pipe_partitioned and not self.is_first_stage():
+-            part_input = PartitionedTensor.from_meta(
+-                meta=inputs[0],
+-                local_part=inputs[1],
+-                group=self.grid.get_slice_parallel_group())
+-
+-            inputs = tuple([part_input.full(), inputs[2]])
+-            inputs[0].requires_grad = True
+-            # skip mask
+-            #inputs[1].requires_grad = True
+-            part_input = None
+-            self.pipe_buffers['inputs'][buffer_id] = inputs
++            inputs = self.pipe_buffers[input_key][buffer_id].clone()
+ 
+         # Zero out the gradients each time we use the tensor because only the data in
+         # tensor changes across batches
+         self._zero_grads(inputs)
+ 
+-        outputs = super().forward(inputs)
+-
+-        # Partition the outputs if we are not the last stage
+-        if self.is_pipe_partitioned and not self.is_last_stage():
+-            part = PartitionedTensor(tensor=outputs[0],
+-                                     group=self.grid.get_slice_parallel_group())
+-            # Clear the large output data, but save the computation graph
+-            outputs[0].data = torch.zeros(1)
+-            self.pipe_buffers['output_tensors'][buffer_id] = outputs[0]
+-            # Inject the partitioned tensor into the output before sending
+-            outputs = tuple([part.to_meta(), part.data(), outputs[1]])
+-            part = None
++        outputs = super().forward(inputs, stage_id=stage_id)
+ 
+-        self.pipe_buffers['outputs'][buffer_id] = outputs
++        if stage_id != self.num_stages - 1:
++            self.pipe_buffers[f'output_{stage_id}'][buffer_id] = outputs
+ 
+         # Optionally compute loss on the last device
+-        if self.is_last_stage():
++        if stage_id == self.num_stages - 1:
+             if self._compute_loss and self.loss_model is not None:
+-                labels = self.pipe_buffers['labels'][buffer_id]
++                labels = self.pipe_buffers['label'][buffer_id]
+                 self.loss = self.loss_model(outputs, labels)
+             else:
+                 # Some models just return loss from forward()
+@@ -602,7 +1669,15 @@
+                 for idx, l in enumerate(self.loss):
+                     self.total_loss[idx] += l.detach()
+ 
+-    def _exec_backward_pass(self, buffer_id):
++        # Free data and label
++        if stage_id == 0:
++            self.pipe_buffers['data'][buffer_id] = None
++        if stage_id == self.num_stages - 1:
++            self.pipe_buffers['label'][buffer_id] = None
++
++        self.mem_status('AFTER FWD')
++
++    def _exec_backward_pass(self, buffer_id, stage_id):
+         assert self.optimizer is not None, "must provide optimizer during " \
+                                            "init in order to use backward"
+ 
+@@ -610,12 +1685,12 @@
+ 
+         # The last stage just runs backward on the loss using DeepSpeed's typical
+         # mechanisms.
+-        if self.is_last_stage():
++        if stage_id == self.num_stages - 1:
+             super().backward(self.loss)
+             self.mem_status('AFTER BWD')
+             return
+ 
+-        outputs = self.pipe_buffers['outputs'][buffer_id]
++        outputs = self.pipe_buffers[f'output_{stage_id}'][buffer_id]
+ 
+         if self.wall_clock_breakdown():
+             self.timers('backward_microstep').start()
+@@ -623,35 +1698,7 @@
+             self.timers('backward_inner_microstep').start()
+             self.timers('backward_inner').start()
+ 
+-        # Reconstruct if we previously partitioned the output. We must be
+-        # careful to also restore the computational graph of the tensors we partitioned.
+-        if self.is_pipe_partitioned:
+-            if self.is_grad_partitioned:
+-                part_output = PartitionedTensor.from_meta(
+-                    meta=outputs[0],
+-                    local_part=outputs[1],
+-                    group=self.grid.get_slice_parallel_group())
+-                self.pipe_buffers['output_tensors'][buffer_id].data = part_output.full()
+-                outputs = tuple(
+-                    [self.pipe_buffers['output_tensors'][buffer_id],
+-                     outputs[2]])
+-            else:
+-                # Already restored from partition
+-                self.pipe_buffers['output_tensors'][buffer_id].data = outputs[0]
+-                outputs = tuple(
+-                    [self.pipe_buffers['output_tensors'][buffer_id],
+-                     outputs[1]])
+-
+         grad_tensors = self.grad_layer
+-        if self.is_grad_partitioned:
+-            #print(f'RANK={self.global_rank} BEFORE-BWD restoring grad={self.grad_layer[0].size()} {self.grad_layer[1].size()}')
+-            part_grad = PartitionedTensor.from_meta(
+-                meta=self.grad_layer[0],
+-                local_part=self.grad_layer[1],
+-                group=self.grid.get_slice_parallel_group())
+-            grad_tensors = tuple([part_grad.full(), self.grad_layer[2]])
+-            part_grad = None
+-            #print(f'RANK={self.global_rank} BEFORE-BWD restored grad={self.grad_layer[0].size()} {self.grad_layer[1].size()}')
+ 
+         # This handles either a single tensor or tuple of tensors.
+         if isinstance(outputs, tuple):
+@@ -661,10 +1708,15 @@
+         else:
+             torch.autograd.backward(tensors=(outputs, ), grad_tensors=(grad_tensors, ))
+ 
+-        # Free up the memory from the output of forward()
+-        self.pipe_buffers['output_tensors'][buffer_id] = None
+-        self.pipe_buffers['outputs'][buffer_id] = None
+-        grad_tensors = None
++        # Retire output tensor. If we need to cover failure of next stage, we
++        # will save the output on cpu memory. For eager, we have already used
++        # this activation, as redundant forward always happens before
++        # backward pass, so we can directly discard it.
++        if not self.eager_recovery and self._inc(stage_id) in self.r_stage_ids:
++            self.pipe_buffers[f'output_{stage_id}'][buffer_id] = \
++                outputs.clone().detach().to('cpu', non_blocking=True)
++        else:
++            self.pipe_buffers[f'output_{stage_id}'][buffer_id] = None
+ 
+         if self.wall_clock_breakdown():
+             self.timers('backward_inner').stop()
+@@ -675,12 +1727,16 @@
+         self.mem_status('AFTER BWD')
+ 
+     def _exec_load_micro_batch(self, buffer_id):
++        # FIXME: Make it consistent with eager mode
++        if self.pipe_buffers['label'][buffer_id] is not None or self.pipe_buffers['data'][buffer_id] is not None:
++            return
++
+         if self.wall_clock_breakdown():
+             self.timers('batch_input').start()
+ 
+         batch = self._next_batch()
+ 
+-        if self.is_first_stage():
++        if 0 in self.stage_ids or 0 in self.r_stage_ids:
+             loaded = None
+             if torch.is_tensor(batch[0]):
+                 loaded = batch[0].clone().to(self.device).detach()
+@@ -696,9 +1752,16 @@
+                     loaded.append(mine)
+                 loaded = tuple(loaded)
+ 
+-            self.pipe_buffers['inputs'][buffer_id] = loaded
++            self.pipe_buffers['data'][buffer_id] = loaded
+ 
+-        if self.is_last_stage():
++        # NOTE: For eager mode, load micro batch is also eagerly executed if
++        # next stage contains this instruction. So we also need to check
++        # whether last stage is in r_stage.
++        # FIXME(pengzhan): For lazy mode, load micro batch is not executed.
++        # When failure happens, a new load micro batch instruction will be
++        # inserted. But this instruction can only fetch the first batch. So
++        # We need to offset the data loader.
++        if self.num_stages - 1 in self.stage_ids or self.num_stages - 1 in self.r_stage_ids:
+             loaded = batch[1]
+             if torch.is_tensor(batch[1]):
+                 loaded = batch[1].to(self.device)
+@@ -710,7 +1773,7 @@
+                     loaded.append(x)
+                 loaded = tuple(loaded)
+ 
+-            self.pipe_buffers['labels'][buffer_id] = loaded
++            self.pipe_buffers['label'][buffer_id] = loaded
+ 
+         if self.wall_clock_breakdown():
+             self.timers('batch_input').stop()
+@@ -828,57 +1891,66 @@
+         else:
+             raise NotImplementedError(f'Could not receive type {type(recv_type)}')
+ 
+-    def _exec_send_activations(self, buffer_id):
++    def _exec_send_activations(self, buffer_id, stage_id):
++        # Internal communication
++        if self._inc(stage_id) in self.stage_ids:
++            return
++
+         if self.wall_clock_breakdown():
+             self.timers('pipe_send_output').start()
+ 
+-        outputs = self.pipe_buffers['outputs'][buffer_id]
+-
+-        # NCCL does not like to send torch.BoolTensor types, so cast the mask to half().
+-        # We could do char, but with half() we can eventually flatten with other fp16
+-        # messages (TODO)
+-        if self.module.__class__.__name__ == 'GPT2ModelPipe':
+-            outputs = list(outputs)
+-            outputs[-1] = outputs[-1].half()
+-            outputs = tuple(outputs)
++        if buffer_id >= 0:
++            outputs = self.pipe_buffers[f'output_{stage_id}'][buffer_id]
++        else:
++            outputs = self.ping_tensor
+ 
++        if buffer_id >= 0:
+         if self.first_output_send:
+             self.first_output_send = False
+             self._send_tensor_meta(outputs, self.next_stage)
+ 
++        def send_handler(stage):
+         if isinstance(outputs, torch.Tensor):
+-            p2p.send(outputs, self.next_stage)
++                p2p.send(outputs, stage)
+         elif isinstance(outputs, tuple):
+             for idx, buffer in enumerate(outputs):
+-                p2p.send(buffer, self.next_stage)
++                    p2p.send(buffer, stage)
+         else:
+             raise NotImplementedError('Could not send output of type '
+                                       f'{type(outputs)}')
+ 
+-        # Restore the boolean tensor
+-        if self.module.__class__.__name__ == 'GPT2ModelPipe':
+-            outputs = list(outputs)
+-            outputs[-1] = outputs[-1].bool()
+-            outputs = tuple(outputs)
++        try:
++            send_handler(self.next_stage)
++        except Exception as e:
++            self.log(f"---- SEND ACTS FAILED!!!! RESORTING TO FALLBACK", color=True)
++            failed_rank = self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.next_stage)
++            self.global_store.set(str(failed_rank), '1')
++            self.coordinates.append([self.grid.get_data_parallel_id(), self.next_stage])
++            self.rdzv_handler.update_coordinates(self.global_rank, self.coordinates)
++            raise NextStageException(e)
+ 
+         if self.wall_clock_breakdown():
+             self.timers('pipe_send_output').stop()
+ 
+-    def _exec_send_grads(self, buffer_id):
++    def _exec_send_grads(self, buffer_id, stage_id):
++        # Internal communication
++        if self._dec(stage_id) in self.stage_ids:
++            return
++
+         if self.wall_clock_breakdown():
+             self.timers('pipe_send_grad').start()
+ 
+-        inputs = self.pipe_buffers['inputs'][buffer_id]
+-
+-        # Partition the gradient
+-        if self.is_grad_partitioned:
+-            part = PartitionedTensor(tensor=inputs[0].grad,
+-                                     group=self.grid.get_slice_parallel_group())
+-            # Clear the large output data, but save the computation graph
+-            # Inject the partitoned tensor into the output before sending
+-
+-            # XXX Hack
+-            inputs = tuple([part.to_meta(), part.data(), inputs[1]])
++        use_grad_buffer = False
++        input_key = f'input_grad_{stage_id}'
++        if input_key in self.pipe_buffers and \
++                self.pipe_buffers[input_key][buffer_id] is not None:
++            inputs = self.pipe_buffers[input_key][buffer_id]\
++                .to(self.device)
++            use_grad_buffer = True
++        else:
++            inputs = self.pipe_buffers[f'input_{stage_id}'][buffer_id]
++            assert inputs.grad is not None
++            inputs = inputs.grad
+ 
+         # XXX Terrible hack
+         # Drop the attention mask from the input buffer here. It does not have
+@@ -890,93 +1962,95 @@
+             inputs.pop()
+             inputs = tuple(inputs)
+ 
++        def send_handler(stage):
+         if isinstance(inputs, torch.Tensor):
+-            assert inputs.grad is not None
+-            p2p.send(inputs.grad, self.prev_stage)
++                p2p.send(inputs, stage)
+         else:
+-            # XXX terrible hacky branch
+-            if self.is_grad_partitioned:
+-                # First two sends are partitioned gradient
+-                p2p.send(inputs[0], self.prev_stage)
+-                p2p.send(inputs[1], self.prev_stage)
+-                # XXX hack hack hack
+-                #p2p.send(inputs[2].grad, self.prev_stage)
+-            else:
+-                for idx, buffer in enumerate(inputs):
+-                    # Skip tensors that will not produce a grad
+-                    if not buffer.is_floating_point():
+-                        assert buffer.grad is None
+-                        continue
+-                    assert buffer.grad is not None
+-                    p2p.send(buffer.grad, self.prev_stage)
+-
+-        # We can free up the input buffer now
+-        self.pipe_buffers['inputs'][buffer_id] = None
++                raise NotImplementedError()
++                # NOTE: Temporarily disable for development
++                # for idx, buffer in enumerate(inputs):
++                #     # Skip tensors that will not produce a grad
++                #     if not buffer.is_floating_point():
++                #         assert buffer.grad is None
++                #         continue
++                #     assert buffer.grad is not None
++                #     p2p.send(buffer.grad, stage)
++        try:
++            send_handler(self.prev_stage)
++        except Exception as e:
++            self.log(f"---- SEND GRADS FAILED!!!! RESORTING TO FALLBACK", color=True)
++            failed_rank = self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.prev_stage)
++            self.global_store.set(str(failed_rank), '1')
++            raise PrevStageException(e)
++
++        # Retire input tensor
++        if self.redundancy_level > 0 and stage_id != 0:
++            if use_grad_buffer:
++                self.pipe_buffers[f'input_grad_{stage_id}'][buffer_id] = None
++            else:
++                self.pipe_buffers[f'input_grad_{stage_id}'][buffer_id] = \
++                    inputs.clone().detach().to('cpu')
++        else:
++            self.pipe_buffers[f'input_{stage_id}'][buffer_id] = None
+ 
+         if self.wall_clock_breakdown():
+             self.timers('pipe_send_grad').stop()
+ 
+-    def _exec_recv_activations(self, buffer_id):
++    def _exec_recv_activations(self, buffer_id, stage_id):
++        # Internal communication
++        if  self._dec(stage_id) in self.stage_ids or (self.eager_recovery and stage_id in self.r_stage_ids):
++            if self.pipe_buffers[f'input_{stage_id}'][buffer_id] is None:
++                output = self.pipe_buffers[f'output_{self._dec(stage_id)}'][buffer_id].clone().detach().to(self.device)
++                output.requires_grad = True
++                self.pipe_buffers[f'input_{stage_id}'][buffer_id] = output
++            return
++
+         if self.wall_clock_breakdown():
+             self.timers('pipe_recv_input').start()
+ 
+-        recvd = None
+-
+         # Allocate the buffer if necessary
++        buffer = None
++        if buffer_id >= 0:
+         if self.pipe_recv_buf is None:
+             self.pipe_recv_buf = self._recv_tensor_meta(self.prev_stage)
++            buffer = self.pipe_recv_buf
++        else:
++            buffer = self.ping_buffer
+ 
+-        if isinstance(self.pipe_recv_buf, torch.Tensor):
+-            p2p.recv(self.pipe_recv_buf, self.prev_stage)
+-            recvd = self.pipe_recv_buf.clone().detach()
++        def recv_handler(stage):
++            if isinstance(buffer, torch.Tensor):
++                p2p.recv(buffer, stage)
++                recvd = buffer.clone().detach()
+             recvd.requires_grad = recvd.is_floating_point()
+         else:
+-            assert isinstance(self.pipe_recv_buf, tuple)
+-            recvd = [None] * len(self.pipe_recv_buf)
+-            for idx, buffer in enumerate(self.pipe_recv_buf):
+-                assert torch.is_tensor(buffer)
+-                # XXX hardcode meta type
+-                if self.is_pipe_partitioned and idx == 0 and buffer.dtype != torch.long:
+-                    if self.meta_buffer is None:
+-                        self.meta_buffer = torch.zeros(buffer.size(),
+-                                                       dtype=torch.long,
+-                                                       device=self.device)
+-                    buffer = self.meta_buffer
+-
+-                p2p.recv(buffer, self.prev_stage)
+-                recvd[idx] = buffer.clone().detach()
+-
+-            # NCCL does not like to send torch.BoolTensor types, so un-cast the
+-            # attention mask
+-            if self.module.__class__.__name__ == 'GPT2ModelPipe':
+-                recvd[-1] = recvd[-1].bool()
+-
+-            recvd = tuple(recvd)
++                raise NotImplemented("Not support receiving tuple")
+ 
+-            for buffer in recvd:
+-                buffer.requires_grad = buffer.is_floating_point()
++            return recvd
++        try:
++            recvd = recv_handler(self.prev_stage)
++        except Exception as e:
++            self.log(f"---- RECV ACTS FAILED!!!! RESORTING TO FALLBACK", color=True)
++            failed_rank = self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.prev_stage)
++            self.global_store.set(str(failed_rank), '1')
++            raise PrevStageException(e)
+ 
+-        self.pipe_buffers['inputs'][buffer_id] = recvd
++        if buffer_id >= 0:
++            self.pipe_buffers[f'input_{stage_id}'][buffer_id] = recvd
+ 
+         if self.wall_clock_breakdown():
+             self.timers('pipe_recv_input').stop()
+ 
+-    def _exec_recv_grads(self, buffer_id):
++    def _exec_recv_grads(self, buffer_id, stage_id):
++        # Internal communicaiton
++        if self._inc(stage_id) in self.stage_ids:
++            self.grad_layer = \
++                self.pipe_buffers[f'input_{self._inc(stage_id)}'][buffer_id].grad
++            return
++
+         if self.wall_clock_breakdown():
+             self.timers('pipe_recv_grad').start()
+ 
+-        outputs = self.pipe_buffers['outputs'][buffer_id]
+-        # XXX these shapes are hardcoded for Megatron
+-        # Restore partitioned output if it was partitioned and we are sending full gradients
+-        if self.is_pipe_partitioned and not self.is_grad_partitioned:
+-            part_output = PartitionedTensor.from_meta(
+-                meta=outputs[0],
+-                local_part=outputs[1],
+-                group=self.grid.get_slice_parallel_group())
+-            outputs[0].data = part_output.full()
+-            outputs = tuple([outputs[0], outputs[2]])
+-            # save for backward
+-            self.pipe_buffers['outputs'][buffer_id] = outputs
++        outputs = self.pipe_buffers[f'output_{stage_id}'][buffer_id]
+ 
+         # Allocate gradient if necessary
+         if self.grad_layer is None:
+@@ -987,21 +2061,81 @@
+                 sizes = [list(t.size()) for t in outputs if t.is_floating_point()]
+                 self.grad_layer = self._allocate_buffers(sizes, num_buffers=1)[0]
+ 
++        def recv_handler(stage):
+         if isinstance(self.grad_layer, torch.Tensor):
+-            p2p.recv(self.grad_layer, self.next_stage)
++                p2p.recv(self.grad_layer, stage)
+         else:
+             assert isinstance(outputs, tuple)
+             for idx, buffer in enumerate(self.grad_layer):
+-                # XXX GPT-2 hack
+-                if self.is_grad_partitioned and idx == 0 and buffer.dtype != torch.long:
+-                    buffer.data = torch.zeros(buffer.size(),
+-                                              dtype=torch.long,
+-                                              device=self.device)
+-                p2p.recv(buffer, self.next_stage)
++                    p2p.recv(buffer, stage)
++        try:
++            recv_handler(self.next_stage)
++        except Exception as e:
++            self.log(f"---- RECV GRADS FAILED!!!! RESORTING TO FALLBACK", color=True)
++            failed_rank = self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.next_stage)
++            self.global_store.set(str(failed_rank), '1')
++            self.coordinates.append([self.grid.get_data_parallel_id(), self.next_stage])
++            self.rdzv_handler.update_coordinates(self.global_rank, self.coordinates)
++            raise NextStageException(e)
+ 
+         if self.wall_clock_breakdown():
+             self.timers('pipe_recv_grad').stop()
+ 
++    def _exec_send_weights(self, stage_id):
++        # TODO(pengzhan): Implement send weights without p2p group
++
++        src_rank = self.grid.stage_to_global(stage_id)
++        for user_stage in self.r_user_stage_ids:
++            dst_rank = self.grid.stage_to_global(user_stage)
++            group = self.sync_group[src_rank][dst_rank]
++            if group is None:
++                raise Exception(
++                    f'Group of {src_rank} to {dst_rank} does not exist')
++
++            if not self.eager_recovery:
++                for _, param in self.module.get_named_param(stage_id):
++                    dist.send(param.detach().clone().to('cpu'),
++                              dst_rank, group=group)
++                for _, state in super().get_named_state(stage_id):
++                    dist.send(state.detach().clone().to('cpu'),
++                              dst_rank, group=group)
++            else:
++                for _, param in self.module.get_named_param(stage_id):
++                    dist.broadcast(
++                        param.detach(), self.global_rank, group=group)
++                for _, state in super().get_named_state(stage_id):
++                    dist.broadcast(
++                        state.detach(), self.global_rank, group=group)
++
++    def _exec_recv_weights(self, stage_id):
++        # TODO(pengzhan): Implement recv weights without p2p group
++        return
++        dst_rank = self.grid.stage_to_global(self.stage_id)
++        src_rank = self.grid.stage_to_global(stage_id)
++        group = self.sync_group[src_rank][dst_rank]
++        if group is None:
++            raise Exception(
++                f'Group of {src_rank} to {dst_rank} does not exist')
++
++        self.recv_weights_work = []
++        if not self.eager_recovery:
++            for _, buffer in self.param_buffers[stage_id].items():
++                work = dist.irecv(buffer, src_rank, group=group)
++                self.recv_weights_work.append(work)
++            for _, buffer in self.state_buffers[stage_id].items():
++                work = dist.irecv(buffer, src_rank, group=group)
++                self.recv_weights_work.append(work)
++        else:
++            for _, buffer in self.param_buffers[stage_id].items():
++                work = dist.broadcast(
++                    buffer, src_rank, group=group, async_op=True)
++                self.recv_weights_work.append(work)
++                # FIXME(pengzhan): Refresh param
++            for _, buffer in self.state_buffers[stage_id].items():
++                work = dist.broadcast(
++                    buffer, src_rank, group=group, async_op=True)
++                self.recv_weights_work.append(work)
++
+     def _exec_optimizer_step(self, lr_kwargs=None):
+         if self.wall_clock_breakdown():
+             self.timers('step_microstep').start()
+@@ -1012,7 +2146,7 @@
+         self._take_model_step(lr_kwargs)
+         self._force_grad_boundary = False
+ 
+-        self.mem_status('AFTER STEP')
++        # self.mem_status('AFTER STEP')
+ 
+         if self.tensorboard_enabled():
+             if self.global_rank == 0:
+@@ -1108,27 +2242,21 @@
+         """Disabled for pipeline parallel training. See ``train_batch()``. """
+         raise PipelineError("Only train_batch() is accessible in pipeline mode.")
+ 
+-    def mem_status(self, msg, print_rank=-1, reset_max=False):
+-        return
+-        global mem_alloced, mem_cached
+-        if not self.global_steps == 0 or not self.global_steps == 9:
+-            #return
+-            pass
+-        if self.mpu.get_data_parallel_rank() != 0:
++    def mem_status(self, msg, reset_max=False):
++        if not self.enable_mem_status:
+             return
+ 
+-        if self.global_rank != 0:
+-            return
++        global mem_alloced, mem_cached
+ 
+-        rank = self.global_rank
+-        if print_rank != -1 and rank != print_rank:
++        if self.global_steps != 1:
+             return
+ 
+         torch.cuda.synchronize()
+ 
+-        if reset_max:
+-            torch.cuda.reset_max_memory_cached()
+-            torch.cuda.reset_max_memory_allocated()
++        # NOTE: Temporarily disable for development
++        # if reset_max:
++        #     torch.cuda.reset_max_memory_cached()
++        #     torch.cuda.reset_max_memory_allocated()
+ 
+         new_alloced = torch.cuda.memory_allocated()
+         new_cached = torch.cuda.memory_cached()
+@@ -1142,19 +2270,19 @@
+         max_alloced = torch.cuda.max_memory_allocated()
+         max_cached = torch.cuda.max_memory_cached()
+ 
+-        # convert to GB for printing
+-        new_alloced /= 1024**3
+-        new_cached /= 1024**3
+-        delta_alloced /= 1024**3
+-        delta_cached /= 1024**3
+-        max_alloced /= 1024**3
+-        max_cached /= 1024**3
++        # convert to MB for printing
++        new_alloced /= 1024**2
++        new_cached /= 1024**2
++        delta_alloced /= 1024**2
++        delta_cached /= 1024**2
++        max_alloced /= 1024**2
++        max_cached /= 1024**2
+ 
+         print(
+-            f'RANK={rank} STAGE={self.stage_id} STEP={self.global_steps} MEMSTATS',
++            f'RANK={self.global_rank} STAGE={self.stage_id} STEP={self.global_steps} MEMSTATS',
+             msg,
+-            f'current alloc={new_alloced:0.4f}GB (delta={delta_alloced:0.4f}GB max={max_alloced:0.4f}GB) '
+-            f'current cache={new_cached:0.4f}GB (delta={delta_cached:0.4f}GB max={max_cached:0.4f}GB)'
++            f'current alloc={new_alloced:0.4f}MB (delta={delta_alloced:0.4f}MB max={max_alloced:0.4f}MB) '
++            f'current cache={new_cached:0.4f}MB (delta={delta_cached:0.4f}MB max={max_cached:0.4f}MB)'
+         )
+ 
+     def module_state_dict(self):
+@@ -1204,25 +2332,66 @@
+         schedule.RecvActivation: _exec_recv_activations,
+         schedule.SendGrad: _exec_send_grads,
+         schedule.RecvGrad: _exec_recv_grads,
++        schedule.SendWeights: _exec_send_weights,
++        schedule.RecvWeights: _exec_recv_weights
+     }
+ 
+-    def _exec_schedule(self, pipe_schedule):
+-        # Reserve and reset buffers.
++    def _exec_schedule(self, pipe_schedule, start_step=0, debug=False) -> Optional[Tuple[int, Exception]]:
++        """ Execute schedule from `start_step`, and return failed step or None
++        indicates success.
++        """
+         self._reserve_pipe_buffers(pipe_schedule.num_pipe_buffers())
+         self.fwd_outputs = []
+ 
++        # NOTE: Error handling mechanism
++        # - Handle in step granularity, instead of instruction granularity.
++        # - It is safe to re-execute instructions in current step if it is
++        # a communication exception, because communication always happens
++        # before computation.
++
+         # For each step in the schedule
+-        for step_cmds in pipe_schedule:
++        exception_status = None
++        for i, step_cmds in enumerate(pipe_schedule):
++            if i < start_step:
++                continue
++
++            if debug:
++                print(f'[DEBUG Pipeline] Instructions in step {i}:', end=' ')
++                print(*step_cmds, sep=',')
++
++            cmd_types = [type(cmd) for cmd in step_cmds]
++            if schedule.ReduceGrads in cmd_types:
++                for rank in self.grid.current_dp_group:
++                    if int(self.global_store.get(str(rank))) == 1:
++                        failed_data_parallel_id = self.grid._topo.get_coord(rank).data
++                        self.log(f'RANK {rank} FROM PIPELINE {failed_data_parallel_id} IN ALL-REDUCE GROUP FAILED. USING FALLBACK', color=True)
++                        e = AllReduceException(failed_data_parallel_id, f'RANK {rank} FROM PIPELINE {failed_data_parallel_id} IN ALL-REDUCE GROUP FAILED. USING FALLBACK')
++                        msg = f'{type(cmd)}: {e}'
++                        e = type(e)(e.src, msg)
++                        exception_status = (i, e)
++                        return exception_status
++
+             # For each instruction in the step
+             for cmd in step_cmds:
++                try:
+                 if type(cmd) not in self._INSTRUCTION_MAP:
+-                    raise RuntimeError(
+-                        f'{self.__class__.__name__} does not understand instruction {repr(cmd)}'
+-                    )
++                        raise RuntimeError(f'{self.__class__.__name__} does not understand instruction {repr(cmd)}')
+ 
+-                # Equivalent to: self._exec_forward_pass(buffer_id=0)
+                 self._exec_instr = MethodType(self._INSTRUCTION_MAP[type(cmd)], self)
++                    if debug: print(cmd)
+                 self._exec_instr(**cmd.kwargs)
++                except Exception as e:
++                    msg = f'{type(cmd)}: {e}'
++                    if hasattr(e, 'src'):
++                        e = type(e)(e.src, msg)
++                    else:
++                        e = type(e)(msg)
++                    exception_status = (i, e)
++                    break
++
++            if exception_status is not None:
++                break
++        return exception_status
+ 
+     def set_batch_fn(self, fn):
+         """Execute a post-processing function on input data.
+diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/pipe/module.py project_pactum/external/deepspeed/deepspeed/runtime/pipe/module.py
+--- ../DeepSpeed/deepspeed/runtime/pipe/module.py	2024-03-02 20:09:54.197885235 +0800
++++ project_pactum/external/deepspeed/deepspeed/runtime/pipe/module.py	2024-02-27 18:33:42.617165349 +0800
+@@ -1,6 +1,9 @@
++import collections
+ import os
+ import glob
+ import enum
++import time
++from pathlib import Path
+ 
+ import re as regex
+ 
+@@ -10,6 +13,7 @@
+ import torch
+ import torch.nn as nn
+ import torch.distributed as dist
++from torch.nn.parameter import Parameter
+ 
+ from deepspeed.utils import logger
+ from .. import utils as ds_utils
+@@ -17,6 +21,8 @@
+ from .topology import PipeDataParallelTopology, PipelineParallelGrid
+ from deepspeed.runtime.state_dict_factory import SDLoaderFactory
+ 
++from typing import Dict, List, Callable
++
+ 
+ class PipelineError(Exception):
+     """Errors related to the use of deepspeed.PipelineModule """
+@@ -84,6 +90,7 @@
+         self.tied_weight_attr = tied_weight_attr
+ 
+ 
++
+ class PipelineModule(nn.Module):
+     def __init__(self,
+                  layers,
+@@ -94,6 +101,7 @@
+                  seed_fn=None,
+                  base_seed=1234,
+                  partition_method='parameters',
++                 custom_partitions=[],
+                  activation_checkpoint_interval=0,
+                  activation_checkpoint_func=checkpointing.checkpoint):
+         """Modules to be parallelized with pipeline parallelism.
+@@ -124,6 +132,7 @@
+             loss_fn (callable, optional): Loss is computed ``loss = loss_fn(outputs, label)``
+             base_seed (int, optional): [description]. Defaults to 1234.
+             partition_method (str, optional): [description]. Defaults to 'parameters'.
++            custom_partitions (Iterable, optional):  Manually specify partition boundaries.
+             activation_checkpoint_interval (int, optional): The granularity activation checkpointing in terms of number of layers. 0 disables activation checkpointing.
+             activation_checkpoint_func (callable, optional): The function to use for activation checkpointing. Defaults to ``deepspeed.checkpointing.checkpoint``.
+         """
+@@ -154,7 +163,7 @@
+         self.global_rank = dist.get_rank(group=self.world_group)
+         self.world_size = dist.get_world_size(group=self.world_group)
+         self.local_rank = int(os.environ.get("LOCAL_RANK", None))
+-        assert self.local_rank != None
++        assert self.local_rank is not None
+ 
+         if topology:
+             self._topo = topology
+@@ -177,13 +186,13 @@
+         self.stage_id = self._topo.get_coord(self.global_rank).pipe
+ 
+         # Initialize partition information
++        self.partition_method = partition_method
+         self._layer_specs = list(layers)
+         self._num_layers = len(self._layer_specs)
+         self._local_start = 0
+         self._local_stop = None
+-        self._partition_layers(method=partition_method)
++        self._partition_layers(method=partition_method, partitions=custom_partitions)
+ 
+-        self.forward_funcs = []
+         self.tied_modules = nn.ModuleDict()
+         self.tied_weight_attrs = {}
+ 
+@@ -192,8 +201,14 @@
+         #ds_utils.set_random_seed(newseed)
+ 
+         #with torch.random.fork_rng(devices=[torch.cuda.current_device()]):
+-        self._build()
+-        self.to(f'cuda:{self.local_rank}')
++
++        # Use different buckets to record parameter names
++        self.param_name_buckets: Dict[int, List[str]] = \
++            collections.defaultdict(list)
++        self.func_buckets: Dict[int, List[Callable]] = \
++            collections.defaultdict(list)
++
++        self.build_layers(self.stage_id)
+ 
+         self.tied_comms = self._index_tied_modules()
+         self._synchronize_tied_weights()
+@@ -201,11 +216,57 @@
+         self.activation_checkpoint_interval = activation_checkpoint_interval
+         self.activation_checkpoint_func = activation_checkpoint_func
+ 
+-    def _build(self):
++    def get_named_param(self, stage_id):
++        for name, param in self.named_parameters():
++            if name not in self.param_name_buckets[stage_id]:
++                continue
++            yield name, param
++
++    def allocate_param(self, stage_id, param_buffer, device='cpu'):
+         specs = self._layer_specs
++        local_start, local_stop = self.parts[stage_id], self.parts[stage_id+1]
++
++        def add_to_buffer(name, layer):
++            for n, p in layer.named_parameters():
++                if not p.requires_grad:
++                    continue
++                param_buffer[f'{name}.{n}'] = torch.zeros_like(p).to(device)
++
++        param_names = []
++        for local_idx, layer in enumerate(specs[local_start:local_stop]):
++            layer_idx = local_idx + local_start
++            if isinstance(layer, PipelineModule):
++                raise NotImplementedError('RECURSIVE BUILD NOT YET IMPLEMENTED')
++
++            elif isinstance(layer, nn.Module):
++                name = str(layer_idx)
++                param_names += [f'{name}.{n}'
++                                for n, p in layer.named_parameters()
++                                if p.requires_grad]
++                add_to_buffer(name, layer)
+ 
+-        for local_idx, layer in enumerate(specs[self._local_start:self._local_stop]):
+-            layer_idx = local_idx + self._local_start
++            elif isinstance(layer, LayerSpec):
++                module = layer.build()
++                name = str(layer_idx)
++                param_names += [f'{name}.{n}'
++                                for n, p in layer.named_parameters()
++                                if p.requires_grad]
++                add_to_buffer(name, module)
++
++            else:
++                continue
++
++        self.param_name_buckets[stage_id] = param_names
++        return param_names
++
++    def build_layers(self, stage_id, buffer=None):
++        specs = self._layer_specs
++        local_start, local_stop = self.parts[stage_id], self.parts[stage_id+1]
++        funcs = self.func_buckets[stage_id]
++
++        param_names = []
++        for local_idx, layer in enumerate(specs[local_start:local_stop]):
++            layer_idx = local_idx + local_start
+             if self.seed_layers:
+                 if self.seed_fn:
+                     self.seed_fn(self.base_seed + layer_idx)
+@@ -219,10 +280,14 @@
+             # LayerSpec objects contain an nn.Module that should be allocated now.
+             elif isinstance(layer, nn.Module):
+                 name = str(layer_idx)
+-                self.forward_funcs.append(layer)
++                funcs.append(layer)
++                param_names += [f'{name}.{n}'
++                                for n, p in layer.named_parameters()
++                                if p.requires_grad]
+                 self.add_module(name, layer)
+ 
+             # TiedLayerSpec objects contain an nn.Module that should be allocated now.
++            # TODO(pengzhan): Get parameter of new added tied layer spec
+             elif isinstance(layer, TiedLayerSpec):
+                 # Build and register the module if we haven't seen it before.
+                 if layer.key not in self.tied_modules:
+@@ -231,29 +296,40 @@
+ 
+                 if layer.forward_fn is None:
+                     # Just use forward()
+-                    self.forward_funcs.append(self.tied_modules[layer.key])
++                    funcs.append(self.tied_modules[layer.key])
+                 else:
+                     # User specified fn with args (module, input)
+-                    self.forward_funcs.append(
+-                        partial(layer.forward_fn,
+-                                self.tied_modules[layer.key]))
++                    funcs.append(partial(layer.forward_fn, self.tied_modules[layer.key]))
+ 
+             # LayerSpec objects contain an nn.Module that should be allocated now.
+             elif isinstance(layer, LayerSpec):
+                 module = layer.build()
+                 name = str(layer_idx)
+-                self.forward_funcs.append(module)
++                funcs.append(module)
++                if hasattr(layer, 'parameters'):
++                    param_names += [f'{name}.{i}'
++                                    for i, p in enumerate(module.parameters())
++                                    if p.requires_grad]
+                 self.add_module(name, module)
+ 
+             # Last option: layer may be a functional (e.g., lambda). We do nothing in
+             # that case and just use it in forward()
+             else:
+-                self.forward_funcs.append(layer)
++                funcs.append(layer)
+ 
+-        # All pipeline parameters should be considered as model parallel in the context
+-        # of our FP16 optimizer
+-        for p in self.parameters():
+-            p.model_parallel = True
++        self.param_name_buckets[stage_id] = param_names
++
++        if buffer is not None:
++            # NOTE: reload state dict does not work here. For an unknown result
++            # reloading state dict changes the state of existing tensor.
++            with torch.no_grad():
++                for name, param in self.named_parameters():
++                    if name in buffer:
++                        param.copy_(buffer[name])
++            self.to(f'cuda:{self.local_rank}', non_blocking=True)
++        else:
++            self.to(f'cuda:{self.local_rank}')
++        return param_names
+ 
+     def _count_layer_params(self):
+         """Count the trainable parameters in individual layers.
+@@ -296,12 +372,157 @@
+                 f"Partitioning '{layername}' found no valid layers to partition.")
+         return idxs
+ 
+-    def forward(self, forward_input):
++    def print_layer_signatures(self):
++        for stage, bucket in self.func_buckets.items():
++            start = self.parts[stage]
++            for i, layer in enumerate(bucket):
++                if hasattr(layer, 'sum_params'):
++                    print(f'LAYER {start + i}: {layer.sum_params()}')
++
++    def load_layers(self, received_state, prev_model_state={}):
++        bucket = self.func_buckets[self.stage_id]
++        for i, l_id in enumerate(range(self.parts[self.stage_id], self.parts[self.stage_id + 1])):
++            if hasattr(bucket[i], 'load_state_dict'):
++                if l_id in prev_model_state:
++                    lyr_state_dict = prev_model_state[l_id][0]
++                    bucket[i].load_state_dict(lyr_state_dict)
++                    continue
++
++                if l_id in received_state:
++                    lyr_state_dict = received_state[l_id][0]
++                    bucket[i].load_state_dict(lyr_state_dict)
++                    continue
++            else:
++                continue
++
++    def get_layers(self, src_stage, layer_idxs):
++        """ Return a list of all the layers specified in layer_idxs
++
++        Args:
++            layer_idxs (list): Global layer ids of layers to move
++
++        Returns:
++            list: layers specified in layer_idxs
++        """
++        layers = []
++        part_start = self.parts[src_stage]
++        funcs = self.func_buckets.get(src_stage, None)
++        for idx in layer_idxs:
++            layers.append(funcs[idx - part_start])
++
++        return layers
++
++    def move_between_stages(self, stage, layer_idxs):
++        part_start = self.parts[stage]
++        stage_funcs = self.func_buckets.get(stage, None)
++        my_funcs = self.func_buckets.get(self.stage_id, None)
++        for idx in layer_idxs:
++            my_funcs.append(stage_funcs[idx - part_start])
++
++    def remove_layers(self, stage, layer_idxs):
++        """ Remove the layers that are specified by layer_idxs
++
++        Args:
++            layer_idxs (list): Global layer ids of layers to move
++        """
++        start = self.parts[stage]
++        funcs = self.func_buckets.get(stage, None)
++        for i in range(len(layer_idxs)-1, -1, -1):
++            idx = layer_idxs[i]
++            del funcs[idx - start]
++            del self._modules[f'{idx}']
++
++    def add_layers(self, layer_idxs, layer_state_dicts):
++        """ Given a set of layer ids load them from memory (self._layer_specs)
++            and then load their state dict
++
++        Args:
++            layer_idxs (list): Global layer ids of layers to move
++            layer_state_dicts (list): State dicts for the layers containing updated
++                parameters
++
++        Returns:
++            list: References to the udpated layers
++        """
++        ## Filter layers that do not have a state dict and check to make sure that
++        ## it is equal
++        layer_idxs = [idx for idx in layer_idxs if hasattr(self._layer_specs[idx], 'state_dict')]
++        assert len(layer_idxs) == len(layer_state_dicts)
++
++        layers = []
++        insert_index = 0
++        append_len = 0
++        funcs = self.func_buckets.get(self.stage_id, None)
++        for i, idx in enumerate(layer_idxs):
++            if idx < self._local_start:
++                lyr = self._layer_specs[idx]
++                lyr = lyr.cuda()
++                if hasattr(lyr, 'sum'):
++                    print(f'LAYER {idx} BEFORE LOAD {lyr.sum()}')
++                lyr.load_state_dict(layer_state_dicts[i])
++                if hasattr(lyr, 'sum'):
++                    print(f'LAYER {idx} AFTER LOAD {lyr.sum()}')
++                    print()
++
++
++                funcs.insert(insert_index, lyr)
++                insert_index += 1
++
++                layers.append(lyr)
++                self.add_module(f'{idx}', lyr)
++            elif idx >= self._local_stop:
++                lyr = self._layer_specs[idx]
++                lyr = lyr.cuda()
++                if hasattr(lyr, 'sum'):
++                    print(f'LAYER {idx} BEFORE LOAD {lyr.sum()}')
++                lyr.load_state_dict(layer_state_dicts[i])
++                if hasattr(lyr, 'sum'):
++                    print(f'LAYER {idx} AFTER LOAD {lyr.sum()}')
++                    print()
++
++                funcs.append(lyr)
++                append_len += 1
++
++                layers.append(lyr)
++                self.add_module(f'{idx}', lyr)
++            else:
++                lyr = funcs[idx - self._local_start + insert_index]
++                if hasattr(lyr, 'sum'):
++                    print(f'LAYER {idx} BEFORE LOAD {lyr.sum()}')
++                lyr.load_state_dict(layer_state_dicts[i])
++                if hasattr(lyr, 'sum'):
++                    print(f'LAYER {idx} AFTER LOAD {lyr.sum()}')
++                    print()
++                layers.append(lyr)
++
++        self._local_start -= insert_index
++        self._local_stop += append_len
++
++        return layers
++
++    def reset_func_buckets(self, old_stage_id, new_parts):
++        funcs = self.func_buckets.get(old_stage_id, None)
++        self.func_buckets.clear()
++
++        print(f'LEN FUNC BUCKETS {len(funcs)}')
++
++        self.stage_id = self._topo.get_coord(self.global_rank).pipe
++        self.func_buckets[self.stage_id] = funcs
++
++        self.parts = new_parts
++        self._local_start = new_parts[self.stage_id]
++        self._local_stop = new_parts[self.stage_id + 1]
++
++    def forward(self, forward_input, stage_id):
+         # We need to offset the seed by the microbatch ID. Save it in a local var to
+         # ensure it is preserved in the closure. Otherwise checkpointed forward funcs
+         # will see a different offset.
+         self.micro_offset += 1
+ 
++        forward_funcs = self.func_buckets.get(stage_id, None)
++        if forward_funcs is None:
++            raise Exception(f'Unregistered stage id {stage_id}')
++
+         def exec_range_func(start, end):
+             ''' Helper function to be used with checkpoint()
+             Adapted from torch.utils.checkpoint:checkpoint_sequential()
+@@ -312,7 +533,7 @@
+                 # Single tensor inputs need to be unwrapped
+                 if len(inputs) == 1:
+                     inputs = inputs[0]
+-                for idx, layer in enumerate(self.forward_funcs[start:end]):
++                for idx, layer in enumerate(forward_funcs[start:end]):
+                     self.curr_layer = idx + self._local_start
+                     if self.seed_layers:
+                         new_seed = (self.base_seed *
+@@ -328,16 +549,16 @@
+             return exec_func
+ 
+         if self.activation_checkpoint_interval == 0:
+-            func = exec_range_func(0, len(self.forward_funcs))
++            func = exec_range_func(0, len(forward_funcs))
+             x = func(forward_input)
+         else:
+-            num_layers = len(self.forward_funcs)
++            num_layers = len(forward_funcs)
+             x = forward_input
+             for start_idx in range(0, num_layers, self.activation_checkpoint_interval):
+                 end_idx = min(start_idx + self.activation_checkpoint_interval,
+                               num_layers)
+ 
+-                funcs = self.forward_funcs[start_idx:end_idx]
++                funcs = forward_funcs[start_idx:end_idx]
+                 # Since we either pass tensors or tuples of tensors without unpacking, we
+                 # need to be careful not to double-wrap tensors with tuple.
+                 if not isinstance(x, tuple):
+@@ -352,7 +573,7 @@
+                     x = exec_range_func(start_idx, end_idx)(*x)
+         return x
+ 
+-    def _partition_layers(self, method='uniform'):
++    def _partition_layers(self, method='uniform', partitions=[]):
+         num_stages = self._topo.get_dim('pipe')
+         stage_id = self._topo.get_coord(self.global_rank).pipe
+ 
+@@ -361,8 +582,11 @@
+ 
+         method = method.lower()
+ 
+-        # Each stage gets a simple uniform number of layers.
+-        if method == 'uniform':
++        if method == 'custom':
++            assert partitions, "Required customized partitions"
++            self.parts = partitions
++
++        elif method == 'uniform':
+             num_layers = len(self._layer_specs)
+             self.parts = ds_utils.partition_uniform(num_items=num_layers,
+                                                     num_parts=num_stages)
+@@ -385,6 +609,7 @@
+ 
+         # Print some information on the partitioning.
+         if self.global_rank == 0:
++            print(f'parts={self.parts}')
+             for stage in range(num_stages):
+                 start = self.parts[stage]
+                 stop = self.parts[stage + 1]
+@@ -409,6 +634,34 @@
+ 
+         self._set_bounds(start=self.parts[stage_id], stop=self.parts[stage_id + 1])
+ 
++    def get_new_partition(self, new_num_stages):
++        method = self.partition_method.lower()
++
++        # Each stage gets a simple uniform number of layers.
++        parts = None
++        if method == 'uniform':
++            num_layers = len(self._layer_specs)
++            parts = ds_utils.partition_uniform(num_items=num_layers,
++                                                    num_parts=new_num_stages)
++        elif method == 'parameters':
++            param_counts = self._count_layer_params()
++            parts = ds_utils.partition_balanced(weights=param_counts,
++                                                     num_parts=new_num_stages)
++        elif method.startswith('type:'):
++            layertype = method.split(':')[1]
++            binary_weights = [0] * len(self._layer_specs)
++            for idx in self._find_layer_type(layertype):
++                binary_weights[idx] = 1
++            else:
++                parts = ds_utils.partition_balanced(weights=binary_weights,
++                                                         num_parts=new_num_stages)
++        elif method == 'profile':
++            raise NotImplementedError(f'Partitioning method {method} not implemented.')
++        else:
++            raise NotImplementedError(f'Partitioning method {method} not implemented.')
++
++        return parts
++
+     def allreduce_tied_weight_gradients(self):
+         '''All reduce the gradients of the tied weights between tied stages'''
+         for key, comm in self.tied_comms.items():
+@@ -555,7 +808,7 @@
+ 
+         os.makedirs(save_dir, exist_ok=True)
+         layer_offset = self._local_start
+-        for idx, layer in enumerate(self.forward_funcs):
++        for idx, layer in enumerate(self.func_buckets[self.stage_id]):
+             model_ckpt_path = self.ckpt_layer_path(save_dir, idx)
+             if not hasattr(layer, 'state_dict'):
+                 continue
+@@ -573,7 +826,7 @@
+             torch.save(final_state_dict, model_ckpt_path)
+ 
+     def load_state_dir(self, load_dir, strict=True):
+-        for idx, layer in enumerate(self.forward_funcs):
++        for idx, layer in enumerate(self.func_buckets[self.stage_id]):
+             # Functions, etc. will not have state_dicts
+             if not hasattr(layer, 'load_state_dict'):
+                 continue
+diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/pipe/p2p.py project_pactum/external/deepspeed/deepspeed/runtime/pipe/p2p.py
+--- ../DeepSpeed/deepspeed/runtime/pipe/p2p.py	2024-03-02 20:08:07.078106481 +0800
++++ project_pactum/external/deepspeed/deepspeed/runtime/pipe/p2p.py	2024-02-27 18:33:42.617165349 +0800
+@@ -2,22 +2,53 @@
+ Copyright 2019 The Microsoft DeepSpeed Team
+ '''
+ 
++import datetime
++import torch
+ import torch.distributed as dist
+ 
+-_groups = None
++from typing import List, Optional
++
++_groups: List[List[Optional[dist.ProcessGroup]]] = []  # [src_stage][recv_stage]
+ _grid = None
++_fallback_groups = None
+ 
+ 
+-#initializes adjacent process groups
+-#run this only after torch.distributed.init_process_group() has been called
+-def init_process_groups(grid):
++# initializes adjacent process groups
++# run this only after torch.distributed.init_process_group() has been called
++def init_process_groups(grid, device):
+     global _groups, _grid
+     _grid = grid
+ 
+     assert _grid.pipe_parallel_size > 1, "There is no pipeline parallelism"
++    _groups = [[] for _ in range(dist.get_world_size())]  # [src_rank][dst_rank]
+ 
+-    _groups = [dist.new_group(ranks=group) for group in _grid.p2p_groups]
++    # For each pipeline
++    for i in range(grid.get_data_parallel_world_size()):
++        # For each stage
++        for j in range(grid.get_pipe_parallel_world_size()):
++            src_rank = grid.topology().get_rank(data=i, pipe=j)
++            src_groups = [None for _ in range(dist.get_world_size())]
++            partners = grid.p2p_matrix[src_rank]
++            for dst_rank in partners:
++                if src_rank in _groups[dst_rank] and \
++                        _groups[dst_rank][src_rank] is not None:
++                    src_groups[dst_rank] = _groups[dst_rank][src_rank]
++                else:
++                    new_group = dist.new_group(ranks=[src_rank, dst_rank])
++                    src_groups[dst_rank] = new_group
+ 
++                    # init group communicator
++                    if src_rank == dist.get_rank():
++                        zero = torch.zeros(1, 1, device=device)
++                        rand = torch.randn(1, 1, device=device)
++                        dist.broadcast(rand, src=src_rank, group=new_group)
++                        dist.broadcast(zero, src=dst_rank, group=new_group)
++                    elif dst_rank == dist.get_rank():
++                        zero = torch.zeros(1, 1, device=device)
++                        rand = torch.randn(1, 1, device=device)
++                        dist.broadcast(zero, src=src_rank, group=new_group)
++                        dist.broadcast(rand, src=dst_rank, group=new_group)
++            _groups[src_rank] = src_groups
+ 
+ def _is_valid_send_recv(src_stage, dest_stage):
+     first_stage = 0
+@@ -28,32 +59,36 @@
+     "Functionality currently limited to send and receive between adjacent ranks only"
+ 
+ 
+-def send(tensor, dest_stage, async_op=False):
+-    global _groups
++def _set_fallback_status():
++    recv.fallback = True
++    send.fallback = True
++
++
++def send(tensor, dest_stage):
++    global _grid, _groups
+ 
+-    async_op = False
+     src_stage = _grid.get_stage_id()
+-    _is_valid_send_recv(src_stage, dest_stage)
+ 
+     group = _get_send_recv_group(src_stage, dest_stage)
+     src_rank = _grid.stage_to_global(stage_id=src_stage)
+ 
+-    return dist.broadcast(tensor, src_rank, group=group, async_op=async_op)
+-
++    dist.broadcast(tensor, src_rank, group=group)
++    # Mandatory barrier to detect whether send succeeds
++    handler = dist.barrier(group, async_op=True)
++    handler.wait(datetime.timedelta(seconds=60))
+ 
+-def recv(tensor, src_stage, async_op=False):
+-
+-    global _groups
++def recv(tensor, src_stage):
++    global _grid, _groups
+ 
+-    async_op = False
+     dest_stage = _grid.get_stage_id()
+-    _is_valid_send_recv(src_stage, dest_stage)
+ 
+     group = _get_send_recv_group(src_stage, dest_stage)
+     src_rank = _grid.stage_to_global(stage_id=src_stage)
+ 
+-    return dist.broadcast(tensor, src_rank, group=group, async_op=async_op)
+-
++    dist.broadcast(tensor, src_rank, group=group)
++    # To be consistent with send
++    handler = dist.barrier(group, async_op=True)
++    handler.wait(datetime.timedelta(seconds=60))
+ 
+ def barrier(stage_id):
+     global _groups, _grid
+@@ -66,25 +101,16 @@
+         print("Exiting Barrier ", group_id)
+ 
+ 
+-def _get_send_recv_group(src_stage, dest_stage):
++def _get_send_recv_group(src_stage: int, dest_stage: int) -> dist.ProcessGroup:
+     '''the group id is always the smaller rank unless its a wrap around'''
++    global _groups
+ 
+-    stage_id = None
+-
+-    first_stage = 0
+-    last_stage = _grid.pipe_parallel_size - 1
++    src_rank = _grid.stage_to_global(stage_id=src_stage)
++    dest_rank = _grid.stage_to_global(stage_id=dest_stage)
+ 
+-    if (src_stage == first_stage and dest_stage == last_stage
+-            or dest_stage == first_stage and src_stage == last_stage):
+-        stage_id = last_stage
+-    elif src_stage > dest_stage:
+-        stage_id = dest_stage
+-    else:
+-        stage_id = src_stage
+-    '''group_id corresponds to group of [group_id, group_id+1]
+-     unless group_id is the rank of the last stage
+-     in which case group_id correspods to group[group_id-num_stages+1, group_id]
+-     '''
+-    group_id = _grid.stage_to_global(stage_id=stage_id)
++    group = _groups[src_rank][dest_rank]
++    if group is None:
++        raise Exception(
++            f"Group of rank {src_rank} to rank {dest_rank} does not exist")
+ 
+-    return _groups[group_id]
++    return group
+diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/pipe/schedule.py project_pactum/external/deepspeed/deepspeed/runtime/pipe/schedule.py
+--- ../DeepSpeed/deepspeed/runtime/pipe/schedule.py	2024-03-02 20:08:07.078106481 +0800
++++ project_pactum/external/deepspeed/deepspeed/runtime/pipe/schedule.py	2024-02-27 18:33:42.617165349 +0800
+@@ -1,7 +1,50 @@
++from typing import Callable, List, Tuple
+ from ..utils import call_to_str
+ 
+ from abc import ABC, abstractmethod
+ 
++def _step_to_micro_batch(stages: int, stage_id: int, step_id: int) -> Tuple[int,bool]:
++    def _even_step_forward_id(step_id):
++        base = step_id // 2
++        micro_batch_id = int(base - stage_id // 2)
++        return micro_batch_id
++
++    def _odd_step_forward_id(step_id):
++        base = (step_id - 1) // 2
++        micro_batch_id = int(base - stage_id // 2)
++        return micro_batch_id
++
++    def _even_step_backward_id(step_id):
++        base = step_id // 2
++        micro_batch_id = int(base - stages + (stage_id + 1) // 2)
++        return micro_batch_id
++
++    def _odd_step_backward_id(step_id):
++        base = ((step_id - 1) // 2) - stages + 1
++        micro_batch_id = int(base + stage_id // 2)
++        return micro_batch_id
++
++    if _is_even(step_id) and _is_even(stage_id):
++        micro_batch_id = _even_step_forward_id(step_id)
++        is_forward = True
++
++    elif _is_odd(step_id) and _is_odd(stage_id):
++        micro_batch_id = _odd_step_forward_id(step_id)
++        is_forward = True
++
++    elif _is_even(step_id) and _is_odd(stage_id):
++        micro_batch_id = _even_step_backward_id(step_id)
++        is_forward = False
++
++    elif _is_odd(step_id) and _is_even(stage_id):
++        micro_batch_id = _odd_step_backward_id(step_id)
++        is_forward = False
++
++    else:
++        assert False
++
++    return micro_batch_id, is_forward
++
+ 
+ class PipeSchedule(ABC):
+     """Directs the execution of a pipeline engine by generating sequences of
+@@ -186,6 +229,9 @@
+     convergence follows that of a data parallel approach with the same batch
+     size.
+     """
++    def __init__(self, micro_batches, stages, stage_id, **kwargs):
++        super().__init__(micro_batches, stages, stage_id)
++
+     def steps(self):
+         """"""
+         prev_micro_batch_id = -1
+@@ -202,91 +248,280 @@
+ 
+             cmds = []
+ 
+-            # Exchange activations
+-            if is_forward:
+-                if self._valid_micro_batch(micro_batch_id) and self._valid_stage(
+-                        self.prev_stage):
+-                    cmds.append(RecvActivation(curr_buffer))
+-                if self._valid_micro_batch(prev_micro_batch_id) and self._valid_stage(
+-                        self.prev_stage):
+-                    cmds.append(SendGrad(prev_buffer))
+-            else:
+-                if self._valid_micro_batch(prev_micro_batch_id) and self._valid_stage(
+-                        self.next_stage):
+-                    cmds.append(SendActivation(prev_buffer))
+-                if self._valid_micro_batch(micro_batch_id) and self._valid_stage(
+-                        self.next_stage):
+-                    cmds.append(RecvGrad(curr_buffer))
+-
+-            # First/last stage loads
+-            if self.stage_id == 0 or self.stage_id == self.stages - 1:
++            # Load data
++            if self.require_data_loader:
+                 if is_forward and self._valid_micro_batch(micro_batch_id):
+                     cmds.append(LoadMicroBatch(curr_buffer))
+ 
++            # Exchange activations:
++            # 1. recv act/grad for step computation
++            # 2. send previous results ot neighboring nodes
++            if is_forward:
++                if self._valid_micro_batch(micro_batch_id) and \
++                        self._valid_stage(self.prev_stage):
++                    cmds.append(RecvActivation(curr_buffer, self.stage_id))
++                if self._valid_micro_batch(prev_micro_batch_id) and \
++                        self._valid_stage(self.prev_stage):
++                    cmds.append(SendGrad(prev_buffer, self.stage_id))
++            else:  # backward
++                if self._valid_micro_batch(prev_micro_batch_id) and \
++                        self._valid_stage(self.next_stage):
++                    cmds.append(SendActivation(prev_buffer, self.stage_id))
++                if self._valid_micro_batch(micro_batch_id) and \
++                        self._valid_stage(self.next_stage):
++                    cmds.append(RecvGrad(curr_buffer, self.stage_id))
++
+             # Computation
+             if self._valid_micro_batch(micro_batch_id):
+                 if is_forward:
+-                    cmds.append(ForwardPass(curr_buffer))
++                    cmds.append(ForwardPass(curr_buffer, self.stage_id))
+                 else:
+-                    cmds.append(BackwardPass(curr_buffer))
++                    cmds.append(BackwardPass(curr_buffer, self.stage_id))
+ 
+             # Model step at the end of the batch
+             if step_id == total_steps - 1:
+-                cmds.append(ReduceTiedGrads())
+-                cmds.append(ReduceGrads())
++                # NOTE: Temporarily disable for development
++                # Enable it when running model with tied layers.
++                # cmds.append(ReduceTiedGrads())
++
++                # NOTE: Temporarily disable for development
++                cmds.append(ReduceGrads(self.stage_id))
+                 cmds.append(OptimizerStep())
+ 
+             # Prepare state for next time
+             prev_micro_batch_id = micro_batch_id
+             yield cmds
+ 
++    @property
++    def require_data_loader(self):
++        return self.is_first_stage or self.is_last_stage
++
+     def num_pipe_buffers(self):
+-        """As many buffers as the distance from this stage to the last stage.
+-        """
+-        buffers = min(self.stages - self.stage_id + 1, self.micro_batches)
+-        return max(2, buffers)
++        # NOTE: To simplify failover, we make buffer id equal to micro batch id
++        return super().num_pipe_buffers()
++
++    def step_to_micro_batch(self, step_id:int) -> Tuple[int,bool]:
++        return self._step_to_micro_batch(step_id)
++
++    def valid_micro_batch(self, micro_batch_id:int) -> bool:
++        return self._valid_micro_batch(micro_batch_id)
+ 
+     def _step_to_micro_batch(self, step_id):
+-        if _is_even(step_id) and _is_even(self.stage_id):
+-            micro_batch_id = self._even_step_forward_id(step_id)
+-            is_forward = True
++        return _step_to_micro_batch(self.stages, self.stage_id, step_id)
+ 
+-        elif _is_odd(step_id) and _is_odd(self.stage_id):
+-            micro_batch_id = self._odd_step_forward_id(step_id)
+-            is_forward = True
+ 
+-        elif _is_even(step_id) and _is_odd(self.stage_id):
+-            micro_batch_id = self._even_step_backward_id(step_id)
+-            is_forward = False
++class ResilientPipeSchedule(ABC):
++    def __init__(self, sched: TrainSchedule, next_sched: TrainSchedule, failed_step=0, curr_step=0):
++        self.sched = sched
++        self.next_sched = next_sched
++        self.failed_step = failed_step
++        self.curr_step = curr_step
++        self.cmd_buffer = []
+ 
+-        elif _is_odd(step_id) and _is_even(self.stage_id):
+-            micro_batch_id = self._odd_step_backward_id(step_id)
+-            is_forward = False
++    def steps(self):
++        for i, (step_cmds, next_step_cmds) in enumerate(zip(self.sched, self.next_sched)):
++            yield self._merge_cmds(step_cmds, next_step_cmds, i)
++
++    def num_pipe_buffers(self):
++        # TODO(pengzhan): Calculate accurate buffer required
++        return self.sched.num_pipe_buffers()
++
++    @abstractmethod
++    def _merge_cmds(self, cmds, next_cmds, i):
++        pass
++
++    def __iter__(self):
++        self.it = None
++        return self
+ 
++    def __next__(self):
++        if self.it is None:
++            self.it = self.steps()
++        return next(self.it)
++
++
++class NextStageFailoverSchedule(ResilientPipeSchedule):
++
++    def _merge_cmds(self, cmds, next_cmds, i):
++        rets = []
++
++        # Redo
++        if i < self.curr_step:
++            if i < self.failed_step:
++                rets += [c for c in next_cmds if type(c) != SendActivation and type(c) != SendGrad]
+         else:
+-            assert False
++                rets += next_cmds
+ 
+-        return micro_batch_id, is_forward
++        # Merge
++        else:
++            # TODO(pengzhan): Refactor: remove arguments for function
++            def cmds_type(i):
++                return type(cmds[i]) if i < len(cmds) else None
++
++            def cmds_append(i):
++                rets.append(cmds[i])
++                return i+1
++
++            def next_cmds_type(i):
++                return type(next_cmds[i]) if i < len(next_cmds) else None
++
++            def next_cmds_append(i, cmd=None):
++                rets.append(next_cmds[i] if cmd is None else cmd)
++                return i+1
++
++            idx, next_idx = 0, 0
++            while idx < len(cmds) or next_idx < len(next_cmds):
++                if cmds_type(idx) == LoadMicroBatch:
++                    idx = cmds_append(idx)
++
++                elif cmds_type(idx) == RecvWeights:
++                    idx += 1
++
++                elif next_cmds_type(next_idx) == SendWeights:
++                    next_idx += 1
++
++                elif next_cmds_type(next_idx) == LoadMicroBatch:
++                    next_idx = next_cmds_append(next_idx)
++
++                elif next_cmds_type(next_idx) == SendActivation or next_cmds_type(next_idx) == RecvGrad:
++                    next_idx = next_cmds_append(next_idx)
++
++                elif next_cmds_type(next_idx) == SendGrad:
++                    assert cmds_type(idx) == RecvGrad, \
++                        f"Unable to merge cmds ({cmds}) and ({next_cmds})"
++                    next_idx = next_idx + 1
++                    idx = cmds_append(idx)
++
++                elif next_cmds_type(next_idx) == RecvActivation:
++                    assert cmds_type(idx) == SendActivation, \
++                        f"Unable to merge cmds ({cmds}) and ({next_cmds})"
++                    idx = idx + 1
++                    next_idx = next_cmds_append(next_idx)
++
++                elif cmds_type(idx) == BackwardPass:
++                    idx = cmds_append(idx)
++
++                elif next_cmds_type(next_idx) == BackwardPass:
++                    next_idx = next_cmds_append(next_idx)
++
++                elif cmds_type(idx) is not None:
++                    idx = cmds_append(idx)
++
++                elif next_cmds_type(next_idx) is not None:
++                    if next_cmds_type(next_idx) == ForwardPass or \
++                            next_cmds_type(next_idx) == BackwardPass or \
++                            next_cmds_type(next_idx) == RecvWeights:
++                        next_idx = next_cmds_append(next_idx)
++                    # Skip optimizer step as a single optimizer step will
++                    # handle two stages.
++                    elif next_cmds_type(next_idx) == OptimizerStep:
++                        next_idx += 1
++                    # Still need to do reduce grad for two stages.
++                    elif next_cmds_type(next_idx) == ReduceGrads:
++                        next_idx = next_cmds_append(next_idx)
++                    else:
++                        msg = f"Unsupported cmd found in cmds ({next_cmds})"
++                        raise Exception(msg)
+ 
+-    def _even_step_forward_id(self, step_id):
+-        base = step_id // 2
+-        micro_batch_id = int(base - self.stage_id // 2)
+-        return micro_batch_id
++                else:
++                    msg = f"Unable to merge cmds ({cmds}) and ({next_cmds})"
++                    raise Exception(msg)
+ 
+-    def _odd_step_forward_id(self, step_id):
+-        base = (step_id - 1) // 2
+-        micro_batch_id = int(base - self.stage_id // 2)
+-        return micro_batch_id
++        return rets
+ 
+-    def _even_step_backward_id(self, step_id):
+-        base = step_id // 2
+-        micro_batch_id = int(base - self.stages + (self.stage_id + 1) // 2)
+-        return micro_batch_id
+ 
+-    def _odd_step_backward_id(self, step_id):
+-        base = ((step_id - 1) // 2) - self.stages + 1
+-        micro_batch_id = int(base + self.stage_id // 2)
+-        return micro_batch_id
++class PrevStageFailoverSchedule(ResilientPipeSchedule):
++
++    def _merge_cmds(self, cmds, next_cmds, i):
++        rets = []
++
++        # Redo
++        if i < self.curr_step:
++            if i < self.failed_step:
++                rets += [c for c in next_cmds if type(c) == SendGrad]
++
++        # Merge
++        else:
++            for next_cmd in next_cmds:
++                # Disable recursive recovery. See FIXME in
++                # PipelineEngine.train_batch
++                if type(next_cmd) == SendWeights:
++                    continue
++                if type(next_cmd) == RecvActivation and next_cmd.buffer_id == -1:
++                    continue
++                rets.append(next_cmd)
++
++        return rets
++
++
++class AllReduceFailoverSchedule(ResilientPipeSchedule):
++    def _merge_cmds(self, cmds, next_cmds, i):
++        rets = []
++
++        if i < self.failed_step:
++            pass
++        else:
++            rets = cmds
++
++        return rets
++
++
++class LazyRecoverySchedule(ResilientPipeSchedule):
++
++    def __init__(self, sched, next_sched, failed_step=0, curr_step=0):
++        super().__init__(sched, next_sched, failed_step, curr_step)
++        self.stage_id: int = self.sched.stage_id
++
++        # Wrapper for TrainSchedule
++        self.stage_id: int = self.sched.stage_id
++        self.is_last_stage: bool = self.sched.is_last_stage
++        self.is_first_stage: bool = self.sched.is_first_stage
++        self.is_forward: Callable[[int,int],bool] = \
++            lambda stage_id, step_id: _step_to_micro_batch(self.sched.stages, stage_id, step_id)[1]
++        self.contain_communication: Callable[[List[PipeInstruction]],bool] = \
++            lambda cmds: any([isinstance(c, CommunicationInstruction) for c in cmds])
++        self.is_first_half: Callable[[int],bool] = \
++            lambda i: i < (self.sched.micro_batches + self.sched.stages - 1)
++
++    def _merge_cmds(self, cmds, next_cmds, i):
++        if self.is_first_stage:
++            if self.is_forward(self.stage_id, i):
++                cmds = [RecvActivation(-1, self.stage_id)] + cmds
++        elif self.is_last_stage:
++            if not self.contain_communication(cmds) and self.is_forward(self.stage_id, i) and self.is_first_half(i):
++                cmds = [RecvActivation(-1, self.stage_id)] + cmds
++            if self.is_forward(0, i):
++                cmds = [SendActivation(-1, self.stage_id)] + cmds
++        else:
++            if not self.contain_communication(cmds) and self.is_first_half(i):
++                if not self.is_forward(self.stage_id, i):
++                    cmds = [SendActivation(-1, self.stage_id)] + cmds
++                else:
++                    cmds = [RecvActivation(-1, self.stage_id)] + cmds
++        return cmds
++
++
++class EagerRecoverySchedule(ResilientPipeSchedule):
++    def _merge_cmds(self, cmds, next_cmds, i):
++        rets = []
++
++        redundant_instructions = [RecvActivation, LoadMicroBatch, ForwardPass]
++
++        def append_next_cmds(next_cmds):
++            for cmd in next_cmds:
++                if type(cmd) in redundant_instructions:
++                    rets.append(cmd)
++
++        # Always insert redundant computations before RecvGrad
++        if RecvGrad in [type(c) for c in cmds] and len(self.cmd_buffer) > 0:
++            append_next_cmds(self.cmd_buffer.pop(0))
++
++        if any([type(i) in redundant_instructions for i in next_cmds]):
++            self.cmd_buffer.append(next_cmds)
++
++        for cmd in cmds:
++            rets.append(cmd)
++        return rets
+ 
+ 
+ class DataParallelSchedule(PipeSchedule):
+@@ -333,34 +568,6 @@
+         return call_to_str(self.name, **self.kwargs)
+ 
+ 
+-class OptimizerStep(PipeInstruction):
+-    """Performs one step with the optimizer and zeros gradients.
+-
+-    .. note:: Should be issued after :class:`ReduceGrads` and :class:`ReduceTiedGrads`.
+-
+-    .. note:: Can be a synchronization point among data-parallel ranks.
+-    """
+-    pass
+-
+-
+-class ReduceGrads(PipeInstruction):
+-    """Reduce the computed gradients among data-parallel processes within the stage.
+-    """
+-    pass
+-
+-
+-class ReduceTiedGrads(PipeInstruction):
+-    """Reduce the computed gradients of tied modules within a pipeline-parallel group.
+-
+-    .. warning::
+-        The stages included in this synchronization point are not known until
+-        the model is partitioned among pipeline stages. In the worst case, it
+-        includes all pipeline stages. This instruction should be scheduled
+-        carefully to avoid deadlocks.
+-    """
+-    pass
+-
+-
+ class BufferOpInstruction(PipeInstruction):
+     """A pipeline instruction that operates on pipeline buffer(s).
+ 
+@@ -371,6 +578,16 @@
+         super().__init__(buffer_id=buffer_id, **kwargs)
+ 
+ 
++class MultiStageOpInstruction(PipeInstruction):
++    def __init__(self, stage_id, **kwargs):
++        super().__init__(stage_id=stage_id, **kwargs)
++
++
++class MultiStageBufferOpInstruction(BufferOpInstruction):
++    def __init__(self, buffer_id, stage_id, **kwargs):
++        super().__init__(buffer_id=buffer_id, stage_id=stage_id, **kwargs)
++
++
+ # IO
+ class LoadMicroBatch(BufferOpInstruction):
+     """Load a micro-batch into a buffer.
+@@ -385,7 +602,7 @@
+ 
+ 
+ # Compute
+-class ForwardPass(BufferOpInstruction):
++class ForwardPass(MultiStageBufferOpInstruction):
+     """Compute a forward pass.
+ 
+     Roughly:
+@@ -397,7 +614,7 @@
+     pass
+ 
+ 
+-class BackwardPass(BufferOpInstruction):
++class BackwardPass(MultiStageBufferOpInstruction):
+     """Compute a backward pass and accumulate gradients.
+ 
+     Roughly:
+@@ -413,7 +630,11 @@
+ 
+ 
+ # Communication
+-class SendActivation(BufferOpInstruction):
++class CommunicationInstruction:
++    ...
++
++
++class SendActivation(MultiStageBufferOpInstruction, CommunicationInstruction):
+     """Send activations to the next stage in the pipeline.
+ 
+     Roughly:
+@@ -429,7 +650,7 @@
+     pass
+ 
+ 
+-class RecvActivation(BufferOpInstruction):
++class RecvActivation(MultiStageBufferOpInstruction, CommunicationInstruction):
+     """Receive activations from the previous stage in the pipeline.
+ 
+     Roughly:
+@@ -445,7 +666,7 @@
+     pass
+ 
+ 
+-class SendGrad(BufferOpInstruction):
++class SendGrad(MultiStageBufferOpInstruction, CommunicationInstruction):
+     """Send computed gradients to the previous pipeline stage.
+     with respect to the received activations
+ 
+@@ -460,7 +681,7 @@
+     pass
+ 
+ 
+-class RecvGrad(BufferOpInstruction):
++class RecvGrad(MultiStageBufferOpInstruction, CommunicationInstruction):
+     """Receive computed gradients the next pipeline stage.
+ 
+     .. note::
+@@ -473,6 +694,43 @@
+     """
+     pass
+ 
++
++# Other
++class SendWeights(MultiStageOpInstruction):
++    pass
++
++
++class RecvWeights(MultiStageOpInstruction):
++    pass
++
++
++class OptimizerStep(PipeInstruction):
++    """Performs one step with the optimizer and zeros gradients.
++
++    .. note:: Should be issued after :class:`ReduceGrads` and :class:`ReduceTiedGrads`.
++
++    .. note:: Can be a synchronization point among data-parallel ranks.
++    """
++    pass
++
++
++class ReduceGrads(MultiStageOpInstruction):
++    """Reduce the computed gradients among data-parallel processes within the stage.
++    """
++    pass
++
++
++class ReduceTiedGrads(PipeInstruction):
++    """Reduce the computed gradients of tied modules within a pipeline-parallel group.
++
++    .. warning::
++        The stages included in this synchronization point are not known until
++        the model is partitioned among pipeline stages. In the worst case, it
++        includes all pipeline stages. This instruction should be scheduled
++        carefully to avoid deadlocks.
++    """
++    pass
++
+ 
+ def _is_even(x):
+     return x % 2 == 0
+diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/pipe/topology.py project_pactum/external/deepspeed/deepspeed/runtime/pipe/topology.py
+--- ../DeepSpeed/deepspeed/runtime/pipe/topology.py	2024-03-02 20:08:07.078106481 +0800
++++ project_pactum/external/deepspeed/deepspeed/runtime/pipe/topology.py	2024-02-27 18:33:42.617165349 +0800
+@@ -7,6 +7,7 @@
+ 
+ from collections import namedtuple
+ from itertools import product as cartesian_product
++from typing import Dict, List
+ 
+ 
+ class ProcessTopology:
+@@ -22,7 +23,7 @@
+ 
+     Some methods return ProcessCoord namedtuples.
+     """
+-    def __init__(self, axes, dims):
++    def __init__(self, axes, dims, custom_mapping=None):
+         """Create a mapping of n-dimensional tensor coordinates to linear indices.
+ 
+         Arguments:
+@@ -37,6 +38,7 @@
+         self.ProcessCoord = namedtuple('ProcessCoord', axes)
+ 
+         self.mapping = {}
++        if custom_mapping == None:
+         ranges = [range(d) for d in dims]
+         # example: 1, (0,0,1)
+         for global_rank, coord in enumerate(cartesian_product(*ranges)):
+@@ -44,6 +46,22 @@
+             key = self.ProcessCoord(**key)
+             # for example, {ProcessCoord(row=0, col=1) : 1}
+             self.mapping[key] = global_rank
++        else:
++            for rank_info in custom_mapping:
++                rank = rank_info.rank
++                if len(rank_info.active_coordinates) == 0:
++                    continue
++                coords = rank_info.active_coordinates[0]
++                dp_id = coords[0]
++                s_id = coords[1]
++
++                key = self.ProcessCoord(data=dp_id, pipe=s_id)
++                self.mapping[key] = rank
++
++    def modify_mapping(self, rank, **axes):
++        key = {axis: axes.get(axis) for axis in self.axes}
++        key = self.ProcessCoord(**key)
++        self.mapping[key] = rank
+ 
+     def get_rank(self, **coord_kwargs):
+         """Return the global rank of a process via its coordinates.
+@@ -58,7 +76,7 @@
+             raise ValueError('get_rank() does not support slices. Use filter_match())')
+ 
+         key = self.ProcessCoord(**coord_kwargs)
+-        assert key in self.mapping, f'key {kwargs} invalid'
++        assert key in self.mapping, f'key {coord_kwargs} invalid'
+         return self.mapping[key]
+ 
+     def get_axis_names(self):
+@@ -123,6 +141,8 @@
+             >>> coord.y
+             1
+         """
++        # TODO(pengzhan): When failure happens and topo modified, it could
++        # happen that one rank has multiple coords.
+         for coord, idx in self.mapping.items():
+             if idx == rank:
+                 return coord
+@@ -239,8 +259,8 @@
+         reductions to use high-bandwidth intra-node links and lower-volume
+         pipeline communications to use low-bandwidth inter-node links.
+     """
+-    def __init__(self, num_pp, num_dp):
+-        super().__init__(axes=['pipe', 'data'], dims=[num_pp, num_dp])
++    def __init__(self, num_pp, num_dp, custom_mapping=None):
++        super().__init__(axes=['pipe', 'data'], dims=[num_pp, num_dp], custom_mapping=custom_mapping)
+ 
+ 
+ class PipeModelDataParallelTopology(ProcessTopology):
+@@ -276,8 +296,6 @@
+         self.global_rank = dist.get_rank()
+         self.world_size = dist.get_world_size()
+         if topology is not None:
+-            if self.global_rank == 0:
+-                print('Using topology:', topology)
+             self._topo = topology
+         else:
+             num_pp = 1
+@@ -303,9 +321,6 @@
+         self.ds_model_rank = -1
+         for dp in range(self.data_parallel_size):
+             ranks = sorted(self._topo.get_axis_list(axis='data', idx=dp))
+-            if self.global_rank == 0:
+-                #print(f'RANK={self.global_rank} building DeepSpeed model group: {ranks}')
+-                pass
+             proc_group = dist.new_group(ranks=ranks)
+             if self.global_rank in ranks:
+                 self.ds_model_proc_group = proc_group
+@@ -321,21 +336,21 @@
+             proc_group = dist.new_group(ranks=g)
+             if self.global_rank in g:
+                 self.dp_group = g
+-                self.dp_proc_group = proc_group
++                self.dp_proc_groups = {self.stage_id: proc_group}
++                self.dp_fallback_proc_groups = {}
++        self.current_dp_group = self.dp_group
+ 
+         self.is_first_stage = (self.stage_id == 0)
+         self.is_last_stage = (self.stage_id == (self.pipe_parallel_size - 1))
+ 
+-        self.p2p_groups = self._build_p2p_groups()
++        self.p2p_groups: List[int] = self._build_p2p_groups()
++        self.p2p_matrix: Dict[int, List[int]] = self._build_p2p_matrix()
+ 
+         # Create new ProcessGroup for pipeline collectives - these are pipe parallel groups
+         self.pp_group = []
+         self.pp_proc_group = None
+         self.pipe_groups = self._topo.get_axis_comm_lists('pipe')
+         for ranks in self.pipe_groups:
+-            if self.global_rank == 0:
+-                #print(f'RANK={self.global_rank} building pipeline group: {ranks}')
+-                pass
+             proc_group = dist.new_group(ranks=ranks)
+             if self.global_rank in ranks:
+                 self.pp_group = ranks
+@@ -364,6 +379,39 @@
+                     self.slice_group = g
+                     self.slice_proc_group = proc_group
+ 
++    def init_fallback_group(self, redundancy_level):
++        assert redundancy_level == 1
++        self.dp_fallback_groups = {}
++        for stage, ranks in enumerate(self.dp_groups):
++            for pipeline, rank in enumerate(ranks):
++                group = None
++                f_ranks = None
++                coord = self._topo.get_coord(rank)
++                new_coord = self._dec_stage(coord.pipe)
++                f_coord = coord._replace(pipe=new_coord)
++                f_rank = self._topo.get_rank(**f_coord._asdict())
++                f_ranks = [r if r != rank else f_rank for r in ranks]
++                group = dist.new_group(f_ranks)
++                if self.global_rank == f_rank:
++                    self.dp_proc_groups[stage] = group
++                if self.global_rank in ranks:
++                    self.dp_fallback_groups[rank] = f_ranks
++                    self.dp_fallback_proc_groups[pipeline] = group
++
++    def set_fallback_group(self, src):
++        if self.dp_fallback_proc_groups[src] is None:
++            msg = f"Can not find fallback group for source {src}"
++            raise RuntimeError(msg)
++        self.dp_proc_groups[self.stage_id] = self.dp_fallback_proc_groups[src]
++        # FIXME(pengzhan): To support recursive recovery, we need to create new
++        # fallback group.
++
++    def _inc_stage(self, stage_id):
++        return (stage_id + 1) % self.pipe_parallel_size
++
++    def _dec_stage(self, stage_id):
++        return (stage_id - 1) % self.pipe_parallel_size
++
+     def get_stage_id(self):
+         return self._topo.get_coord(rank=self.global_rank).pipe
+ 
+@@ -387,6 +435,16 @@
+         assert len(p2p_lists) == self.world_size
+         return p2p_lists
+ 
++    def _build_p2p_matrix(self):
++        comm_lists = self._topo.get_axis_comm_lists('pipe')
++        p2p_matrix = {}
++        for rank in range(self.world_size):
++            for comm in comm_lists:
++                if rank in comm:
++                    p2p_matrix[rank] = [i for i in comm if i != rank]
++
++        return p2p_matrix
++
+     def _is_grid_valid(self):
+         ranks = 1
+         for ax in self._topo.get_axis_names():
+@@ -427,9 +485,14 @@
+         """ The number of pipelines. """
+         return self.data_parallel_size
+ 
+-    def get_data_parallel_group(self):
++    def get_data_parallel_group(self, stage_id=None):
+         """ The group of ranks within the same stage of all pipelines. """
+-        return self.dp_proc_group
++        if stage_id is None:
++            stage_id = self.stage_id
++        if stage_id not in self.dp_proc_groups:
++            msg = f"Can not find group for stage {stage_id}"
++            raise RuntimeError(msg)
++        return self.dp_proc_groups[stage_id]
+ 
+     # These are model parallel groups across all types of model parallelism.
+     # Deepspeed uses them to detect overflow, etc.
+diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/state_dict_factory.py project_pactum/external/deepspeed/deepspeed/runtime/state_dict_factory.py
+--- ../DeepSpeed/deepspeed/runtime/state_dict_factory.py	2024-03-02 20:09:54.197885235 +0800
++++ project_pactum/external/deepspeed/deepspeed/runtime/state_dict_factory.py	2024-02-27 18:33:42.617165349 +0800
+@@ -145,7 +145,7 @@
+             return 'model'
+ 
+     def get_module(self, sd):
+-        if self.module_key is None:
++        if sd is None:
+             return sd
+         elif self.module_key == AUTO_MODULE_KEY:
+             return sd[self._choose_module_key(sd)]
+diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/utils.py project_pactum/external/deepspeed/deepspeed/runtime/utils.py
+--- ../DeepSpeed/deepspeed/runtime/utils.py	2024-03-02 20:09:54.197885235 +0800
++++ project_pactum/external/deepspeed/deepspeed/runtime/utils.py	2024-02-27 18:33:42.617165349 +0800
+@@ -8,6 +8,8 @@
+ 
+ from deepspeed.moe.utils import is_moe_param, split_params_into_shared_and_expert_params
+ import os
++import io
++import numpy as np
+ import psutil
+ import gc
+ from math import ceil
+@@ -748,3 +750,35 @@
+         name += ', '.join(f'{key}={repr(arg)}' for key, arg in kwargs.items())
+     name += ')'
+     return name
++
++
++def serialize_object(object, to_cuda=False):
++    """ Serialize some object so that it can be sent over the network
++
++    Args:
++        object (): the object that should be serialized into a byte tensor
++
++    Returns:
++        tuple (torch.tensor, torch.tensor): The length of the blob and the blob
++            to be sent over the network
++    """
++    with io.BytesIO() as f:
++        torch.save(object, f)
++        raw_blob = np.frombuffer(f.getvalue(), dtype=np.uint8)
++
++    raw_blob_len = torch.tensor(len(raw_blob))
++    if to_cuda: raw_blob_len = raw_blob_len.cuda()
++
++    raw_blob = torch.as_tensor(raw_blob, dtype=torch.uint8)
++    if to_cuda: raw_blob = raw_blob.cuda()
++
++    return raw_blob_len, raw_blob
++
++def deserialize_object(object):
++    if isinstance(object, torch.Tensor) and object.is_cuda:
++        object = object.cpu()
++
++    with io.BytesIO(object.numpy()) as f:
++        deser_object = torch.load(f)
++
++    return deser_object
+\ No newline at end of file
+diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/zero/stage2.py project_pactum/external/deepspeed/deepspeed/runtime/zero/stage2.py
+--- ../DeepSpeed/deepspeed/runtime/zero/stage2.py	2024-03-02 20:09:54.201885228 +0800
++++ project_pactum/external/deepspeed/deepspeed/runtime/zero/stage2.py	2024-02-27 18:33:42.617165349 +0800
+@@ -230,11 +230,6 @@
+         # number of elements per partition in each group
+         self.partition_size = []
+ 
+-        #align nccl all-gather send buffers to 4-bye boundary
+-        self.nccl_start_alignment_factor = 2  # 4-byte alignment/sizeof(fp16) = 2
+-
+-        assert (allgather_bucket_size % self.nccl_start_alignment_factor == 0), f"allgather_bucket_size must be a multiple of nccl_start_alignment_factor, {self.nccl_start_alignment_factor} "
+-
+         self.all_reduce_print = False
+         self.dtype = self.optimizer.param_groups[0]['params'][0].dtype
+ 
+@@ -288,7 +283,6 @@
+             self.fp16_groups_flat.append(
+                 self.flatten_dense_tensors_aligned(
+                     self.round_robin_fp16_groups[i],
+-                    self.nccl_start_alignment_factor *
+                     dist.get_world_size(group=self.real_dp_process_group[i])).cuda(
+                         torch.cuda.current_device()))
+             see_memory_usage(f"After flattening and moving param group {i} to GPU",
+@@ -309,11 +303,6 @@
+                 i)
+             self.parallel_partitioned_fp16_groups.append(data_parallel_partitions)
+ 
+-            # verify that data partition start locations are 4-byte aligned
+-            for partitioned_data in data_parallel_partitions:
+-                assert (partitioned_data.data_ptr() %
+-                        (2 * self.nccl_start_alignment_factor) == 0)
+-
+             # a partition of the fp32 master weights that will be updated by this process
+             if not fp16_master_weights_and_gradients:
+                 self.single_partition_of_fp32_groups.append(
+@@ -2004,7 +1993,6 @@
+             ]
+             flat_merged_partitions = self.flatten_dense_tensors_aligned(
+                 merged_partitions,
+-                self.nccl_start_alignment_factor *
+                 dist.get_world_size(group=self.real_dp_process_group[i]))
+             dp_partitions = self.get_data_parallel_partitions(flat_merged_partitions, i)
+             merged_single_partition_of_fp32_groups.append(dp_partitions[partition_id])
+diff --color -bur --no-dereference ../DeepSpeed/deepspeed/utils/distributed.py project_pactum/external/deepspeed/deepspeed/utils/distributed.py
+--- ../DeepSpeed/deepspeed/utils/distributed.py	2024-03-02 20:05:53.038409243 +0800
++++ project_pactum/external/deepspeed/deepspeed/utils/distributed.py	2024-02-27 18:33:42.621165345 +0800
+@@ -8,12 +8,17 @@
+ from .logging import logger
+ from ..constants import TORCH_DISTRIBUTED_DEFAULT_PORT, default_pg_timeout
+ 
++import logging
++bamboo_logger = logging.getLogger(__name__)
+ 
+ def init_distributed(dist_backend="nccl",
+                      auto_mpi_discovery=True,
+                      distributed_port=TORCH_DISTRIBUTED_DEFAULT_PORT,
+                      verbose=True,
+                      timeout=default_pg_timeout,
++                     rank=0,
++                     store=None,
++                     world_size=1,
+                      init_method=None):
+     """Initialize torch.distributed backend, potentially performing MPI discovery if needed
+ 
+@@ -46,10 +51,21 @@
+             logger.info(
+                 "Initializing torch distributed with backend: {}".format(dist_backend))
+         assert isinstance(timeout, timedelta)
++
++        if store:
++            print(f'STARTING WITH RANK = {rank} and world size = {world_size} and init_method = {init_method}')
+         torch.distributed.init_process_group(backend=dist_backend,
++                                                rank=rank,
++                                                world_size=world_size,
++                                                timeout=timeout,
++                                                store=store)
++        else:
++            torch.distributed.init_process_group(backend=dist_backend,
++                                                rank=rank,
++                                                world_size=world_size,
+                                              timeout=timeout,
+                                              init_method=init_method)
+-
++        bamboo_logger.debug(f'★☆★☆★☆★☆★☆★ FINISHED DIST INITIALIZATION ★☆★☆★☆★☆★☆★')
+ 
+ def mpi_discovery(distributed_port=TORCH_DISTRIBUTED_DEFAULT_PORT, verbose=True):
+     """

@@ -18,6 +18,8 @@ Ensure you have the following requirements:
 - PyTorch 1.10.0
 - etcd 2.x (2.3.6 recommended, but you cannot run it as a systemctl service, open a tmux session and run it)
 
+According to bisection search, Bamboo was modified from DeepSpeed v0.5.2
+
 Documentation has the following requirements:
 
 - TeX Live
