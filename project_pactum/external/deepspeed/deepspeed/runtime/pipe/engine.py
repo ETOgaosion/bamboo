@@ -25,7 +25,7 @@ from requests import delete
 
 import torch
 from torch.cuda import default_stream, stream
-from torch.distributed.distributed_c10d import _get_global_rank
+from torch.distributed.distributed_c10d import get_global_rank
 from torch.autograd import grad
 import torch.nn as nn
 import torch.distributed as dist
@@ -1065,7 +1065,7 @@ class PipelineEngine(DeepSpeedEngine):
             self.pipe_buffers[key].extend([None] * num_added)
         self.num_pipe_buffers = max(self.num_pipe_buffers, num_buffers)
 
-    def train_batch(self, data_iter=None, debug=False, mem_status=False,
+    def train_batch(self, data_iter=None, debug=True, mem_status=False,
                     mem_log=False):
         """Progress the pipeline to train the next batch of data. The engine will ingest
         ``self.train_batch_size()`` total samples collectively across all workers.
@@ -1090,8 +1090,13 @@ class PipelineEngine(DeepSpeedEngine):
         Returns:
             The arithmetic mean of the losses computed this batch.
         """
+        # print(f"before write to rdzv")
         self.rdzv_handler.write('/rdzv/cluster_status', 'train')
+        # print(f"after write to rdzv")
         self.log(f'STARTING BATCH {self.global_steps} with coordinates {self.coordinates}')
+        
+        ## ELACESO: add the start_batch_index
+        self.start_batch_index = 0
 
         global should_stop
         if should_stop:
@@ -1110,7 +1115,8 @@ class PipelineEngine(DeepSpeedEngine):
             should_stop = False
 
         failures = json.loads(self.global_store.get('failures'))
-        self.log(f'FAILURES {failures}', color='r')
+        if failures:
+            self.log(f'FAILURES {failures}', color='r')
 
         start_step = time.time()
 
@@ -1185,6 +1191,9 @@ class PipelineEngine(DeepSpeedEngine):
                       f'due to {schedule_status[1]}')
 
             self.rdzv_handler.write('/rdzv/last_reconfig', self.global_steps)
+            
+            print(f'schedule_status[1]: {schedule_status[1]}')
+            logger.info(f'schedule_status[1]: {schedule_status[1]}')
 
             failed_step = 0
             if type(schedule_status[1]) == NextStageException:
@@ -1214,13 +1223,30 @@ class PipelineEngine(DeepSpeedEngine):
                 self.log(f'FINAL VERSION OF FAIL STEP = {fail_step}. Got FAILED_STEP = {failed_step}')
 
                 # Re-generate schedule
+                # self._generate_sched = lambda \
+                #     stage_id=self.next_stage, \
+                #     curr_sched=self._generate_sched, \
+                #     failed_step=failed_step, \
+                #     curr_step=schedule_status[0]: \
+                #     schedule.NextStageFailoverSchedule(
+                #         curr_sched(),
+                #         schedule.TrainSchedule(
+                #             micro_batches=self.micro_batches,
+                #             stages=self.num_stages,
+                #             stage_id=stage_id),
+                #         failed_step=failed_step,
+                #         curr_step=curr_step)
+
                 self._generate_sched = lambda \
                     stage_id=self.next_stage, \
                     curr_sched=self._generate_sched, \
                     failed_step=failed_step, \
                     curr_step=schedule_status[0]: \
                     schedule.NextStageFailoverSchedule(
-                        curr_sched(),
+                        schedule.TrainSchedule(
+                            micro_batches=self.micro_batches,
+                            stages=self.num_stages,
+                            stage_id=self.stage_id),
                         schedule.TrainSchedule(
                             micro_batches=self.micro_batches,
                             stages=self.num_stages,
@@ -1418,9 +1444,8 @@ class PipelineEngine(DeepSpeedEngine):
 
         step_end = time.time()
         self.log(f'FINISHING BATCH {self.global_steps} at {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} took {step_end - start_step} s')
-
         # TODO: should return precisely what loss returned and allow others to be queried?
-        return self.agg_train_loss
+        return self.agg_train_loss, step_end - start_step
 
     def eval_batch(self, data_iter, compute_loss=True, reduce_output='avg'):
         """Evaluate the pipeline on a batch of data from ``data_iter``. The
@@ -1999,22 +2024,27 @@ class PipelineEngine(DeepSpeedEngine):
     def _exec_recv_activations(self, buffer_id, stage_id):
         # Internal communication
         if  self._dec(stage_id) in self.stage_ids or (self.eager_recovery and stage_id in self.r_stage_ids):
-            if self.pipe_buffers[f'input_{stage_id}'][buffer_id] is None:
+            if self.pipe_buffers[f'input_{stage_id}'][buffer_id] is None and self.pipe_buffers[f'output_{self._dec(stage_id)}'][buffer_id] is not None:
                 output = self.pipe_buffers[f'output_{self._dec(stage_id)}'][buffer_id].clone().detach().to(self.device)
                 output.requires_grad = True
                 self.pipe_buffers[f'input_{stage_id}'][buffer_id] = output
+            print("hit3")
             return
 
+        print("hit4")
         if self.wall_clock_breakdown():
             self.timers('pipe_recv_input').start()
 
+        print("hit5")
         # Allocate the buffer if necessary
         buffer = None
         if buffer_id >= 0:
             if self.pipe_recv_buf is None:
                 self.pipe_recv_buf = self._recv_tensor_meta(self.prev_stage)
+            print("hit6")
             buffer = self.pipe_recv_buf
         else:
+            print("hit7")
             buffer = self.ping_buffer
 
         def recv_handler(stage):
@@ -2029,7 +2059,8 @@ class PipelineEngine(DeepSpeedEngine):
         try:
             recvd = recv_handler(self.prev_stage)
         except Exception as e:
-            self.log(f"---- RECV ACTS FAILED!!!! RESORTING TO FALLBACK", color=True)
+            # self.log(f"---- RECV ACTS FAILED!!!! RESORTING TO FALLBACK", color=True)
+            logger.info(f"---- RECV ACTS FAILED!!!! RESORTING TO FALLBACK")
             failed_rank = self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.prev_stage)
             self.global_store.set(str(failed_rank), '1')
             raise PrevStageException(e)
@@ -2355,9 +2386,13 @@ class PipelineEngine(DeepSpeedEngine):
             if i < start_step:
                 continue
 
-            if debug:
+            if debug or DEBUG:
                 print(f'[DEBUG Pipeline] Instructions in step {i}:', end=' ')
                 print(*step_cmds, sep=',')
+                print("\n")
+
+            # if DEBUG:
+            #     start_time = time.time()
 
             cmd_types = [type(cmd) for cmd in step_cmds]
             if schedule.ReduceGrads in cmd_types:
@@ -2378,8 +2413,8 @@ class PipelineEngine(DeepSpeedEngine):
                         raise RuntimeError(f'{self.__class__.__name__} does not understand instruction {repr(cmd)}')
 
                     self._exec_instr = MethodType(self._INSTRUCTION_MAP[type(cmd)], self)
-                    if debug: print(cmd)
-                    self._exec_instr(**cmd.kwargs)
+                    if debug: print(f'cmd: {cmd}')
+                    self._INSTRUCTION_MAP[type(cmd)](self, **cmd.kwargs)
                 except Exception as e:
                     msg = f'{type(cmd)}: {e}'
                     if hasattr(e, 'src'):

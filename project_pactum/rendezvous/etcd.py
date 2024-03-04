@@ -1171,11 +1171,13 @@ class EtcdRendezvous(object):
         while True:
             try:
                 active_version, state = self.get_rdzv_state()
+                log.info("active_version: " + str(active_version) + " state status: " + str(state["status"]) + " state version: " + str(state["version"]) + " expected_version: " + str(expected_version))
                 break
             except:
                 continue
 
         while True:
+            log.info("state status: " + str(state["status"]) + " state version: " + str(state["version"]) + " expected_version: " + str(expected_version))
             if state["status"] != "final" or state["version"] != expected_version:
                 return
 
@@ -1237,6 +1239,7 @@ class EtcdRendezvous(object):
             while True:
                 try:
                     active_version, state = self.get_rdzv_state()
+                    log.info("active_version: " + str(active_version) + " state status: " + str(state["status"]) + " state version: " + str(state["version"]) + " expected_version: " + str(expected_version))
                     break
                 except:
                     continue

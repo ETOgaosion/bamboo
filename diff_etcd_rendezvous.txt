@@ -1,0 +1,901 @@
+1a2
+> # -*- coding: utf-8 -*-
+8a10,11
+> import collections
+> import functools
+10a14
+> import socket
+14a19,27
+> import re
+> import traceback
+> from contextlib import closing
+> from colorama import Fore
+> 
+> from datetime import datetime
+> 
+> from torch.distributed.elastic import rendezvous
+> from torch.serialization import default_restore_location
+25,27c38,41
+< from .utils import parse_rendezvous_endpoint
+< from .etcd_store import EtcdStore, cas_delay
+< 
+---
+> import torch.distributed.elastic.utils.store as store_util
+> from torch.distributed.elastic.rendezvous.utils import parse_rendezvous_endpoint
+> from torch.distributed.elastic.rendezvous.etcd_store import EtcdStore, cas_delay
+> from torch.distributed.elastic.agent.server.api import _RoleInstanceInfo
+37a52,61
+> logger = logging.getLogger('project_pactum.etcd')
+> 
+> GlobalInfo = collections.namedtuple(
+>     'GlobalInfo',
+>     ['rank', 'previous_coordinates', 'active_coordinates']
+> )
+> 
+> class TooFewNodesException(Exception):
+>     def __init__(self):
+>         pass
+46d69
+< 
+52d74
+< 
+54c76
+< _DEFAULT_TIMEOUT: int = 600  # 10 minutes
+---
+> _DEFAULT_TIMEOUT: int = 60  # 1 minute (was 10 minutes)
+71c93
+< # etcd server is persistent), and has no affect on correctness, but should be
+---
+> # etcd server is persistent), and has no affect on correctnes, but should be
+74a97,132
+> def _get_socket_with_port() -> socket.socket:
+>     """
+>     Returns a free port on localhost that is "reserved" by binding a temporary
+>     socket on it. Close the socket before passing the port to the entity
+>     that requires it. Usage example
+> 
+>     ::
+> 
+>     sock = _get_socket_with_port()
+>     with closing(sock):
+>         port = sock.getsockname()[1]
+>         sock.close()
+>         # there is still a race-condition that some other process
+>         # may grab this port before func() runs
+>         func(port)
+>     """
+> 
+>     addrs = socket.getaddrinfo(
+>         host="localhost", port=None, family=socket.AF_UNSPEC, type=socket.SOCK_STREAM
+>     )
+>     for addr in addrs:
+>         family, type, proto, _, _ = addr
+>         s = socket.socket(family, type, proto)
+>         try:
+>             s.bind(("localhost", 0))
+>             s.listen(0)
+>             return s
+>         except OSError as e:
+>             s.close()
+>             log.warning("Socket creation attempt failed.", exc_info=e)
+>     raise RuntimeError("Failed to create a socket")
+> 
+> 
+> def _get_fq_hostname() -> str:
+>     return socket.getfqdn(socket.gethostname())
+> 
+150,151c208,215
+<     def next_rendezvous(self):
+<         rdzv_version, rank, world_size = self._rdzv_impl.rendezvous_barrier()
+---
+>     def write(self, key, value):
+>         self._rdzv_impl.write(key, value)
+> 
+>     def should_reconfigure(self, global_steps, failures={}):
+>         if self._rdzv_impl is not None:
+>             return self._rdzv_impl.should_reconfigure(global_steps, failures)
+> 
+>         return False
+153c217,240
+<         log.info("Creating EtcdStore as the c10d::Store implementation")
+---
+>     def get_global_decision(self):
+>         return self._rdzv_impl.get_global_decision()
+> 
+>     def get_current_step(self):
+>         return self._rdzv_impl.get_current_step()
+> 
+>     def create_lock(self, lock_name):
+>         return self._rdzv_impl.create_lock(lock_name)
+> 
+>     def stop_keep_alive(self):
+>         self._rdzv_impl.stop_keep_alive()
+> 
+>     def next_rendezvous(self, previous_global_rank=-1):
+>         if isinstance(previous_global_rank, str):
+>             previous_global_rank = int(previous_global_rank)
+> 
+>         rdzv_version, rank, world_size, num_pipelines, num_stages = self._rdzv_impl.rendezvous_barrier(previous_global_rank)
+> 
+>         global_decision = self._rdzv_impl.get_global_decision()
+> 
+>         # set the world size as the workers that are assigned coordinates
+>         world_size = len([info for info in global_decision if len(info.active_coordinates) != 0])
+> 
+>         log.warning("Creating EtcdStore as the c10d::Store implementation")
+156c243,311
+<         return store, rank, world_size
+---
+>         return store, rank, world_size, num_pipelines, num_stages, global_decision
+> 
+>     def set_master_addr_port(self, store, master_addr=None, master_port=None):
+>         if master_port is None:
+>             sock = _get_socket_with_port()
+>             with closing(sock):
+>                 master_port = sock.getsockname()[1]
+> 
+>         if master_addr is None:
+>             master_addr = _get_fq_hostname()
+> 
+>         store.set("MASTER_ADDR", master_addr.encode(encoding="UTF-8"))
+>         store.set("MASTER_PORT", str(master_port).encode(encoding="UTF-8"))
+> 
+>     def get_master_addr_port(self, store):
+>         master_addr = store.get("MASTER_ADDR").decode(encoding="UTF-8")
+>         master_port = int(store.get("MASTER_PORT").decode(encoding="UTF-8"))
+>         return (master_addr, master_port)
+> 
+>     def _get_ranks(self, role_infos, role_idx, start_idx=0, end_idx=-1):
+>         if end_idx == -1:
+>             end_idx = len(role_infos)
+>         prefix_sum = 0
+>         total_sum = 0
+>         for idx in range(start_idx, end_idx):
+>             if role_idx > idx:
+>                 prefix_sum += role_infos[idx].local_world_size
+>             total_sum += role_infos[idx].local_world_size
+>         return (
+>             total_sum,
+>             list(range(prefix_sum, prefix_sum + role_infos[role_idx].local_world_size)),
+>         )
+> 
+>     def assign_worker_ranks(self, store, group_rank, group_world_size, spec, num_pipelines, num_stages, global_decision):
+>         role_infos = self._share_and_gather(store, group_rank, group_world_size, spec)
+>         my_role_info = role_infos[group_rank]
+>         worker_world_size, worker_global_ranks = self._get_ranks(role_infos, group_rank)
+>         role_infos = sorted(
+>             role_infos, key=functools.cmp_to_key(_RoleInstanceInfo.compare)
+>         )
+> 
+>         role_start_idx, role_end_idx = _RoleInstanceInfo.find_role_boundaries(
+>             role_infos, my_role_info.role
+>         )
+> 
+>         role_pos = next(
+>             idx
+>             for idx, role_info in enumerate(role_infos)
+>             if _RoleInstanceInfo.compare(role_info, my_role_info) == 0
+>         )
+> 
+>         role_world_size, role_ranks = self._get_ranks(
+>             role_infos, role_pos, role_start_idx, role_end_idx + 1
+>         )
+> 
+>     def _share_and_gather(self, store, group_rank, group_world_size, spec):
+>         agent_role_info = _RoleInstanceInfo(
+>             spec.role, group_rank, spec.local_world_size
+>         )
+>         key_prefix = "torchelastic/role_info"
+>         agent_config_enc = agent_role_info.serialize()
+>         role_infos_bytes = store_util.synchronize(
+>             store, agent_config_enc, group_rank, group_world_size, key_prefix
+>         )
+>         role_infos = [
+>             _RoleInstanceInfo.deserialize(role_info_bytes)
+>             for role_info_bytes in role_infos_bytes
+>         ]
+>         return role_infos
+177a333,361
+>     def setup_kv_store(self):
+>         _, state = self._rdzv_impl.get_rdzv_state()
+>         rdzv_version = state['version']
+> 
+>         log.warning("Creating EtcdStore as the c10d::Store implementation")
+>         store = self._rdzv_impl.setup_kv_store(rdzv_version)
+> 
+>         return store
+> 
+>     def get_current_state(self):
+>         _, state = self._rdzv_impl.get_rdzv_state()
+> 
+>         return state
+> 
+>     def update_coordinates(self, rank, coordinates):
+>         self._rdzv_impl.update_coordinates(rank, coordinates)
+> 
+>     def update_coordinates_for_version(self, version, rank, coordinates):
+>         self._rdzv_impl.update_coordinates_for_version(version, rank, coordinates)
+> 
+>     def previous_version_exists(self):
+>         return self._rdzv_impl.previous_version_exists()
+> 
+>     def get_previous_state(self):
+>         return self._rdzv_impl.get_previous_state()
+> 
+>     def get_rank_coordinates_for_version(self, state, version):
+>         return self._rdzv_impl.get_rank_coordinates_for_version(state, version)
+> 
+186c370
+<             log.warning("Shutdown failed. Error occurred: %s", str(e))
+---
+>             log.warning(f"Shutdown failed. Error occurred: {str(e)}")
+196,197c380,384
+< class EtcdRendezvous:
+<     """A rendezvous implementation that uses `etcd <https://etcd.io/>`__ as the backend store."""
+---
+> class EtcdRendezvous(object):
+>     """
+>     A rendezvous implementation that uses `etcd <https://etcd.io/>`__ as
+>     the backend store.
+>     """
+210c397
+<         log.info("Etcd machines: %s", self.client.machines)
+---
+>         log.warning("Etcd machines: " + str(self.client.machines))
+246a434,435
+>         self.rank_pattern = re.compile(".*/rdzv/v_(\d+)/rank_(\d+)")
+> 
+255c444,457
+<     def rendezvous_barrier(self):
+---
+>     def stop_keep_alive(self):
+>         if self._lease_run_id_stop is not None:
+>             self._lease_run_id_stop.set()
+> 
+>         if self._lease_this_rank_stop is not None:
+>             self._lease_this_rank_stop.set()
+> 
+>     def write(self, key, value):
+>         key = self.get_path(key)
+>         if isinstance(value, str):
+>             value = json.dumps(value)
+>         self.client.write(key, value)
+> 
+>     def rendezvous_barrier(self, previous_global_rank):
+258d459
+< 
+275c476
+<             log.info("Attempting to join next rendezvous")
+---
+>             log.warning("Attempting to join next rendezvous")
+281c482
+<                 return self.init_phase()
+---
+>                 return self.init_phase(previous_global_rank)
+293c494
+<                 log.info("Rendezvous timeout occurred in EtcdRendezvousHandler")
+---
+>                 log.warning("Rendezvous timeout occured in EtcdRendezvousHandler")
+297,298c498,499
+<                 log.info(
+<                     "Rendezvous for run_id=%s was observed to be closed", self._run_id
+---
+>                 log.warning(
+>                     f"Rendezvous for run_id={self._run_id} was observed to be closed"
+310c511,513
+<                 log.info("Rendezvous attempt failed, will retry. Reason: %s", e)
+---
+>                 log.warning("Rendezvous attempt failed, will retry. Reason:")
+>                 traceback.print_exc()
+> 
+313c516
+<     def init_phase(self):
+---
+>     def init_phase(self, previous_global_rank):
+335c538
+<             log.info("New rendezvous state created: %s", state)
+---
+>             log.warning("New rendezvous state created: " + str(state))
+340c543
+<             log.info("Observed existing rendezvous state: %s", state)
+---
+>             log.warning("Observed existing rendezvous state: " + str(state))
+346c549
+<             return self.join_phase(state["version"])
+---
+>             return self.join_phase(state["version"], previous_global_rank)
+355c558
+<     def join_phase(self, expected_version):
+---
+>     def join_phase(self, expected_version, previous_global_rank):
+359a563
+> 
+363,365c567,570
+<         log.info(
+<             "Joined rendezvous version %s as rank %s. Full state: %s",
+<             state["version"], this_rank, state
+---
+>         log.warning(
+>             "Joined rendezvous version {} as rank {}. Full state: {}".format(
+>                 state["version"], this_rank, state
+>             )
+370c575
+<         # then this worker will be responsible for waiting out the "last call"
+---
+>         # then this worker will be repsonsible for waiting out the "last call"
+378c583
+<             log.info("Rank %s is responsible for join last call.", this_rank)
+---
+>             log.warning("Rank {} is responsible for join last call.".format(this_rank))
+381c586
+<             log.info("Rank %s finished join last call.", this_rank)
+---
+>             log.warning("Rank {} finished join last call.".format(this_rank))
+384c589
+<         log.info("Waiting for remaining peers.")
+---
+>         log.warning("Waiting for remaining peers.")
+392c597
+<         return self.confirm_phase(expected_version, this_rank)
+---
+>         return self.confirm_phase(expected_version, this_rank, previous_global_rank)
+394c599
+<     def confirm_phase(self, expected_version, this_rank):
+---
+>     def confirm_phase(self, expected_version, this_rank, previous_global_rank):
+396c601
+<         Once the rendezvous state transitions from 'joinable' to 'frozen',
+---
+>         Once the rendezvous state trainsitions from 'joinable' to 'frozen',
+401,402d605
+<         log.info("All peers arrived. Confirming membership.")
+<         self.confirm_membership(expected_version, this_rank)
+404c607,610
+<         log.info("Waiting for confirmations from all peers.")
+---
+>         log.warning("All peers arrived. Confirming membership.")
+>         self.confirm_membership(expected_version, this_rank, previous_global_rank)
+> 
+>         log.warning("Waiting for confirmations from all peers.")
+408,410c614,617
+<         log.info(
+<             "Rendezvous version %s is complete. Final state: %s",
+<             state["version"], state
+---
+>         log.warning(
+>             "Rendezvous version {} is complete. Final state: {}".format(
+>                 state["version"], state
+>             )
+412a620,624
+>         # PROJECT-PACTUM: Our coordinates are now set
+>         key = self.get_path(f'rdzv/v_{expected_version}/rank_{this_rank}_coordinates')
+>         coordinates = self.client.get(key)
+>         this_coordinates = json.loads(coordinates.value)
+> 
+414c626
+<         return state["version"], this_rank, len(state["participants"])
+---
+>         return state["version"], this_rank, len(state["participants"]), int(state['num_pipelines']), int(state['num_stages'])
+421a634
+> 
+427,429c640,643
+<         log.info(
+<             "Added self to waiting list. Rendezvous full state: %s",
+<             active_state.value
+---
+>         log.warning(
+>             "Added self to waiting list. Rendezvous full state: {}".format(
+>                 active_state.value
+>             )
+433c647
+<         log.info("Previously existing rendezvous state changed. Will re-try joining.")
+---
+>         log.warning("Previously existing rendezvous state changed. Will re-try joining.")
+437c651,652
+<         Create new rendezvous state or raise an exception that indicates an unexpected state (e.g. already exists).
+---
+>         Create new rendezvous state or raise an exception that indicates
+>         an unexpected state (e.g. already exists)
+441a657
+> 
+444a661
+>         logger.warning(self.get_path("/rdzv/active_version"))
+456c673
+<         except (etcd.EtcdKeyNotFound, etcd.EtcdCompareFailed) as e:
+---
+>         except (etcd.EtcdKeyNotFound, etcd.EtcdCompareFailed):
+459c676
+<             ) from e
+---
+>             )
+467c684
+<             key=self.get_path(f"/rdzv/v_{version_counter.value}"),
+---
+>             key=self.get_path("/rdzv/v_{}".format(version_counter.value)),
+489c706,709
+<         """Helper method for the join phase."""
+---
+>         """
+>         Helper method for the join phase.
+>         """
+> 
+535c755
+<                 log.info("Join rendezvous CAS unsuccessful, retrying")
+---
+>                 log.warning("Join rendezvous CAS unsuccessful, retrying")
+538c758,760
+<         """Helper method for the join phase."""
+---
+>         """
+>         Helper method for the join phase.
+>         """
+557,558c779,934
+<     def confirm_membership(self, expected_version, this_rank):
+<         """Helper method for the confirm phase."""
+---
+>     def assign_coordinates(self, expected_version, state):
+>         num_participants = len(state["participants"])
+> 
+>         # Get the previous rendezvous state, if it exists
+>         previous_state_key = self.get_path("/rdzv/previous_state")
+>         try:
+>             previous_state = self.client.get(previous_state_key)
+>             previous_state = json.loads(previous_state.value)
+>         except Exception:
+>             previous_state = None
+> 
+>         # Find the active coordinates from the previous state
+>         if previous_state:
+>             current_coordinates = self.get_rank_coordinates_for_version(
+>                 state,
+>                 expected_version,
+>                 previous_version=previous_state['version']
+>             )
+>             previous_version = previous_state['version']
+>         else:
+>             previous_version = '-1'
+>             current_coordinates = {}
+> 
+>         # Use the active coordinates, right now they're unused
+> 
+>         default_num_stages_result = self.client.get(self.get_path('/rdzv/default_pipelines'))
+>         default_num_stages = json.loads(default_num_stages_result.value)
+>         num_stages = default_num_stages
+>         num_pipelines = num_participants // default_num_stages
+>         num_active_nodes = num_pipelines * num_stages
+>         logger.warning(f'num_active_nodes: {num_active_nodes}')
+>         logger.warning(f'num_participants: {num_participants}')
+>         if num_participants < default_num_stages:
+>             raise TooFewNodesException()
+> 
+>         state["previous_version"] = previous_version
+>         state["num_pipelines"] = str(num_pipelines)
+>         state["num_stages"] = str(num_stages)
+> 
+>         if previous_state:
+>             previous_num_pipelines = int(previous_state["num_pipelines"])
+>             previous_num_stages = int(previous_state["num_stages"])
+>         else:
+>             previous_num_pipelines = 0
+>             previous_num_stages = 0
+> 
+>         required_coordinates = []
+>         for i in range(num_active_nodes):
+>             required_coordinates.append((i // num_stages, i % num_stages))
+> 
+>         rank_active_coordinates = {}
+> 
+>         for rank, coordinates in current_coordinates.items():
+>             # If it's the same grid, just pick one coordinate and retain it
+>             if num_pipelines == previous_num_pipelines and num_stages == previous_num_pipelines:
+>                 if len(coordinates) == 0:
+>                     continue
+>                 coordinate = coordinates[0]
+>                 required_coordinates.remove(coordinate)
+>                 rank_active_coordinates[rank] = [coordinate]
+>                 continue
+> 
+>         # Fill in any remaining coordinates
+>         while len(required_coordinates) > 0:
+>             coordinate = required_coordinates.pop(0)
+>             for rank in range(num_participants):
+>                 rank = str(rank)
+>                 if rank not in rank_active_coordinates:
+>                     rank_active_coordinates[rank] = [coordinate]
+>                     break
+> 
+>         # Initialize the missing ranks
+>         for rank in range(num_participants):
+>             rank = str(rank)
+>             if rank not in rank_active_coordinates:
+>                 rank_active_coordinates[rank] = []
+> 
+>         # Set the new active coordinate keys
+>         for rank, coordinates in rank_active_coordinates.items():
+>             key = self.get_path(f'rdzv/v_{expected_version}/rank_{rank}_coordinates')
+>             self.client.set(key, value=json.dumps(coordinates), ttl=None)
+> 
+>         self.client.set(previous_state_key, value=json.dumps(state), ttl=None)
+> 
+>     def update_coordinates(self, rank, coordinates):
+>         _, state = self.get_rdzv_state()
+>         version = state["version"]
+>         result = self.client.get(self.get_path(f"/rdzv/v_{version}/rank_{rank}_coordinates"))
+>         result.value = json.dumps(coordinates)
+>         self.client.update(result)
+> 
+>     def update_coordinates_for_version(self, version, rank, coordinates):
+>         result = self.client.get(self.get_path(f"/rdzv/v_{version}/rank_{rank}_coordinates"))
+>         result.value = json.dumps(coordinates)
+>         self.client.update(result)
+> 
+>     def previous_version_exists(self):
+>         _, state = self.get_rdzv_state()
+>         previous_version = state['previous_version']
+> 
+>         return int(previous_version) > 0
+> 
+>     def get_previous_state(self):
+>         previous_state_key = self.get_path('/rdzv/previous_state')
+>         previous_state = self.client.get(previous_state_key)
+> 
+>         return json.loads(previous_state.value)
+> 
+>     def create_lock(self, lock_name):
+>         lock = etcd.Lock(self.client, lock_name)
+>         return lock
+> 
+>     def get_current_step(self):
+>         current_step_key = self.get_path('/rdzv/current_step')
+>         try:
+>             current_step = self.client.get(current_step_key)
+>         except etcd.EtcdKeyNotFound:
+>             return 0
+> 
+>         return json.loads(current_step.value)
+> 
+>     def get_global_decision(self):
+>         _, state = self.get_rdzv_state()
+>         version = state["version"]
+>         previous_version = state["previous_version"]
+> 
+>         if int(previous_version) < 0:
+>             rank_previous_coordinates = {}
+>         else:
+>             rank_previous_coordinates = self.get_rank_coordinates_for_version(
+>                 state,
+>                 version,
+>                 previous_version=previous_version
+>             )
+> 
+>         rank_active_coordinates = self.get_rank_coordinates_for_version(state, version)
+> 
+>         global_decision = []
+> 
+>         for rank, active_coordinates in rank_active_coordinates.items():
+>             previous_coordinates = []
+>             if rank in rank_previous_coordinates:
+>                 previous_coordinates = rank_previous_coordinates[rank]
+>             global_decision.append(GlobalInfo(
+>                 rank=int(rank),
+>                 active_coordinates=active_coordinates,
+>                 previous_coordinates=previous_coordinates,
+>             ))
+> 
+>         return global_decision
+> 
+>     def confirm_membership(self, expected_version, this_rank, previous_global_rank):
+>         """
+>         Helper method for the confirm phase
+>         """
+> 
+573a950,953
+>             this_ip_key = self.get_path(
+>                 "/rdzv/v_{}/rank_{}_ip".format(expected_version, this_rank)
+>             )
+> 
+575c955
+<                 f"/rdzv/v_{expected_version}/rank_{this_rank}"
+---
+>                 "/rdzv/v_{}/rank_{}".format(expected_version, this_rank)
+577c957,959
+<             self.client.set(this_lease_key, value=None, ttl=CONST_WORKER_KEEPALIVE_TTL)
+---
+>             self.client.set(this_lease_key, value=str(previous_global_rank), ttl=CONST_WORKER_KEEPALIVE_TTL)
+>             my_ip = socket.gethostbyname( socket.gethostname() )
+>             self.client.set(this_ip_key, value=str(my_ip), ttl=None)
+583a966
+>                 self.assign_coordinates(expected_version, state)
+603c986
+<                 log.info("Confirm membership CAS unsuccessful, retrying")
+---
+>                 log.warning("Confirm membership CAS unsuccessful, retrying")
+606c989,991
+<         """Helper method for the confirm phase."""
+---
+>         """
+>         Helper method for the confirm phase
+>         """
+610c995
+<                 # Success. This rendezvous is final, and we accept it.
+---
+>                 # Succcess. This rendezvous is final, and we accept it.
+629a1015
+> 
+649c1035,1158
+<                 log.info("Announce self as waiting CAS unsuccessful, retrying")
+---
+>                 log.warning("Announce self as waiting CAS unsuccessful, retrying")
+> 
+>     def get_rank_coordinates_for_version(self, state, version, previous_version=None):
+>         rank_coordinates = {}
+> 
+>         alive_members = self.client.get(self.get_path(f"/rdzv/v_{version}"))
+>         keep_alive_keys = [ch.key for ch in alive_members.children]
+>         for key in state["keep_alives"]:
+>             if key.endswith("_coordinates"):
+>                 continue
+> 
+>             if key not in keep_alive_keys:
+>                 continue
+> 
+>             rank = self.rank_pattern.match(key).group(2) 
+>             if previous_version is not None:
+>                 try:
+>                     previous_rank = self.client.get(key).value
+>                 except:
+>                     continue
+>                 if int(previous_rank) < 0:
+>                     continue
+> 
+>             if previous_version is not None:
+>                 coordinates_key = self.get_path(f'rdzv/v_{previous_version}/rank_{previous_rank}_coordinates')
+>             else:
+>                 coordinates_key = self.get_path(f'rdzv/v_{version}/rank_{rank}_coordinates')
+>             coordinates = self.client.get(coordinates_key)
+>             coordinates = json.loads(coordinates.value)
+> 
+>             rank_coordinates[rank] = coordinates
+>         return rank_coordinates
+> 
+>     def decide_reconfigure(self, global_step, global_steps_key, failures, active_version, state):
+>         should_reconfigure = False
+> 
+>         version = state["version"]
+> 
+>         num_workers_overloaded = 0
+>         num_workers_waiting = int(state["num_workers_waiting"])
+> 
+>         # Check the current alive coordinates
+>         rank_coordinates = self.get_rank_coordinates_for_version(state, version)
+>         for rank, coordinates in rank_coordinates.items():
+>             if len(coordinates) > 2:
+>                 should_reconfigure = True
+>                 break
+>             elif len(coordinates) == 2:
+>                 if failures.get(str(rank), -1) == global_step:
+>                     print("Shadow node going to be preempted. Reconfiguring...")
+>                     should_reconfigure = True
+>                     break
+>                 num_workers_overloaded += 1
+> 
+>         if num_workers_overloaded > 0 and num_workers_waiting >= num_workers_overloaded:
+>             pass
+>             #should_reconfigure = True
+> 
+>         try:
+>             num_pipelines = int(state['num_pipelines'])
+>             num_stages = int(state['num_stages'])
+>             num_og_workers = num_pipelines * num_stages
+>             num_active_workers = num_og_workers - num_workers_overloaded
+> 
+>             # If we're above a 5% chance of failure, re-configure/re-balance
+>             # I cannot remove an overloaded node, or the node that now has no
+>             # redundancy
+>             if num_workers_overloaded > 0 and (2 * num_workers_overloaded / num_active_workers) > 0.05:
+>                 pass
+>                 #should_reconfigure = True
+> 
+>             potential_num_pipelines = (num_active_workers + num_workers_waiting - num_workers_overloaded) // num_stages
+>             if potential_num_pipelines > num_pipelines:
+>                 print(Fore.LIGHTYELLOW_EX, f'NUM ACT WORKER {num_active_workers}, NUM WAIT {num_workers_waiting}, NUM OVLD {num_workers_overloaded}, num STAGES {num_stages}')
+>                 print(Fore.LIGHTYELLOW_EX, f'CURRENT PIPELINES = {num_pipelines} but POTENTIAL PIPELINES = {potential_num_pipelines}', Fore.RESET)
+>                 print(Fore.RED, 'SETTING IT TO TRUE BECAUSE WE HAVE NEW PIPELINES', Fore.RESET)
+>                 should_reconfigure = True
+>         except Exception as e:
+>             print(Fore.RED, f'GOT ERROR {str(e)}', Fore.RESET)
+> 
+>         self.client.write(
+>             global_steps_key, value=json.dumps(should_reconfigure), prevExist=False
+>         )
+> 
+>         # If the key didn't already exist, we should delete the current rendezvous
+>         if should_reconfigure:
+>             self.client.delete(
+>                 key=self.get_path("/rdzv/active_version"),
+>                 prevValue=active_version.value,
+>             )
+> 
+>         current_step_key = self.get_path("/rdzv/current_step")
+>         self.client.write(current_step_key, global_step)
+> 
+>         return should_reconfigure
+> 
+>     def should_reconfigure(self, global_steps, failures):
+> 
+>         global_steps_key = self.get_path(f"/rdzv/global_steps_{global_steps}")
+> 
+>         while True:
+>             # Get the current state, if the key doesn't exist, we need to
+>             # reconfigure
+>             try:
+>                 active_version, state = self.get_rdzv_state()
+>             except:
+>                 return True
+> 
+>             # If this isn't a final state, we need to reconfigure anyways
+>             if state["status"] != "final":
+>                 return True
+> 
+>             # Check if a decision has already been made
+>             try:
+>                 global_steps = self.client.get(global_steps_key)
+>                 return json.loads(global_steps.value)
+>             except etcd.EtcdKeyNotFound:
+>                 pass
+> 
+>             # Try to make the decision, if it fails just retry
+>             try:
+>                 return self.decide_reconfigure(global_steps, global_steps_key, failures, active_version, state)
+>             except:
+>                 pass
+653c1162,1163
+<         When there's an existing valid rendezvous in state 'final', we have to wait until the next opportunity to join.
+---
+>         When there's an existing valid rendezvous in state 'final', we have to
+>         wait until the next opportunity to join.
+661c1171,1177
+<         active_version, state = self.get_rdzv_state()
+---
+>         while True:
+>             try:
+>                 active_version, state = self.get_rdzv_state()
+>                 break
+>             except:
+>                 continue
+> 
+666,672c1182,1214
+<             # Check if current rendezvous state is valid, in the sense that all
+<             # its members are alive (renewing their lease).
+<             # If not, try destroy this rendezvous, so a new one can be created.
+<             alive_members = self.client.get(
+<                 self.get_path(f"/rdzv/v_{expected_version}")
+<             )
+<             keep_alive_keys = [ch.key for ch in alive_members.children]
+---
+>             # PROJECT-PACTUM: Do not destroy the rendezvous if there's a
+>             #                 failure. Failures are fine :)
+>             # # Check if current rendezvous state is valid, in the sense that all
+>             # # its members are alive (renewing their lease).
+>             # # If not, try destroy this rendezvous, so a new one can be created.
+>             # alive_members = self.client.get(
+>             #     self.get_path("/rdzv/v_{version}".format(version=expected_version))
+>             # )
+>             # keep_alive_keys = [ch.key for ch in alive_members.children]
+> 
+>             # for key in state["keep_alives"]:
+>             #     if key not in keep_alive_keys:
+>             #         # This participant didn't renew their lease. We'll declare this
+>             #         # rendezvous version as dead (but only if it hadn't changed)
+>             #         log.warning("Keep-alive key {} is not renewed.".format(key))
+>             #         log.warning(
+>             #             "Rendevous version {} is incomplete. ".format(expected_version)
+>             #         )
+>             #         log.warning("Attempting to destroy it.")
+> 
+>             #         # Compare-and-delete operation. Throws if compare failed,
+>             #         # which means rendezvous was already destroyed/re-created/closed,
+>             #         # and we can try to re-enter the barrier.
+>             #         self.client.delete(
+>             #             key=self.get_path("/rdzv/active_version"),
+>             #             prevValue=active_version.value,
+>             #         )
+> 
+>             #         log.warning(
+>             #             "Destroyed rendezvous version {} successfully.".format(
+>             #                 expected_version
+>             #             )
+>             #         )
+674,699c1216,1217
+<             for key in state["keep_alives"]:
+<                 if key not in keep_alive_keys:
+<                     # This participant didn't renew their lease. We'll declare this
+<                     # rendezvous version as dead (but only if it hadn't changed)
+<                     log.info("Keep-alive key %s is not renewed.", key)
+<                     log.info(
+<                         "Rendezvous version %s is incomplete. ",
+<                         expected_version
+<                     )
+<                     log.info("Attempting to destroy it.")
+< 
+<                     # Compare-and-delete operation. Throws if compare failed,
+<                     # which means rendezvous was already destroyed/re-created/closed,
+<                     # and we can try to re-enter the barrier.
+<                     self.client.delete(
+<                         key=self.get_path("/rdzv/active_version"),
+<                         prevValue=active_version.value,
+<                     )
+< 
+<                     log.info(
+<                         "Destroyed rendezvous version %s successfully.",
+<                         expected_version
+<                     )
+< 
+<                     # We can return (and retry) immediately
+<                     return
+---
+>             #         # We can return (and retry) immediately
+>             #         return
+718c1236,1242
+<             active_version, state = self.get_rdzv_state()
+---
+> 
+>             while True:
+>                 try:
+>                     active_version, state = self.get_rdzv_state()
+>                     break
+>                 except:
+>                     continue
+732c1256
+<            we try the transition to <frozen, expected_version>
+---
+>            we try the tranisiton to <frozen, expected_version>
+735a1260
+> 
+740c1265
+<                 # when num_max_workers is reached before the timeout.
+---
+>                 # when num_max_workers is reached before the tiemout.
+762c1287
+<                     log.info("Join last-call transition CAS unsuccessful. Will retry")
+---
+>                     log.warning("Join last-call transition CAS unsuccessful. Will retry")
+788c1313
+<                 log.info("Join last-call TTL refresh CAS unsuccessful, will retry")
+---
+>                 log.warning("Join last-call TTL refresh CAS unsuccessful, will retry")
+815c1340
+<                 log.info("Set closed CAS unsuccessful, retrying")
+---
+>                 log.warning("Set closed CAS unsuccessful, retrying")
+844c1369,1371
+<         return f"{self._prefix}run_{self._run_id}{path}"
+---
+>         return "{prefix}run_{run_id}{path}".format(
+>             prefix=self._prefix, run_id=self._run_id, path=path
+>         )
+885c1412
+<         node = self.get_path(f"/rdzv/v_{rdzv_version}/extra_data")
+---
+>         node = self.get_path("/rdzv/v_{}/extra_data".format(rdzv_version))
+911c1438
+<                 log.info("Store extra_data CAS unsuccessful, retrying")
+---
+>                 log.warning("Store extra_data CAS unsuccessful, retrying")
+916,917c1443,1444
+<         node = self.get_path(f"/rdzv/v_{rdzv_version}/extra_data")
+<         node_dir = self.get_path(f"/rdzv/v_{rdzv_version}")
+---
+>         node = self.get_path("/rdzv/v_{}/extra_data".format(rdzv_version))
+>         node_dir = self.get_path("/rdzv/v_{}".format(rdzv_version))
+949c1476,1478
+<     """Create a new ``etcd.Client`` from the specified ``RendezvousParameters``."""
+---
+>     """
+>     Creates a new ``etcd.Client`` from the specified ``RendezvousParameters``.
+>     """
+1031a1561,1562
+>     logger.warning('Start create_rdzv_handler')
+> 
+1044a1576
+>     logger.warning('End create_rdzv_handler')

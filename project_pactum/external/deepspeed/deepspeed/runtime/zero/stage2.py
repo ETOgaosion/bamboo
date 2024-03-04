@@ -3,7 +3,7 @@ Copyright 2019 The Microsoft DeepSpeed Team
 '''
 
 import torch
-from torch.distributed.distributed_c10d import _get_global_rank
+from torch.distributed.distributed_c10d import get_global_rank
 import torch.distributed as dist
 import math
 from torch._six import inf
@@ -928,7 +928,7 @@ class FP16_DeepSpeedZeroOptimizer(object):
                 #     print(f"Rank {dist.get_rank()} rank offet id {i} real dp size {dist.get_world_size(group=real_dp_process_group[i])} and dst: {dst}")
                 # dist.barrier()
                 #dist.barrier()
-                dst_rank = _get_global_rank(real_dp_process_group[i], dst)
+                dst_rank = get_global_rank(real_dp_process_group[i], dst)
                 async_handle = dist.reduce(grad_slice,
                                            dst=dst_rank,
                                            group=real_dp_process_group[i],
@@ -1307,7 +1307,7 @@ class FP16_DeepSpeedZeroOptimizer(object):
             #    "All Reducing"
             dist.all_reduce(tensor_to_allreduce, group=self.dp_process_group)
         else:
-            global_rank = _get_global_rank(self.dp_process_group, rank)
+            global_rank = get_global_rank(self.dp_process_group, rank)
             dist.reduce(tensor_to_allreduce, global_rank, group=self.dp_process_group)
 
         if allreduce_always_fp32 and tensor is not tensor_to_allreduce:

@@ -11,7 +11,7 @@ import functools
 import itertools
 
 import torch
-from torch.distributed.distributed_c10d import _get_global_rank
+from torch.distributed.distributed_c10d import get_global_rank
 
 from .linear import LinearModuleForZeroStage3, LinearFunctionForZeroStage3
 from .offload_constants import *
@@ -27,7 +27,7 @@ param_count = 0
 partitioned_param_data_shape = [1]
 
 
-def print_rank_0(message, debug=False, force=False):
+def print_rank_0(message, debug=True, force=False):
     rank = torch.distributed.get_rank()
     if rank == 0 and (debug or force):
         print(message)
@@ -1187,7 +1187,7 @@ class GatheredParameters:
                 self.src_rank = modifier_rank
             else:
                 # A group was specified; convert DP rank to global rank
-                self.src_rank = _get_global_rank(self.params[0].ds_process_group,
+                self.src_rank = get_global_rank(self.params[0].ds_process_group,
                                                  modifier_rank)
         self.fwd_module = fwd_module
         if self.fwd_module is not None:

@@ -71,14 +71,13 @@ class ProjectPactumAgent(SimpleElasticAgent):
     def check_for_preemption(self):
         while True:
             rand = random.uniform(0, 1)
-            log.warning(str(time.time()) + ", " + str(rand) + ", ready ? " + str(self._check_ready()))
+            log.info(str(time.time()) + ", " + str(rand) + ", ready ? " + str(self._check_ready()))
             # if rand <= self.probability:
-            if rand <= 0.5 and self._check_ready():
-                log.warning(str(time.time()) + ", " + str(rand) + ", Preemption detected")
+            if rand < 0 and self._check_ready():
+                log.info(str(time.time()) + ", " + str(rand) + ", Preemption detected")
                 os.kill(os.getpid(), signal.SIGTERM)
                 break
-            else:
-                time.sleep(3)
+            time.sleep(3)
             
     def signal(self, signum, frame):
         role = self._worker_group.spec.role
@@ -191,7 +190,7 @@ class ProjectPactumAgent(SimpleElasticAgent):
                 self._exit_barrier()
                 return run_result
             elif state in {WorkerState.UNHEALTHY, WorkerState.FAILED}:
-
+                log.info(f'self._remaining_restarts, {self._remaining_restarts}, spec.max_restarts, {spec.max_restarts}')
                 # PROJECT-PACTUM: If any worker exited with the special code to
                 #                 put it on standby, just restart the workers so
                 #                 it does another rendezvous
@@ -240,7 +239,7 @@ class ProjectPactumAgent(SimpleElasticAgent):
     def _drain_preempting_workers(self, signum, frame):
         if self._pcontext is not None:
             for pid in self._pcontext.pids().values():
-                log.warning(f"Draining worker pid={pid} due to preemption")
+                log.info(f"Draining worker pid={pid} due to preemption")
                 os.kill(pid, signal.SIGTERM)
 
     def _assign_worker_ranks(

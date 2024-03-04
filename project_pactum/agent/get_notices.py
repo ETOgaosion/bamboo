@@ -46,9 +46,7 @@ def check_for_preemption():
     while True:
         rand = random.uniform(0, 1)
         logger.info(str(time.time()) + ", " + str(rand) + ", rand generation")
-        if rand <= 0.5:
+        if rand <= 0.1:
             logger.info(str(time.time()) + ", " + str(rand) + ", Preemption detected")
             os.kill(os.getpid(), signal.SIGTERM)
-            break
-        else:
-            time.sleep(3)
+        time.sleep(3)

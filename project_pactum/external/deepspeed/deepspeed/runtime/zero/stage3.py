@@ -8,7 +8,7 @@ import os
 from collections import defaultdict, OrderedDict
 import itertools
 import torch
-from torch.distributed.distributed_c10d import _get_global_rank
+from torch.distributed.distributed_c10d import get_global_rank
 import torch.distributed as dist
 import math
 from torch._six import inf
@@ -35,7 +35,7 @@ FWD_MODULE_STACK = list()
 from deepspeed.utils.debug import debug_module2name_id, debug_param2name_id, debug_param2name_id_numel, debug_param2name_id_shape_device, debug_module2name_class, printflock, log_rank_file
 
 
-def print_rank_0(message, debug=False, force=False):
+def print_rank_0(message, debug=True, force=False):
     rank = torch.distributed.get_rank()
     if rank == 0 and (debug or force):
         print(message)
@@ -2313,7 +2313,7 @@ class FP16_DeepSpeedZeroOptimizer_Stage3(object):
             #    "All Reducing"
             dist.all_reduce(tensor_to_allreduce, group=self.dp_process_group)
         else:
-            global_rank = _get_global_rank(self.dp_process_group, rank)
+            global_rank = get_global_rank(self.dp_process_group, rank)
             dist.reduce(tensor_to_allreduce, global_rank, group=self.dp_process_group)
 
         if allreduce_always_fp32 and tensor is not tensor_to_allreduce:

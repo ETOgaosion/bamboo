@@ -1,61 +1,748 @@
 ARGS localhost encoder 1 /home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer
-RUNNING CMD export PROJECT_PACTUM_LOGGING_WARNING='etcd.client,etcd.lock,torch.distributed.distributed_c10d' 	export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python 	&& 	export PYTHONPATH=/home/gaoziyuan/project/bamboo/project-pactum:${PYTHONPATH} 	&& 	python -m project_pactum.run 	--rdzv_backend=etcd-v2 	--rdzv_endpoint=localhost:2379 	--rdzv_id=encoder 	--nnodes=1:64 	--nproc_per_node=1 	--project-pactum 	--max-pipe-parallel-size=24 	--default-num-stages=1 	/home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer.py 	--backend=nccl 	--redundancy_level=1 	 	--deepspeed 	--deepspeed_config /home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer.json
-[1;36m[0.044 p54259/t140606186587968 INFO root][m [36mUsing nproc_per_node=1.[m
-[1;33m[0.044 p54259/t140606186587968 WARNING project_pactum.etcd][m [33mStart create_rdzv_handler[m
-WARNING 2024-03-01 16:44:08,309 Etcd machines: ['http://localhost:2379', 'http://localhost:4001']
-[1;33m[0.062 p54259/t140606186587968 WARNING project_pactum.etcd][m [33mEnd create_rdzv_handler[m
-[1;33m[0.096 p54259/t140601353721600 WARNING project_pactum.agent.api][m [33m1709282648.3569632, 0.908393431204004, ready ? False[m
-WARNING 2024-03-01 16:44:08,357 Attempting to join next rendezvous
-[1;33m[0.096 p54259/t140606186587968 WARNING project_pactum.etcd][m [33m/torchelastic/p2p/run_encoder/rdzv/active_version[m
-WARNING 2024-03-01 16:44:08,364 New rendezvous state created: {'status': 'joinable', 'version': '1', 'participants': []}
-WARNING 2024-03-01 16:44:08,452 Joined rendezvous version 1 as rank 0. Full state: {'status': 'joinable', 'version': '1', 'participants': [0]}
-WARNING 2024-03-01 16:44:08,452 Rank 0 is responsible for join last call.
-[1;33m[3.099 p54259/t140601353721600 WARNING project_pactum.agent.api][m [33m1709282651.3605103, 0.6555078456820653, ready ? False[m
-WARNING 2024-03-01 16:44:13,471 Rank 0 finished join last call.
-WARNING 2024-03-01 16:44:13,471 Waiting for remaining peers.
-WARNING 2024-03-01 16:44:13,473 All peers arrived. Confirming membership.
-[1;33m[5.303 p54259/t140606186587968 WARNING project_pactum.etcd][m [33mnum_active_nodes: 1[m
-[1;33m[5.303 p54259/t140606186587968 WARNING project_pactum.etcd][m [33mnum_participants: 1[m
-WARNING 2024-03-01 16:44:13,571 Waiting for confirmations from all peers.
-WARNING 2024-03-01 16:44:13,572 Rendezvous version 1 is complete. Final state: {'status': 'final', 'version': '1', 'participants': [0], 'keep_alives': ['/torchelastic/p2p/run_encoder/rdzv/v_1/rank_0'], 'num_workers_waiting': 0, 'previous_version': '-1', 'num_pipelines': '1', 'num_stages': '1'}
-WARNING 2024-03-01 16:44:13,577 Creating EtcdStore as the c10d::Store implementation
-[1;33m[6.103 p54259/t140601353721600 WARNING project_pactum.agent.api][m [33m1709282654.363968, 0.23195382260109054, ready ? True[m
-[1;33m[6.103 p54259/t140601353721600 WARNING project_pactum.agent.api][m [33m1709282654.3647246, 0.23195382260109054, Preemption detected[m
-[1;33m[6.104 p54259/t140606186587968 WARNING project_pactum.agent.api][m [33mDraining worker pid=54386 due to preemption[m
-[1;31m[10.350 p54259/t140606186587968 ERROR torch.distributed.elastic.multiprocessing.api][m [31mfailed (exitcode: -15) local_rank: 0 (pid: 54386) of binary: /home/gaoziyuan/miniconda3/envs/Bamboo/bin/python[m
-[1;31m[10.350 p54259/t140606186587968 ERROR project_pactum.agent.api][m [31m[default] Worker group failed[m
-Traceback (most recent call last):
-  File "/home/gaoziyuan/miniconda3/envs/Bamboo/lib/python3.7/runpy.py", line 193, in _run_module_as_main
-    "__main__", mod_spec)
-  File "/home/gaoziyuan/miniconda3/envs/Bamboo/lib/python3.7/runpy.py", line 85, in _run_code
-    exec(code, run_globals)
-  File "/home/gaoziyuan/project/bamboo/project_pactum/run/__main__.py", line 5, in <module>
-    project_pactum.run.main(sys.argv[1:])
-  File "/home/gaoziyuan/project/bamboo/project_pactum/run/__init__.py", line 246, in main
-    run(options)
-  File "/home/gaoziyuan/project/bamboo/project_pactum/run/__init__.py", line 240, in run
-    )(*cmd_args)
-  File "/home/gaoziyuan/project/bamboo/project_pactum/run/api.py", line 107, in __call__
-    return launch_agent(self._config, self._entrypoint, list(args))
-  File "/home/gaoziyuan/miniconda3/envs/Bamboo/lib/python3.7/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 346, in wrapper
-    return f(*args, **kwargs)
-  File "/home/gaoziyuan/project/bamboo/project_pactum/run/api.py", line 371, in launch_agent
-    failures=result.failures,
-torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
-============================================================
-/home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer.py FAILED
-------------------------------------------------------------
-Failures:
-  <NO_OTHER_FAILURES>
-------------------------------------------------------------
-Root Cause (first observed failure):
-[0]:
-  time      : 2024-03-01_16:44:18
-  host      : zkyd
-  rank      : 0 (local_rank: 0)
-  exitcode  : -15 (pid: 54386)
-  error_file: <N/A>
-  traceback : Signal 15 (SIGTERM) received by PID 54386
-============================================================
+RUNNING CMD export PROJECT_PACTUM_LOGGING_WARNING='etcd.client,etcd.lock,torch.distributed.distributed_c10d' 	export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python 	export LOGLEVEL=INFO 	&& 	export PYTHONPATH=/home/gaoziyuan/project/bamboo/project-pactum:${PYTHONPATH} 	&& 	python -m project_pactum.run 	--rdzv_backend=etcd-v2 	--rdzv_endpoint=localhost:2379 	--rdzv_id=encoder 	--nnodes=1:64 	--max_restarts=99999 	--nproc_per_node=1 	--project-pactum 	--max-pipe-parallel-size=24 	--default-num-stages=1 	/home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer.py 	--backend=nccl 	--redundancy_level=1 	 	--deepspeed 	--deepspeed_config /home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer.json
+[1;36m[0.002 p8057/t140001615296320 INFO project_pactum.run.api][m [36margs: Namespace(default_num_stages=1, log_dir=None, master_addr='127.0.0.1', master_port=29500, max_pipe_parallel_size=24, max_restarts=99999, module=False, monitor_interval=5, nnodes='1:64', no_python=False, node_rank=0, nproc_per_node='1', project_pactum=True, rdzv_backend='etcd-v2', rdzv_conf='', rdzv_endpoint='localhost:2379', rdzv_id='encoder', redirects='0', role='default', run_path=False, standalone=False, start_method='spawn', tee='0', training_script='/home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer.py', training_script_args=['--backend=nccl', '--redundancy_level=1', '--deepspeed', '--deepspeed_config', '/home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer.json'], use_env=True)[m
+[1;36m[0.044 p8057/t140001615296320 INFO root][m [36mUsing nproc_per_node=1.[m
+[1;36m[0.044 p8057/t140001615296320 INFO project_pactum.run.api][m [36mStarting elastic_operator with launch configs:
+  entrypoint             : /home/gaoziyuan/miniconda3/envs/Bamboo/bin/python
+  min_nodes              : 1
+  max_nodes              : 64
+  nproc_per_node         : 1
+  run_id                 : encoder
+  rdzv_backend           : etcd-v2
+  rdzv_endpoint          : localhost:2379
+  rdzv_configs           : {'last_call_timeout': 5, 'timeout': 900}
+  max_restarts           : 99999
+  monitor_interval       : 5
+  log_dir                : None
+  metrics_cfg            : {}
+  max_pipe_parallel_size : 24
+  default_pipeline_size  : 1
+[m
+[1;33m[0.044 p8057/t140001615296320 WARNING project_pactum.etcd][m [33mStart create_rdzv_handler[m
+WARNING 2024-03-04 17:34:54,170 Etcd machines: ['http://localhost:2379', 'http://localhost:4001']
+[1;33m[0.060 p8057/t140001615296320 WARNING project_pactum.etcd][m [33mEnd create_rdzv_handler[m
+[1;36m[0.079 p8057/t140001615296320 INFO project_pactum.agent.api][m [36mlog directory set to: /tmp/torchelastic_4i4g__6w/encoder_jbuqrozk[m
+[1;36m[0.080 p8057/t139996782692096 INFO project_pactum.agent.api][m [36m1709544894.2014565, 0.8351612228203622, ready ? False[m
+[1;36m[0.080 p8057/t140001615296320 INFO project_pactum.agent.api][m [36m[default] starting workers for entrypoint: python[m
+[1;36m[0.080 p8057/t140001615296320 INFO torch.distributed.elastic.agent.server.api][m [36m[default] Rendezvous'ing worker group[m
+WARNING 2024-03-04 17:34:54,201 Attempting to join next rendezvous
+[1;33m[0.080 p8057/t140001615296320 WARNING project_pactum.etcd][m [33m/torchelastic/p2p/run_encoder/rdzv/active_version[m
+WARNING 2024-03-04 17:34:54,207 New rendezvous state created: {'status': 'joinable', 'version': '1', 'participants': []}
+WARNING 2024-03-04 17:34:54,268 Joined rendezvous version 1 as rank 0. Full state: {'status': 'joinable', 'version': '1', 'participants': [0]}
+WARNING 2024-03-04 17:34:54,269 Rank 0 is responsible for join last call.
+[1;36m[3.083 p8057/t139996782692096 INFO project_pactum.agent.api][m [36m1709544897.2049525, 0.004510754661351202, ready ? False[m
+WARNING 2024-03-04 17:34:59,287 Rank 0 finished join last call.
+WARNING 2024-03-04 17:34:59,287 Waiting for remaining peers.
+WARNING 2024-03-04 17:34:59,289 All peers arrived. Confirming membership.
+[1;33m[5.196 p8057/t140001615296320 WARNING project_pactum.etcd][m [33mnum_active_nodes: 1[m
+[1;33m[5.197 p8057/t140001615296320 WARNING project_pactum.etcd][m [33mnum_participants: 1[m
+WARNING 2024-03-04 17:34:59,323 Waiting for confirmations from all peers.
+WARNING 2024-03-04 17:34:59,325 Rendezvous version 1 is complete. Final state: {'status': 'final', 'version': '1', 'participants': [0], 'keep_alives': ['/torchelastic/p2p/run_encoder/rdzv/v_1/rank_0'], 'num_workers_waiting': 0, 'previous_version': '-1', 'num_pipelines': '1', 'num_stages': '1'}
+WARNING 2024-03-04 17:34:59,330 Creating EtcdStore as the c10d::Store implementation
+[1;36m[5.219 p8057/t140001615296320 INFO project_pactum.agent.api][m [36m[default] Rendezvous complete for workers. Result:
+  restart_count=0
+  master_addr=zkyd
+  master_port=51857
+  group_rank=0
+  group_world_size=1
+  num_pipelines=1
+  num_stages=1
+  global_decision=[GlobalInfo(rank=0, previous_coordinates=[], active_coordinates=[[0, 0]])]
+  local_ranks=[0]
+  role_ranks=[0]
+  global_ranks=[0]
+  role_world_sizes=[1]
+  global_world_sizes=[1]
+[m
+[1;36m[5.220 p8057/t140001615296320 INFO torch.distributed.elastic.agent.server.api][m [36m[default] Starting worker group[m
+[1;36m[5.222 p8057/t140001615296320 INFO torch.distributed.elastic.multiprocessing][m [36mSetting worker0 reply file to: /tmp/torchelastic_4i4g__6w/encoder_jbuqrozk/attempt_0/0/error.json[m
+[1;36m[6.087 p8057/t139996782692096 INFO project_pactum.agent.api][m [36m1709544900.2085867, 0.5391301243026232, ready ? True[m
+[1;33m[0.303 p8185/t139672310572864 WARNING project_pactum.etcd][m [33mStart create_rdzv_handler[m
+http://localhost:2379/v2/machines
+http://localhost:2379/v2/machines
+WARNING 2024-03-04 17:35:00,959 Etcd machines: ['http://localhost:2379', 'http://localhost:4001']
+[1;33m[0.321 p8185/t139672310572864 WARNING project_pactum.etcd][m [33mEnd create_rdzv_handler[m
+WARNING 2024-03-04 17:35:00,973 Creating EtcdStore as the c10d::Store implementation
+[2024-03-04 17:35:00,974] [INFO] [distributed.py:52:init_distributed] Initializing torch distributed with backend: nccl
+STARTING WITH RANK = 0 and world size = 1 and init_method = None
+[1;36m[9.091 p8057/t139996782692096 INFO project_pactum.agent.api][m [36m1709544903.2124455, 0.13886609530585536, ready ? True[m
+[1;35m[2.965 p8185/t139672310572864 DEBUG deepspeed.utils.distributed][m [35m★☆★☆★☆★☆★☆★ FINISHED DIST INITIALIZATION ★☆★☆★☆★☆★☆★[m
+SEED_LAYERS=False BASE_SEED=1234 SEED_FN=None
+[2024-03-04 17:35:03,768] [INFO] [module.py:581:_partition_layers] Partitioning pipeline stages with method uniform
+parts=[0, 10]
+stage=0 layers=10
+     0: EncoderLayer
+     1: EncoderLayer
+     2: EncoderLayer
+     3: EncoderLayer
+     4: EncoderLayer
+     5: EncoderLayer
+     6: EncoderLayer
+     7: EncoderLayer
+     8: LayerNorm
+     9: <lambda>
+  loss: MSELoss
+[1;36m[12.094 p8057/t139996782692096 INFO project_pactum.agent.api][m [36m1709544906.2159, 0.23827092929746863, ready ? True[m
+[1;36m[15.098 p8057/t139996782692096 INFO project_pactum.agent.api][m [36m1709544909.219364, 0.34717657827376003, ready ? True[m
+[1;36m[18.101 p8057/t139996782692096 INFO project_pactum.agent.api][m [36m1709544912.2228534, 0.9958244236280185, ready ? True[m
+[1;36m[21.105 p8057/t139996782692096 INFO project_pactum.agent.api][m [36m1709544915.226353, 0.7259381708918804, ready ? True[m
+[1;36m[24.108 p8057/t139996782692096 INFO project_pactum.agent.api][m [36m1709544918.229864, 0.9769236301724358, ready ? True[m
+[2024-03-04 17:35:20,045] [INFO] [logging.py:68:log_dist] [Rank 0] DeepSpeed info: version=0.5.2+4c7a31c, git-hash=4c7a31c, git-branch=main
+[1;33m[19.395 p8185/t139672310572864 WARNING project_pactum.etcd][m [33mStart create_rdzv_handler[m
+http://localhost:2379/v2/machines
+http://localhost:2379/v2/machines
+WARNING 2024-03-04 17:35:20,049 Etcd machines: ['http://localhost:2379', 'http://localhost:4001']
+[1;33m[19.406 p8185/t139672310572864 WARNING project_pactum.etcd][m [33mEnd create_rdzv_handler[m
+[2024-03-04 17:35:20,056] [INFO] [engine.py:175:__init__] Started rendezvous handler
+WARNING 2024-03-04 17:35:20,057 Creating EtcdStore as the c10d::Store implementation
+[2024-03-04 17:35:20,156] [INFO] [engine.py:242:__init__] DeepSpeed Flops Profiler Enabled: False
+Using /home/gaoziyuan/.cache/torch_extensions/py37_cu117 as PyTorch extensions root...
+Detected CUDA files, patching ldflags
+Emitting ninja build file /home/gaoziyuan/.cache/torch_extensions/py37_cu117/fused_adam/build.ninja...
+Building extension module fused_adam...
+Allowing ninja to set a default number of workers... (overridable by setting the environment variable MAX_JOBS=N)
+ninja: no work to do.
+Loading extension module fused_adam...
+Time to load fused_adam op: 0.27964258193969727 seconds
+[2024-03-04 17:35:20,886] [INFO] [engine.py:930:_configure_optimizer] Using DeepSpeed Optimizer param name adam as basic optimizer
+[2024-03-04 17:35:20,892] [INFO] [engine.py:937:_configure_optimizer] DeepSpeed Basic Optimizer = FusedAdam
+[2024-03-04 17:35:20,892] [INFO] [logging.py:68:log_dist] [Rank 0] DeepSpeed Final Optimizer = adam
+[2024-03-04 17:35:20,892] [INFO] [engine.py:665:_configure_lr_scheduler] DeepSpeed using client LR scheduler
+[2024-03-04 17:35:20,892] [INFO] [logging.py:68:log_dist] [Rank 0] DeepSpeed LR Scheduler = None
+[2024-03-04 17:35:20,892] [INFO] [config.py:940:print] DeepSpeedEngine configuration:
+[2024-03-04 17:35:20,893] [INFO] [config.py:944:print]   activation_checkpointing_config  {
+    "partition_activations": false, 
+    "contiguous_memory_optimization": false, 
+    "cpu_checkpointing": false, 
+    "number_checkpoints": null, 
+    "synchronize_checkpoint_boundary": false, 
+    "profile": false
+}
+[2024-03-04 17:35:20,893] [INFO] [config.py:944:print]   aio_config ................... {'block_size': 1048576, 'queue_depth': 8, 'thread_count': 1, 'single_submit': False, 'overlap_events': True}
+[2024-03-04 17:35:20,893] [INFO] [config.py:944:print]   allreduce_always_fp32 ........ False
+[2024-03-04 17:35:20,893] [INFO] [config.py:944:print]   amp_enabled .................. False
+[2024-03-04 17:35:20,893] [INFO] [config.py:944:print]   amp_params ................... False
+[2024-03-04 17:35:20,893] [INFO] [config.py:944:print]   checkpoint_tag_validation_enabled  True
+[2024-03-04 17:35:20,893] [INFO] [config.py:944:print]   checkpoint_tag_validation_fail  False
+[2024-03-04 17:35:20,893] [INFO] [config.py:944:print]   curriculum_enabled ........... False
+[2024-03-04 17:35:20,893] [INFO] [config.py:944:print]   curriculum_params ............ False
+[2024-03-04 17:35:20,893] [INFO] [config.py:944:print]   dataloader_drop_last ......... False
+[2024-03-04 17:35:20,893] [INFO] [config.py:944:print]   disable_allgather ............ False
+[2024-03-04 17:35:20,893] [INFO] [config.py:944:print]   dump_state ................... False
+[2024-03-04 17:35:20,893] [INFO] [config.py:944:print]   dynamic_loss_scale_args ...... None
+[2024-03-04 17:35:20,893] [INFO] [config.py:944:print]   eigenvalue_enabled ........... False
+[2024-03-04 17:35:20,893] [INFO] [config.py:944:print]   eigenvalue_gas_boundary_resolution  1
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   eigenvalue_layer_name ........ bert.encoder.layer
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   eigenvalue_layer_num ......... 0
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   eigenvalue_max_iter .......... 100
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   eigenvalue_stability ......... 1e-06
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   eigenvalue_tol ............... 0.01
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   eigenvalue_verbose ........... False
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   elasticity_enabled ........... False
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   flops_profiler_config ........ {
+    "enabled": false, 
+    "profile_step": 1, 
+    "module_depth": -1, 
+    "top_modules": 1, 
+    "detailed": true, 
+    "output_file": null
+}
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   fp16_enabled ................. False
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   fp16_master_weights_and_gradients  False
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   fp16_mixed_quantize .......... False
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   global_rank .................. 0
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   gradient_accumulation_steps .. 4
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   gradient_clipping ............ 0.0
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   gradient_predivide_factor .... 1.0
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   initial_dynamic_scale ........ 4294967296
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   loss_scale ................... 0
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   memory_breakdown ............. False
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   optimizer_legacy_fusion ...... False
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   optimizer_name ............... adam
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   optimizer_params ............. {'lr': 0.001, 'betas': [0.9, 0.999], 'eps': 1e-08}
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   pipeline ..................... {'stages': 'auto', 'partition': 'best', 'seed_layers': False, 'activation_checkpoint_interval': 0}
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   pld_enabled .................. False
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   pld_params ................... False
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   prescale_gradients ........... False
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   quantize_change_rate ......... 0.001
+[2024-03-04 17:35:20,894] [INFO] [config.py:944:print]   quantize_groups .............. 1
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   quantize_offset .............. 1000
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   quantize_period .............. 1000
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   quantize_rounding ............ 0
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   quantize_start_bits .......... 16
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   quantize_target_bits ......... 8
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   quantize_training_enabled .... False
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   quantize_type ................ 0
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   quantize_verbose ............. False
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   scheduler_name ............... None
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   scheduler_params ............. None
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   sparse_attention ............. None
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   sparse_gradients_enabled ..... False
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   steps_per_print .............. 1
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   tensorboard_enabled .......... False
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   tensorboard_job_name ......... DeepSpeedJobName
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   tensorboard_output_path ...... 
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   train_batch_size ............. 32
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   train_micro_batch_size_per_gpu  8
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   use_quantizer_kernel ......... False
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   wall_clock_breakdown ......... False
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   world_size ................... 1
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   zero_allow_untested_optimizer  False
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   zero_config .................. {
+    "stage": 0, 
+    "contiguous_gradients": true, 
+    "reduce_scatter": true, 
+    "reduce_bucket_size": 5.000000e+08, 
+    "allgather_partitions": true, 
+    "allgather_bucket_size": 5.000000e+08, 
+    "overlap_comm": false, 
+    "load_from_fp32_weights": true, 
+    "elastic_checkpoint": true, 
+    "offload_param": null, 
+    "offload_optimizer": null, 
+    "sub_group_size": 1.000000e+09, 
+    "prefetch_bucket_size": 5.000000e+07, 
+    "param_persistence_threshold": 1.000000e+05, 
+    "max_live_parameters": 1.000000e+09, 
+    "max_reuse_distance": 1.000000e+09, 
+    "gather_fp16_weights_on_model_save": false, 
+    "ignore_unused_parameters": true, 
+    "round_robin_gradients": false, 
+    "legacy_stage1": false
+}
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   zero_enabled ................. False
+[2024-03-04 17:35:20,895] [INFO] [config.py:944:print]   zero_optimization_stage ...... 0
+[2024-03-04 17:35:20,896] [INFO] [config.py:951:print]   json = {
+    "train_batch_size": 32, 
+    "train_micro_batch_size_per_gpu": 8, 
+    "optimizer": {
+        "type": "Adam", 
+        "params": {
+            "lr": 0.001, 
+            "betas": [0.9, 0.999], 
+            "eps": 1e-08
+        }
+    }, 
+    "steps_per_print": 1, 
+    "wall_clock_breakdown": false
+}
+Using /home/gaoziyuan/.cache/torch_extensions/py37_cu117 as PyTorch extensions root...
+Emitting ninja build file /home/gaoziyuan/.cache/torch_extensions/py37_cu117/utils/build.ninja...
+Building extension module utils...
+Allowing ninja to set a default number of workers... (overridable by setting the environment variable MAX_JOBS=N)
+ninja: no work to do.
+Loading extension module utils...
+Time to load utils op: 0.27396392822265625 seconds
+[2024-03-04 17:35:21,170] [INFO] [engine.py:133:__init__] CONFIG: micro_batches=4 micro_batch_size=8
+[1;36m[27.112 p8057/t139996782692096 INFO project_pactum.agent.api][m [36m1709544921.2333615, 0.21643151931540905, ready ? True[m
+[ 00|00 ] STARTING BATCH 0 with coordinates [[0, 0]]
+[DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=0)
+cmd: ForwardPass(buffer_id=0, stage_id=0)
+/home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/deepspeed/runtime/pipe/engine.py:2218: UserWarning: The .grad attribute of a Tensor that is not a leaf Tensor is being accessed. Its .grad attribute won't be populated during autograd.backward(). If you indeed want the .grad field to be populated for a non-leaf Tensor, use .retain_grad() on the non-leaf Tensor. If you access the non-leaf Tensor by mistake, make sure you access the leaf Tensor instead. See github.com/pytorch/pytorch/pull/30531 for more informations. (Triggered internally at aten/src/ATen/core/TensorBody.h:480.)
+  if inputs.grad is not None:
+[DEBUG Pipeline] Instructions in step 1: BackwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=0, stage_id=0)
+[DEBUG Pipeline] Instructions in step 2: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=1),ForwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=1)
+cmd: ForwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 3: BackwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 4: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=2),ForwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=2)
+cmd: ForwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 5: BackwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 6: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=3),ForwardPass(buffer_id=3, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=3)
+cmd: ForwardPass(buffer_id=3, stage_id=0)
+[DEBUG Pipeline] Instructions in step 7: BackwardPass(buffer_id=3, stage_id=0),ReduceGrads(stage_id=0),OptimizerStep()
+
+
+cmd: BackwardPass(buffer_id=3, stage_id=0)
+cmd: ReduceGrads(stage_id=0)
+cmd: OptimizerStep()
+[DEBUG Pipeline] Finish one iteration
+[2024-03-04 17:35:22,525] [INFO] [engine.py:1420:train_batch] steps: 1 loss: 1.0159 iter time (s): 1.104 samples/sec: 28.994
+[ 00|01 ] FINISHING BATCH 1 at 2024-03-04 17:35:22 took 1.1082491874694824 s
+[ 00|01 ] STARTING BATCH 1 with coordinates [[0, 0]]
+[DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=0)
+cmd: ForwardPass(buffer_id=0, stage_id=0)
+[DEBUG Pipeline] Instructions in step 1: BackwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=0, stage_id=0)
+[DEBUG Pipeline] Instructions in step 2: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=1),ForwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=1)
+cmd: ForwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 3: BackwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 4: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=2),ForwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=2)
+cmd: ForwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 5: BackwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 6: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=3),ForwardPass(buffer_id=3, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=3)
+cmd: ForwardPass(buffer_id=3, stage_id=0)
+[DEBUG Pipeline] Instructions in step 7: BackwardPass(buffer_id=3, stage_id=0),ReduceGrads(stage_id=0),OptimizerStep()
+
+
+cmd: BackwardPass(buffer_id=3, stage_id=0)
+cmd: ReduceGrads(stage_id=0)
+cmd: OptimizerStep()
+[DEBUG Pipeline] Finish one iteration
+[2024-03-04 17:35:23,387] [INFO] [engine.py:1420:train_batch] steps: 2 loss: 2.3278 iter time (s): 0.855 samples/sec: 37.406
+[ 00|02 ] FINISHING BATCH 2 at 2024-03-04 17:35:23 took 0.8601016998291016 s
+[ 00|02 ] STARTING BATCH 2 with coordinates [[0, 0]]
+[DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=0)
+cmd: ForwardPass(buffer_id=0, stage_id=0)
+[DEBUG Pipeline] Instructions in step 1: BackwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=0, stage_id=0)
+[DEBUG Pipeline] Instructions in step 2: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=1),ForwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=1)
+cmd: ForwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 3: BackwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 4: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=2),ForwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=2)
+cmd: ForwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 5: BackwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 6: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=3),ForwardPass(buffer_id=3, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=3)
+cmd: ForwardPass(buffer_id=3, stage_id=0)
+[DEBUG Pipeline] Instructions in step 7: BackwardPass(buffer_id=3, stage_id=0),ReduceGrads(stage_id=0),OptimizerStep()
+
+
+cmd: BackwardPass(buffer_id=3, stage_id=0)
+cmd: ReduceGrads(stage_id=0)
+[1;36m[30.115 p8057/t139996782692096 INFO project_pactum.agent.api][m [36m1709544924.23685, 0.0950062954916363, ready ? True[m
+cmd: OptimizerStep()
+[DEBUG Pipeline] Finish one iteration
+[2024-03-04 17:35:24,262] [INFO] [engine.py:1420:train_batch] steps: 3 loss: 1.3438 iter time (s): 0.864 samples/sec: 37.053
+[ 00|03 ] FINISHING BATCH 3 at 2024-03-04 17:35:24 took 0.8715898990631104 s
+[ 00|03 ] STARTING BATCH 3 with coordinates [[0, 0]]
+[DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=0)
+cmd: ForwardPass(buffer_id=0, stage_id=0)
+[DEBUG Pipeline] Instructions in step 1: BackwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=0, stage_id=0)
+[DEBUG Pipeline] Instructions in step 2: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=1),ForwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=1)
+cmd: ForwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 3: BackwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 4: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=2),ForwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=2)
+cmd: ForwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 5: BackwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 6: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=3),ForwardPass(buffer_id=3, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=3)
+cmd: ForwardPass(buffer_id=3, stage_id=0)
+[DEBUG Pipeline] Instructions in step 7: BackwardPass(buffer_id=3, stage_id=0),ReduceGrads(stage_id=0),OptimizerStep()
+
+
+cmd: BackwardPass(buffer_id=3, stage_id=0)
+cmd: ReduceGrads(stage_id=0)
+cmd: OptimizerStep()
+[DEBUG Pipeline] Finish one iteration
+[2024-03-04 17:35:25,135] [INFO] [engine.py:1420:train_batch] steps: 4 loss: 1.2360 iter time (s): 0.864 samples/sec: 37.044
+[ 00|04 ] FINISHING BATCH 4 at 2024-03-04 17:35:25 took 0.8695216178894043 s
+[ 00|04 ] STARTING BATCH 4 with coordinates [[0, 0]]
+[DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=0)
+cmd: ForwardPass(buffer_id=0, stage_id=0)
+[DEBUG Pipeline] Instructions in step 1: BackwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=0, stage_id=0)
+[DEBUG Pipeline] Instructions in step 2: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=1),ForwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=1)
+cmd: ForwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 3: BackwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 4: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=2),ForwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=2)
+cmd: ForwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 5: BackwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 6: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=3),ForwardPass(buffer_id=3, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=3)
+cmd: ForwardPass(buffer_id=3, stage_id=0)
+[DEBUG Pipeline] Instructions in step 7: BackwardPass(buffer_id=3, stage_id=0),ReduceGrads(stage_id=0),OptimizerStep()
+
+
+cmd: BackwardPass(buffer_id=3, stage_id=0)
+cmd: ReduceGrads(stage_id=0)
+cmd: OptimizerStep()
+[DEBUG Pipeline] Finish one iteration
+[2024-03-04 17:35:26,005] [INFO] [engine.py:1420:train_batch] steps: 5 loss: 1.0975 iter time (s): 0.860 samples/sec: 37.212
+[ 00|05 ] FINISHING BATCH 5 at 2024-03-04 17:35:26 took 0.8660204410552979 s
+[ 00|05 ] STARTING BATCH 5 with coordinates [[0, 0]]
+[DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=0)
+cmd: ForwardPass(buffer_id=0, stage_id=0)
+[DEBUG Pipeline] Instructions in step 1: BackwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=0, stage_id=0)
+[DEBUG Pipeline] Instructions in step 2: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=1),ForwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=1)
+cmd: ForwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 3: BackwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 4: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=2),ForwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=2)
+cmd: ForwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 5: BackwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 6: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=3),ForwardPass(buffer_id=3, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=3)
+cmd: ForwardPass(buffer_id=3, stage_id=0)
+[DEBUG Pipeline] Instructions in step 7: BackwardPass(buffer_id=3, stage_id=0),ReduceGrads(stage_id=0),OptimizerStep()
+
+
+cmd: BackwardPass(buffer_id=3, stage_id=0)
+cmd: ReduceGrads(stage_id=0)
+cmd: OptimizerStep()
+[DEBUG Pipeline] Finish one iteration
+[2024-03-04 17:35:26,873] [INFO] [engine.py:1420:train_batch] steps: 6 loss: 1.1262 iter time (s): 0.860 samples/sec: 37.217
+[ 00|06 ] FINISHING BATCH 6 at 2024-03-04 17:35:26 took 0.8652026653289795 s
+[ 00|06 ] STARTING BATCH 6 with coordinates [[0, 0]]
+[DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=0)
+cmd: ForwardPass(buffer_id=0, stage_id=0)
+[DEBUG Pipeline] Instructions in step 1: BackwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=0, stage_id=0)
+[DEBUG Pipeline] Instructions in step 2: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=1),ForwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=1)
+cmd: ForwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 3: BackwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 4: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=2),ForwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=2)
+[1;36m[33.119 p8057/t139996782692096 INFO project_pactum.agent.api][m [36m1709544927.240254, 0.9810739278296161, ready ? True[m
+cmd: ForwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 5: BackwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 6: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=3),ForwardPass(buffer_id=3, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=3)
+cmd: ForwardPass(buffer_id=3, stage_id=0)
+[DEBUG Pipeline] Instructions in step 7: BackwardPass(buffer_id=3, stage_id=0),ReduceGrads(stage_id=0),OptimizerStep()
+
+
+cmd: BackwardPass(buffer_id=3, stage_id=0)
+cmd: ReduceGrads(stage_id=0)
+cmd: OptimizerStep()
+[DEBUG Pipeline] Finish one iteration
+[2024-03-04 17:35:27,748] [INFO] [engine.py:1420:train_batch] steps: 7 loss: 1.0153 iter time (s): 0.864 samples/sec: 37.041
+[ 00|07 ] FINISHING BATCH 7 at 2024-03-04 17:35:27 took 0.871056079864502 s
+[ 00|07 ] STARTING BATCH 7 with coordinates [[0, 0]]
+[DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=0)
+cmd: ForwardPass(buffer_id=0, stage_id=0)
+[DEBUG Pipeline] Instructions in step 1: BackwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=0, stage_id=0)
+[DEBUG Pipeline] Instructions in step 2: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=1),ForwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=1)
+cmd: ForwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 3: BackwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 4: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=2),ForwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=2)
+cmd: ForwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 5: BackwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 6: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=3),ForwardPass(buffer_id=3, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=3)
+cmd: ForwardPass(buffer_id=3, stage_id=0)
+[DEBUG Pipeline] Instructions in step 7: BackwardPass(buffer_id=3, stage_id=0),ReduceGrads(stage_id=0),OptimizerStep()
+
+
+cmd: BackwardPass(buffer_id=3, stage_id=0)
+cmd: ReduceGrads(stage_id=0)
+cmd: OptimizerStep()
+[DEBUG Pipeline] Finish one iteration
+[2024-03-04 17:35:28,619] [INFO] [engine.py:1420:train_batch] steps: 8 loss: 1.1023 iter time (s): 0.861 samples/sec: 37.158
+[ 00|08 ] FINISHING BATCH 8 at 2024-03-04 17:35:28 took 0.867229700088501 s
+[ 00|08 ] STARTING BATCH 8 with coordinates [[0, 0]]
+[DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=0)
+cmd: ForwardPass(buffer_id=0, stage_id=0)
+[DEBUG Pipeline] Instructions in step 1: BackwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=0, stage_id=0)
+[DEBUG Pipeline] Instructions in step 2: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=1),ForwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=1)
+cmd: ForwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 3: BackwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 4: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=2),ForwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=2)
+cmd: ForwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 5: BackwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 6: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=3),ForwardPass(buffer_id=3, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=3)
+cmd: ForwardPass(buffer_id=3, stage_id=0)
+[DEBUG Pipeline] Instructions in step 7: BackwardPass(buffer_id=3, stage_id=0),ReduceGrads(stage_id=0),OptimizerStep()
+
+
+cmd: BackwardPass(buffer_id=3, stage_id=0)
+cmd: ReduceGrads(stage_id=0)
+cmd: OptimizerStep()
+[DEBUG Pipeline] Finish one iteration
+[2024-03-04 17:35:29,503] [INFO] [engine.py:1420:train_batch] steps: 9 loss: 1.0755 iter time (s): 0.867 samples/sec: 36.910
+[ 00|09 ] FINISHING BATCH 9 at 2024-03-04 17:35:29 took 0.8785109519958496 s
+[ 00|09 ] STARTING BATCH 9 with coordinates [[0, 0]]
+[DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=0)
+cmd: ForwardPass(buffer_id=0, stage_id=0)
+[DEBUG Pipeline] Instructions in step 1: BackwardPass(buffer_id=0, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=0, stage_id=0)
+[DEBUG Pipeline] Instructions in step 2: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=1),ForwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=1)
+cmd: ForwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 3: BackwardPass(buffer_id=1, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=1, stage_id=0)
+[DEBUG Pipeline] Instructions in step 4: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=2),ForwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=2)
+cmd: ForwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 5: BackwardPass(buffer_id=2, stage_id=0)
+
+
+cmd: BackwardPass(buffer_id=2, stage_id=0)
+[DEBUG Pipeline] Instructions in step 6: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=3),ForwardPass(buffer_id=3, stage_id=0)
+
+
+cmd: RecvActivation(buffer_id=-1, stage_id=0)
+hit3
+cmd: LoadMicroBatch(buffer_id=3)
+cmd: ForwardPass(buffer_id=3, stage_id=0)
+[DEBUG Pipeline] Instructions in step 7: BackwardPass(buffer_id=3, stage_id=0),ReduceGrads(stage_id=0),OptimizerStep()
+
+
+cmd: BackwardPass(buffer_id=3, stage_id=0)
+cmd: ReduceGrads(stage_id=0)
+[1;36m[36.122 p8057/t139996782692096 INFO project_pactum.agent.api][m [36m1709544930.2436042, 0.34001330935281115, ready ? True[m
+cmd: OptimizerStep()
+[DEBUG Pipeline] Finish one iteration
+[2024-03-04 17:35:30,370] [INFO] [engine.py:1420:train_batch] steps: 10 loss: 1.0158 iter time (s): 0.858 samples/sec: 37.288
+[ 00|10 ] FINISHING BATCH 10 at 2024-03-04 17:35:30 took 0.8639645576477051 s
+[1;36m[39.125 p8057/t139996782692096 INFO project_pactum.agent.api][m [36m1709544933.247034, 0.8662193466078562, ready ? True[m
+[1;36m[40.272 p8057/t140001615296320 INFO project_pactum.agent.api][m [36m[default] worker group successfully finished. Waiting 300 seconds for other agents to finish.[m
+[1;36m[40.272 p8057/t140001615296320 INFO torch.distributed.elastic.agent.server.api][m [36mLocal worker group finished (SUCCEEDED). Waiting 300 seconds for other agents to finish[m
+[1;36m[40.284 p8057/t140001615296320 INFO torch.distributed.elastic.agent.server.api][m [36mDone waiting for other agents. Elapsed: 0.011822938919067383 seconds[m
 http://localhost:2379/v2/machines
 http://localhost:2379/v2/machines

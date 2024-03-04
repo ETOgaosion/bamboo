@@ -97,7 +97,7 @@ diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/dataloader.py 
              batch = next(self.data_iter)
          except StopIteration:
 diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/engine.py project_pactum/external/deepspeed/deepspeed/runtime/engine.py
---- ../DeepSpeed/deepspeed/runtime/engine.py	2024-03-02 20:13:34.873539864 +0800
+--- ../DeepSpeed/deepspeed/runtime/engine.py	2024-03-02 20:13:23.869554232 +0800
 +++ project_pactum/external/deepspeed/deepspeed/runtime/engine.py	2024-02-27 18:33:42.617165349 +0800
 @@ -1,20 +1,25 @@
  '''
@@ -182,6 +182,15 @@ diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/engine.py proj
          # for debug purposes - can then debug print: debug_get_module_name(module)
          debug_extract_module_and_param_names(model)
  
+@@ -169,7 +213,7 @@
+             assert not self.elasticity_enabled(), "Elasticity is not currently supported" \
+                 " with model parallelism."
+ 
+-        self._set_distributed_vars(args)
++        self._set_distributed_vars()
+ 
+         if self.tensorboard_enabled() and self.global_rank == 0:
+             self.summary_writer = self.get_summary_writer()
 @@ -216,12 +260,13 @@
  
          # Bookkeeping for csr support
@@ -274,7 +283,25 @@ diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/engine.py proj
      def get_batch_info(self):
          """ Get all training batch related settings.
  
-@@ -1155,6 +1265,8 @@
+@@ -592,13 +702,10 @@
+         else:
+             return None
+ 
+-    def _set_distributed_vars(self, args):
+-        device_rank = args.device_rank if args is not None and hasattr(
+-            args,
+-            'device_rank') else self.local_rank
+-        if device_rank >= 0:
+-            torch.cuda.set_device(device_rank)
+-            self.device = torch.device("cuda", device_rank)
++    def _set_distributed_vars(self):
++        if self.local_rank >= 0:
++            torch.cuda.set_device(self.local_rank)
++            self.device = torch.device("cuda", self.local_rank)
+             self.world_size = dist.get_world_size()
+             self.global_rank = dist.get_rank()
+         else:
+@@ -1158,6 +1265,8 @@
                  or self.is_iterable_style_dataset(dataset)):
              raise ValueError("Training data must be a torch Dataset")
  
@@ -283,7 +310,7 @@ diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/engine.py proj
          if data_sampler is None and (route == ROUTE_PREDICT or route == ROUTE_EVAL):
              data_sampler = torch.utils.data.SequentialSampler(dataset)
  
-@@ -1288,11 +1400,7 @@
+@@ -1291,11 +1400,7 @@
  
          return loss
  
@@ -296,7 +323,7 @@ diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/engine.py proj
          # ZeRO stage 2 communicates during non gradient accumulation boundaries as well
          if self.zero_optimization_partition_gradients():
              self.optimizer.overlapping_partition_gradients_reduce_epilogue()
-@@ -1303,7 +1411,7 @@
+@@ -1306,7 +1411,7 @@
                  self.optimizer.reduce_gradients(
                      pipeline_parallel=self.pipeline_parallelism)
              else:
@@ -305,7 +332,7 @@ diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/engine.py proj
  
      def backward(self, loss, allreduce_gradients=True, release_loss=False):
          r"""Execute backward pass on the loss
-@@ -1614,10 +1722,10 @@
+@@ -1617,10 +1722,10 @@
      def _report_progress(self, step):
          lr = self.get_lr()
          mom = self.get_mom()
@@ -319,7 +346,7 @@ diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/engine.py proj
          tensor = self.flatten(bucket)
  
          tensor_to_allreduce = tensor
-@@ -1629,46 +1737,42 @@
+@@ -1632,46 +1737,42 @@
              if self.gradient_predivide_factor() != 1.0:
                  tensor_to_allreduce.mul_(1. / self.gradient_predivide_factor())
  
@@ -380,7 +407,7 @@ diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/engine.py proj
              if param.grad is None:
                  # In cases where there is an imbalance of empty grads across
                  # ranks we must create empty grads, this will ensure that every
-@@ -1678,86 +1782,52 @@
+@@ -1681,86 +1782,52 @@
                  param.grad = torch.zeros(param.size(),
                                           dtype=param.dtype,
                                           device=param.device)
@@ -410,7 +437,7 @@ diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/engine.py proj
 -                dp_group = self.mpu.get_data_parallel_group()
 -            else:
 -                dp_group = groups.get_data_parallel_group()
--
+ 
 -            if bucket_type == CSRTensor.type():
 -                # TODO: do we have to do something here?
 -                self.csr_allreduce_no_retain(bucket, dp_group=dp_group)
@@ -421,7 +448,7 @@ diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/engine.py proj
 -                    dp_group=dp_group,
 -                    #groups.get_data_parallel_group(),
 -                    numel_per_bucket=elements_per_buffer)
- 
+-
 -        if self.has_moe_layers:
 -            expert_split_buckets = split_half_float_double_csr(expert_grads)
 -            for i, bucket_tuple in enumerate(expert_split_buckets):
@@ -482,7 +509,7 @@ diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/engine.py proj
          max_size = torch.cat(all_sizes).max()
          fill_size = (max_size - my_size)
  
-@@ -1765,20 +1835,16 @@
+@@ -1768,20 +1835,16 @@
          if value.dim() == 1:
              if fill_size > 0:
                  value = torch.cat([value, value.new_zeros(fill_size)])
@@ -506,7 +533,7 @@ diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/engine.py proj
          tensors = []
          for dev_idx, t in enumerate(tensor_list):
              size = all_sizes[dev_idx][0]
-@@ -1788,12 +1854,9 @@
+@@ -1791,12 +1854,9 @@
  
          return tensors
  
@@ -4143,6 +4170,31 @@ diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/utils.py proje
 +
 +    return deser_object
 \ No newline at end of file
+diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/zero/partition_parameters.py project_pactum/external/deepspeed/deepspeed/runtime/zero/partition_parameters.py
+--- ../DeepSpeed/deepspeed/runtime/zero/partition_parameters.py	2024-03-02 20:13:23.869554232 +0800
++++ project_pactum/external/deepspeed/deepspeed/runtime/zero/partition_parameters.py	2024-02-27 18:33:42.617165349 +0800
+@@ -17,7 +17,7 @@
+ from .offload_constants import *
+ 
+ from ..utils import see_memory_usage
+-from deepspeed.utils import log_dist, init_distributed, logger
++from deepspeed.utils import log_dist, init_distributed
+ from deepspeed.utils.debug import debug_param2name_id_shape, debug_param2name_id_shape_device, debug_module2name, debug_param2name, debug_param2name_id_shape_status, printflock, log_rank_file
+ 
+ from ..swap_tensor.partitioned_param_swapper import AsyncPartitionedParameterSwapper, PartitionedParamStatus
+@@ -450,12 +450,6 @@
+ 
+                 model = deepspeed.zero.Init(module=model)
+         """
+-        if config is not None:
+-            config_dict_or_path = config
+-            logger.warning(
+-                f'zero.Init: the `config` argument is deprecated. Please use `config_dict_or_path` instead.'
+-            )
+-
+         _ds_config = DeepSpeedConfig(config_dict_or_path,
+                                      mpu) if config_dict_or_path is not None else None
+         super().__init__(enabled=enabled,
 diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/zero/stage2.py project_pactum/external/deepspeed/deepspeed/runtime/zero/stage2.py
 --- ../DeepSpeed/deepspeed/runtime/zero/stage2.py	2024-03-02 20:09:54.201885228 +0800
 +++ project_pactum/external/deepspeed/deepspeed/runtime/zero/stage2.py	2024-02-27 18:33:42.617165349 +0800
@@ -4230,3 +4282,60 @@ diff --color -bur --no-dereference ../DeepSpeed/deepspeed/utils/distributed.py p
  
  def mpi_discovery(distributed_port=TORCH_DISTRIBUTED_DEFAULT_PORT, verbose=True):
      """
+diff --color -bur --no-dereference ../DeepSpeed/deepspeed/utils/zero_to_fp32.py project_pactum/external/deepspeed/deepspeed/utils/zero_to_fp32.py
+--- ../DeepSpeed/deepspeed/utils/zero_to_fp32.py	2024-03-02 20:13:23.869554232 +0800
++++ project_pactum/external/deepspeed/deepspeed/utils/zero_to_fp32.py	2024-02-27 18:33:42.621165345 +0800
+@@ -10,7 +10,6 @@
+ import argparse
+ import torch
+ import glob
+-import math
+ import os
+ from collections import OrderedDict
+ 
+@@ -117,11 +116,6 @@
+ 
+ 
+ def zero3_partitioned_param_info(unpartitioned_numel, world_size):
+-    #print("*** ", unpartitioned_numel, world_size, " ***",)
+-    # handle an edge case where there is only 1 element (e.g. bias in a tiny test model)
+-    if unpartitioned_numel == 1:
+-        return 1, 0
+-
+     remainder = unpartitioned_numel % world_size
+     padding_numel = (world_size - remainder) if remainder else 0
+     partitioned_numel = int(unpartitioned_numel / world_size)
+@@ -211,7 +205,6 @@
+                     f"{total_params} {name} full shape: {shape} partition0 numel={partitioned_numel} partitioned_padding_numel={partitioned_padding_numel}"
+                 )
+ 
+-            if unpartitioned_numel > 1:
+                 # XXX: memory usage doubles here (zero3)
+                 state_dict[name] = torch.cat(
+                     tuple(fp32_flat_groups[i].narrow(0,
+@@ -219,25 +212,11 @@
+                                                      partitioned_numel)
+                           for i in range(world_size)),
+                     0).view(shape)
+-            else:
+-                # handle an edge case where there is only 1 element (e.g. bias in a tiny test model)
+-                state_dict[name] = fp32_flat_groups[0].narrow(
+-                    0,
+-                    offset,
+-                    partitioned_numel).view(shape)
+             offset += partitioned_numel + partitioned_padding_numel
+ 
+     if zero_stage == 3:
+         offset *= world_size
+ 
+-    def align_to_4(x):
+-        return 4 * math.ceil(x / 4)
+-
+-    if zero_stage == 2:
+-        # Z2 started to align to 4 to improve nccl performance
+-        offset = align_to_4(offset)
+-        avail_numel = align_to_4(avail_numel)
+-
+     # Sanity check
+     if offset != avail_numel:
+         raise ValueError(

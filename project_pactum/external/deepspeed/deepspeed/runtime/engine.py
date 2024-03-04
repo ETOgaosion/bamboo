@@ -21,7 +21,7 @@ from torch.nn.modules import Module
 from torch.nn.parameter import Parameter
 from torch.optim import Optimizer, optimizer
 from torch.optim.lr_scheduler import _LRScheduler
-from torch.distributed.distributed_c10d import _get_global_rank
+from torch.distributed import get_global_rank
 from tensorboardX import SummaryWriter
 
 from typing import Callable, Dict, Optional, Union, Iterable
@@ -866,13 +866,13 @@ class DeepSpeedEngine(Module):
             self.data_parallel_group = groups.get_data_parallel_group()
             self.dp_world_size = groups.get_data_parallel_world_size()
             self.mp_world_size = groups.get_model_parallel_world_size()
-            self.broadcast_src_rank = _get_global_rank(groups.get_data_parallel_group(),
+            self.broadcast_src_rank = get_global_rank(groups.get_data_parallel_group(),
                                                        0)
         else:
             self.data_parallel_group = self.mpu.get_data_parallel_group()
             self.dp_world_size = self.mpu.get_data_parallel_world_size()
             self.mp_world_size = self.mpu.get_model_parallel_world_size()
-            self.broadcast_src_rank = _get_global_rank(
+            self.broadcast_src_rank = get_global_rank(
                 self.mpu.get_data_parallel_group(),
                 0)
 
@@ -881,7 +881,7 @@ class DeepSpeedEngine(Module):
             self.expert_data_parallel_group = groups.get_expert_data_parallel_group()
             self.expert_parallel_group = groups.get_expert_parallel_group()
             self.ep_world_size = groups.get_expert_parallel_world_size()
-            self.expert_broadcast_src_rank = _get_global_rank(
+            self.expert_broadcast_src_rank = get_global_rank(
                 groups.get_expert_data_parallel_group(),
                 0)
 

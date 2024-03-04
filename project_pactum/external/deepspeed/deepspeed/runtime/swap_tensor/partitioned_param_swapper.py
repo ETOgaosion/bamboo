@@ -17,7 +17,7 @@ from .utils import swap_in_tensors, swap_out_tensors, MIN_AIO_BYTES, AIO_ALIGNED
 from ..zero.offload_constants import *
 
 
-def print_rank_0(message, debug=False, force=False):
+def print_rank_0(message, debug=True, force=False):
     if torch.distributed.get_rank() == 0 and (debug or force):
         print(message)
 
