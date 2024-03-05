@@ -10,3 +10,4 @@ requests
 chardet
 protobuf==3.20
 urllib3
+pysqlite3

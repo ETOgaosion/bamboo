@@ -16,8 +16,19 @@ from colorama import Fore
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
+import sqlite3
+
 global should_stop
 should_stop = False
+
+def agent_set_time_to_kill():
+    conn = sqlite3.connect('test.db')
+    conn.execute('''
+                UPDATE TIME_TO_KILL SET TIME_TO_KILL = TRUE WHERE ID = 1
+                ''')
+    conn.commit()
+    conn.close()
+
 def sig_handler(signum, frame):
     print(Fore.LIGHTCYAN_EX, 'Signal hander called with signal', signum, Fore.RESET)
     global should_stop
@@ -70,14 +81,42 @@ class ProjectPactumAgent(SimpleElasticAgent):
 
     def check_for_preemption(self):
         while True:
+            pass
+        conn = sqlite3.connect('test.db')
+        c = conn.cursor()
+        c.execute('''
+                  DROP TABLE IF EXISTS TIME_TO_KILL;
+                  ''')
+        c.execute('''
+                  CREATE TABLE TIME_TO_KILL(
+                    ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    TIME_TO_KILL BOOLEAN NOT NULL
+                  );
+                  ''')
+        c.execute('''
+                  INSERT INTO TIME_TO_KILL (TIME_TO_KILL)
+                  VALUES (FALSE)
+                  ''')
+        conn.commit()
+        time_to_kill = False
+        while not time_to_kill:
+            time_to_kill = c.execute('''
+                                    SELECT TIME_TO_KILL FROM TIME_TO_KILL WHERE ID = 1
+                                    ''').fetchone()[0]
+            log.info(f'time_to_kill: {time_to_kill}')
+            time.sleep(1)
+            pass
+        log.info("Start to kill")
+        while True:
             rand = random.uniform(0, 1)
             log.info(str(time.time()) + ", " + str(rand) + ", ready ? " + str(self._check_ready()))
             # if rand <= self.probability:
-            if rand < 0 and self._check_ready():
+            if rand < 0.5:
                 log.info(str(time.time()) + ", " + str(rand) + ", Preemption detected")
                 os.kill(os.getpid(), signal.SIGTERM)
                 break
-            time.sleep(3)
+            time.sleep(1)
+        conn.close()
             
     def signal(self, signum, frame):
         role = self._worker_group.spec.role

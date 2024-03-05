@@ -1132,6 +1132,8 @@ class PipelineEngine(DeepSpeedEngine):
         self.module.train()
         self.total_loss = None
         self._compute_loss = True
+        # print("set time to kill")
+        # self.rdzv_handler.set_time_to_kill()
         if not self.join and self.rdzv_handler.should_reconfigure(self.global_steps, failures):
             ## If a shadow node is going to fail make sure we get its state before it dies
             ## TODO: Make sure this only happens when the state is not available in another
@@ -2028,23 +2030,18 @@ class PipelineEngine(DeepSpeedEngine):
                 output = self.pipe_buffers[f'output_{self._dec(stage_id)}'][buffer_id].clone().detach().to(self.device)
                 output.requires_grad = True
                 self.pipe_buffers[f'input_{stage_id}'][buffer_id] = output
-            print("hit3")
             return
 
-        print("hit4")
         if self.wall_clock_breakdown():
             self.timers('pipe_recv_input').start()
 
-        print("hit5")
         # Allocate the buffer if necessary
         buffer = None
         if buffer_id >= 0:
             if self.pipe_recv_buf is None:
                 self.pipe_recv_buf = self._recv_tensor_meta(self.prev_stage)
-            print("hit6")
             buffer = self.pipe_recv_buf
         else:
-            print("hit7")
             buffer = self.ping_buffer
 
         def recv_handler(stage):
@@ -2215,7 +2212,7 @@ class PipelineEngine(DeepSpeedEngine):
 
     def _zero_grads(self, inputs):
         if isinstance(inputs, torch.Tensor):
-            if inputs.grad is not None:
+            if inputs.retain_grad() is not None:
                 inputs.grad.data.zero_()
         else:
             for t in inputs:

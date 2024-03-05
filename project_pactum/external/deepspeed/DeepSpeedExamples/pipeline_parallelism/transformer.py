@@ -290,3 +290,5 @@ if __name__ == '__main__':
     args = get_args()
 
     test_encoder(args)
+    
+    print("Finish Successfully")

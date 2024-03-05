@@ -24,7 +24,6 @@ cmd="""export PROJECT_PACTUM_LOGGING_WARNING='etcd.client,etcd.lock,torch.distri
 	--rdzv_endpoint=$RDZV_IP:2379 \
 	--rdzv_id=$ID \
 	--nnodes=1:64 \
-	--max_restarts=99999 \
 	--nproc_per_node=1 \
 	--project-pactum \
 	--max-pipe-parallel-size=24 \

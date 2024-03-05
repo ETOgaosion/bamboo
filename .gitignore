@@ -8,3 +8,4 @@ __pycache__/
 /.dockerversion
 tmp/
 project_pactum/external/deepspeed/deepspeed.egg-info/
+*.db

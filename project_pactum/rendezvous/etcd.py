@@ -35,6 +35,8 @@ from torch.distributed.elastic.rendezvous import (
     RendezvousTimeoutError,
 )
 
+from ..agent.api import agent_set_time_to_kill
+
 import torch.distributed.elastic.utils.store as store_util
 from torch.distributed.elastic.rendezvous.utils import parse_rendezvous_endpoint
 from torch.distributed.elastic.rendezvous.etcd_store import EtcdStore, cas_delay
@@ -213,6 +215,10 @@ class EtcdRendezvousHandler(RendezvousHandler):
             return self._rdzv_impl.should_reconfigure(global_steps, failures)
 
         return False
+
+    def set_time_to_kill(self):
+        log.info("etcd set time to kill")
+        agent_set_time_to_kill()
 
     def get_global_decision(self):
         return self._rdzv_impl.get_global_decision()
