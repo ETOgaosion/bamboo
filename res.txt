@@ -1,8 +1,8 @@
 ARGS localhost encoder 1 /home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer
 RUNNING CMD export PROJECT_PACTUM_LOGGING_WARNING='etcd.client,etcd.lock,torch.distributed.distributed_c10d' 	export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python 	export LOGLEVEL=INFO 	&& 	export PYTHONPATH=/home/gaoziyuan/project/bamboo/project-pactum:${PYTHONPATH} 	&& 	python -m project_pactum.run 	--rdzv_backend=etcd-v2 	--rdzv_endpoint=localhost:2379 	--rdzv_id=encoder 	--nnodes=1:64 	--nproc_per_node=1 	--project-pactum 	--max-pipe-parallel-size=24 	--default-num-stages=1 	/home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer.py 	--backend=nccl 	--redundancy_level=1 	 	--deepspeed 	--deepspeed_config /home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer.json
-[1;36m[0.002 p66388/t140469225686848 INFO project_pactum.run.api][m [36margs: Namespace(default_num_stages=1, log_dir=None, master_addr='127.0.0.1', master_port=29500, max_pipe_parallel_size=24, max_restarts=0, module=False, monitor_interval=5, nnodes='1:64', no_python=False, node_rank=0, nproc_per_node='1', project_pactum=True, rdzv_backend='etcd-v2', rdzv_conf='', rdzv_endpoint='localhost:2379', rdzv_id='encoder', redirects='0', role='default', run_path=False, standalone=False, start_method='spawn', tee='0', training_script='/home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer.py', training_script_args=['--backend=nccl', '--redundancy_level=1', '--deepspeed', '--deepspeed_config', '/home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer.json'], use_env=True)[m
-[1;36m[0.040 p66388/t140469225686848 INFO root][m [36mUsing nproc_per_node=1.[m
-[1;36m[0.040 p66388/t140469225686848 INFO project_pactum.run.api][m [36mStarting elastic_operator with launch configs:
+[1;36m[0.002 p69799/t140608374449088 INFO project_pactum.run.api][m [36margs: Namespace(default_num_stages=1, log_dir=None, master_addr='127.0.0.1', master_port=29500, max_pipe_parallel_size=24, max_restarts=0, module=False, monitor_interval=5, nnodes='1:64', no_python=False, node_rank=0, nproc_per_node='1', project_pactum=True, rdzv_backend='etcd-v2', rdzv_conf='', rdzv_endpoint='localhost:2379', rdzv_id='encoder', redirects='0', role='default', run_path=False, standalone=False, start_method='spawn', tee='0', training_script='/home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer.py', training_script_args=['--backend=nccl', '--redundancy_level=1', '--deepspeed', '--deepspeed_config', '/home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer.json'], use_env=True)[m
+[1;36m[0.038 p69799/t140608374449088 INFO root][m [36mUsing nproc_per_node=1.[m
+[1;36m[0.038 p69799/t140608374449088 INFO project_pactum.run.api][m [36mStarting elastic_operator with launch configs:
   entrypoint             : /home/gaoziyuan/miniconda3/envs/Bamboo/bin/python
   min_nodes              : 1
   max_nodes              : 64
@@ -18,29 +18,29 @@ RUNNING CMD export PROJECT_PACTUM_LOGGING_WARNING='etcd.client,etcd.lock,torch.d
   max_pipe_parallel_size : 24
   default_pipeline_size  : 1
 [m
-[1;33m[0.040 p66388/t140469225686848 WARNING project_pactum.etcd][m [33mStart create_rdzv_handler[m
-WARNING 2024-03-05 18:07:22,028 Etcd machines: ['http://localhost:2379', 'http://localhost:4001']
-[1;33m[0.056 p66388/t140469225686848 WARNING project_pactum.etcd][m [33mEnd create_rdzv_handler[m
-[1;36m[0.058 p66388/t140469225686848 INFO project_pactum.agent.api][m [36mlog directory set to: /tmp/torchelastic_7i8npkll/encoder_tndl9g6r[m
-[1;36m[0.064 p66388/t140469225686848 INFO project_pactum.agent.api][m [36m[default] starting workers for entrypoint: python[m
-[1;36m[0.069 p66388/t140469225686848 INFO torch.distributed.elastic.agent.server.api][m [36m[default] Rendezvous'ing worker group[m
-WARNING 2024-03-05 18:07:22,058 Attempting to join next rendezvous
-[1;33m[0.080 p66388/t140469225686848 WARNING project_pactum.etcd][m [33m/torchelastic/p2p/run_encoder/rdzv/active_version[m
-WARNING 2024-03-05 18:07:22,296 New rendezvous state created: {'status': 'joinable', 'version': '1', 'participants': []}
-WARNING 2024-03-05 18:07:22,478 Joined rendezvous version 1 as rank 0. Full state: {'status': 'joinable', 'version': '1', 'participants': [0]}
-WARNING 2024-03-05 18:07:22,484 Rank 0 is responsible for join last call.
-WARNING 2024-03-05 18:07:27,736 Rank 0 finished join last call.
-WARNING 2024-03-05 18:07:27,742 Waiting for remaining peers.
-WARNING 2024-03-05 18:07:27,786 All peers arrived. Confirming membership.
-[1;33m[6.053 p66388/t140469225686848 WARNING project_pactum.etcd][m [33mnum_active_nodes: 1[m
-[1;33m[6.059 p66388/t140469225686848 WARNING project_pactum.etcd][m [33mnum_participants: 1[m
-WARNING 2024-03-05 18:07:28,201 Waiting for confirmations from all peers.
-WARNING 2024-03-05 18:07:28,250 Rendezvous version 1 is complete. Final state: {'status': 'final', 'version': '1', 'participants': [0], 'keep_alives': ['/torchelastic/p2p/run_encoder/rdzv/v_1/rank_0'], 'num_workers_waiting': 0, 'previous_version': '-1', 'num_pipelines': '1', 'num_stages': '1'}
-WARNING 2024-03-05 18:07:28,404 Creating EtcdStore as the c10d::Store implementation
-[1;36m[6.829 p66388/t140469225686848 INFO project_pactum.agent.api][m [36m[default] Rendezvous complete for workers. Result:
+[1;33m[0.038 p69799/t140608374449088 WARNING project_pactum.etcd][m [33mStart create_rdzv_handler[m
+WARNING 2024-03-05 19:34:18,543 Etcd machines: ['http://localhost:2379', 'http://localhost:4001']
+[1;33m[0.045 p69799/t140608374449088 WARNING project_pactum.etcd][m [33mEnd create_rdzv_handler[m
+[1;36m[0.046 p69799/t140608374449088 INFO project_pactum.agent.api][m [36mlog directory set to: /tmp/torchelastic_m9uz9h0c/encoder_371tlxp9[m
+[1;36m[0.052 p69799/t140608374449088 INFO project_pactum.agent.api][m [36m[default] starting workers for entrypoint: python[m
+[1;36m[0.057 p69799/t140608374449088 INFO torch.distributed.elastic.agent.server.api][m [36m[default] Rendezvous'ing worker group[m
+WARNING 2024-03-05 19:34:18,565 Attempting to join next rendezvous
+[1;33m[0.067 p69799/t140608374449088 WARNING project_pactum.etcd][m [33m/torchelastic/p2p/run_encoder/rdzv/active_version[m
+WARNING 2024-03-05 19:34:18,773 New rendezvous state created: {'status': 'joinable', 'version': '1', 'participants': []}
+WARNING 2024-03-05 19:34:18,873 Joined rendezvous version 1 as rank 0. Full state: {'status': 'joinable', 'version': '1', 'participants': [0]}
+WARNING 2024-03-05 19:34:18,879 Rank 0 is responsible for join last call.
+WARNING 2024-03-05 19:34:24,120 Rank 0 finished join last call.
+WARNING 2024-03-05 19:34:24,126 Waiting for remaining peers.
+WARNING 2024-03-05 19:34:24,169 All peers arrived. Confirming membership.
+[1;33m[5.988 p69799/t140608374449088 WARNING project_pactum.etcd][m [33mnum_active_nodes: 1[m
+[1;33m[5.994 p69799/t140608374449088 WARNING project_pactum.etcd][m [33mnum_participants: 1[m
+WARNING 2024-03-05 19:34:24,665 Waiting for confirmations from all peers.
+WARNING 2024-03-05 19:34:24,719 Rendezvous version 1 is complete. Final state: {'status': 'final', 'version': '1', 'participants': [0], 'keep_alives': ['/torchelastic/p2p/run_encoder/rdzv/v_1/rank_0'], 'num_workers_waiting': 0, 'previous_version': '-1', 'num_pipelines': '1', 'num_stages': '1'}
+WARNING 2024-03-05 19:34:24,877 Creating EtcdStore as the c10d::Store implementation
+[1;36m[6.833 p69799/t140608374449088 INFO project_pactum.agent.api][m [36m[default] Rendezvous complete for workers. Result:
   restart_count=0
   master_addr=zkyd
-  master_port=37055
+  master_port=58677
   group_rank=0
   group_world_size=1
   num_pipelines=1
@@ -52,20 +52,17 @@ WARNING 2024-03-05 18:07:28,404 Creating EtcdStore as the c10d::Store implementa
   role_world_sizes=[1]
   global_world_sizes=[1]
 [m
-[1;36m[6.834 p66388/t140469225686848 INFO torch.distributed.elastic.agent.server.api][m [36m[default] Starting worker group[m
-[1;36m[6.945 p66388/t140469225686848 INFO torch.distributed.elastic.multiprocessing][m [36mSetting worker0 reply file to: /tmp/torchelastic_7i8npkll/encoder_tndl9g6r/attempt_0/0/error.json[m
-[1;36m[6.951 p66388/t140469225686848 INFO torch.distributed.elastic.multiprocessing.api][m [36m('/home/gaoziyuan/miniconda3/envs/Bamboo/bin/python', '-u', '/home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer.py', '--backend=nccl', '--redundancy_level=1', '--deepspeed', '--deepspeed_config', '/home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer.json'){'CONDA_SHLVL': '1', 'LD_LIBRARY_PATH': '/usr/local/cuda/lib64:/usr/local/cuda/lib64:', 'LS_COLORS': 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.Z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:', 'CONDA_EXE': '/home/gaoziyuan/miniconda3/bin/conda', 'LC_MEASUREMENT': 'zh_CN.UTF-8', 'SSH_CONNECTION': '10.20.4.22 47268 10.20.23.90 22', 'LC_PAPER': 'zh_CN.UTF-8', 'LC_MONETARY': 'zh_CN.UTF-8', 'LANG': 'en_US.UTF-8', 'LESS': '-R', 'OLDPWD': '/home/gaoziyuan/project/bamboo', 'COLORTERM': 'truecolor', 'CONDA_PREFIX': '/home/gaoziyuan/miniconda3/envs/Bamboo', 'ZSH': '/home/gaoziyuan/.oh-my-zsh', 'PROJECT_PACTUM_LOGGING_WARNING': 'etcd.client,etcd.lock,torch.distributed.distributed_c10d', '_CE_M': '', 'LC_NAME': 'zh_CN.UTF-8', 'XDG_SESSION_ID': '308', 'ZDOTDIR': '/home/gaoziyuan', 'USER': 'gaoziyuan', 'PAGER': 'less', 'LSCOLORS': 'Gxfxcxdxbxegedabagacad', 'USER_ZDOTDIR': '/home/gaoziyuan', 'PWD': '/home/gaoziyuan/project/bamboo', 'HOME': '/home/gaoziyuan', 'CONDA_PYTHON_EXE': '/home/gaoziyuan/miniconda3/bin/python', 'BROWSER': '/home/gaoziyuan/.vscode-server/bin/8b3775030ed1a69b13e4f4c628c612102e30a681/bin/helpers/browser.sh', 'TERM_PROGRAM': 'vscode', 'SSH_CLIENT': '10.20.4.22 47268 22', 'TERM_PROGRAM_VERSION': '1.85.2', 'LOGLEVEL': 'INFO', '_CE_CONDA': '', 'VSCODE_IPC_HOOK_CLI': '/run/user/1005/vscode-ipc-9e06eecc-ee20-4454-82e3-4ab00747043a.sock', 'LC_ADDRESS': 'zh_CN.UTF-8', 'LC_NUMERIC': 'zh_CN.UTF-8', 'CONDA_PROMPT_MODIFIER': '(Bamboo) ', 'MAIL': '/var/mail/gaoziyuan', 'PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION': 'python', 'TERM': 'xterm-256color', 'SHELL': '/usr/bin/zsh', 'VSCODE_INJECTION': '1', 'CONDA_ROOT': '/home/gaoziyuan/miniconda3', 'SHLVL': '4', 'PYTHONPATH': '/home/gaoziyuan/project/bamboo/project-pactum:', 'VSCODE_GIT_IPC_HANDLE': '/run/user/1005/vscode-git-ad178949cd.sock', 'LC_TELEPHONE': 'zh_CN.UTF-8', 'LOGNAME': 'gaoziyuan', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1005/bus', 'XDG_RUNTIME_DIR': '/run/user/1005', 'PATH': '/home/gaoziyuan/miniconda3/envs/Bamboo/bin:/usr/local/cuda/bin:/home/gaoziyuan/miniconda3/envs/Bamboo/bin:/home/gaoziyuan/.vscode-server/bin/8b3775030ed1a69b13e4f4c628c612102e30a681/bin/remote-cli:/usr/local/cuda/bin:/home/gaoziyuan/miniconda3/condabin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin', 'LC_IDENTIFICATION': 'zh_CN.UTF-8', 'CONDA_DEFAULT_ENV': 'Bamboo', 'LC_TIME': 'zh_CN.UTF-8', '_': '/home/gaoziyuan/miniconda3/envs/Bamboo/bin/python', 'LOCAL_RANK': '0', 'RANK': '0', 'GROUP_RANK': '0', 'ROLE_RANK': '0', 'ROLE_NAME': 'default', 'LOCAL_WORLD_SIZE': '1', 'WORLD_SIZE': '1', 'GROUP_WORLD_SIZE': '1', 'ROLE_WORLD_SIZE': '1', 'MASTER_ADDR': 'zkyd', 'MASTER_PORT': '37055', 'TORCHELASTIC_RESTART_COUNT': '0', 'TORCHELASTIC_MAX_RESTARTS': '0', 'TORCHELASTIC_RUN_ID': 'encoder', 'TORCHELASTIC_USE_AGENT_STORE': 'False', 'NCCL_ASYNC_ERROR_HANDLING': '1', 'PROJECT_PACTUM_NUM_PIPELINES': '1', 'PROJECT_PACTUM_NUM_STAGES': '1', 'PROJECT_PACTUM_COORDINATES': '[[0, 0]]', 'PROJECT_PACTUM_ENABLED': '1', 'PROJECT_PACTUM_ENDPOINT': 'localhost:2379', 'PROJECT_PACTUM_RUN_ID': 'encoder', 'PROJECT_PACTUM_MIN_NODES': '1', 'PROJECT_PACTUM_MAX_NODES': '64', 'PROJECT_PACTUM_RDZV_CONFIGS': '{"last_call_timeout": 5, "timeout": 900}', 'PROJECT_PACTUM_MAX_PIPE_PARALLEL_SIZE': '24', 'PROJECT_PACTUM_DEFAULT_PIPELINE_SIZE': '1', 'NCCL_BLOCKING_WAIT': '1', 'TORCHELASTIC_ERROR_FILE': '/tmp/torchelastic_7i8npkll/encoder_tndl9g6r/attempt_0/0/error.json'}[m
-[1;33m[0.454 p66534/t140282119112512 WARNING project_pactum.etcd][m [33mStart create_rdzv_handler[m
-http://localhost:2379/v2/machines
-http://localhost:2379/v2/machines
-WARNING 2024-03-05 18:07:30,738 Etcd machines: ['http://localhost:2379', 'http://localhost:4001']
-[1;33m[0.472 p66534/t140282119112512 WARNING project_pactum.etcd][m [33mEnd create_rdzv_handler[m
-WARNING 2024-03-05 18:07:30,751 Creating EtcdStore as the c10d::Store implementation
-[2024-03-05 18:07:30,752] [INFO] [distributed.py:52:init_distributed] Initializing torch distributed with backend: nccl
+[1;36m[6.839 p69799/t140608374449088 INFO torch.distributed.elastic.agent.server.api][m [36m[default] Starting worker group[m
+[1;36m[6.968 p69799/t140608374449088 INFO torch.distributed.elastic.multiprocessing][m [36mSetting worker0 reply file to: /tmp/torchelastic_m9uz9h0c/encoder_371tlxp9/attempt_0/0/error.json[m
+[1;33m[0.446 p69957/t139774945141696 WARNING project_pactum.etcd][m [33mStart create_rdzv_handler[m
+WARNING 2024-03-05 19:34:27,332 Etcd machines: ['http://localhost:2379', 'http://localhost:4001']
+[1;33m[0.463 p69957/t139774945141696 WARNING project_pactum.etcd][m [33mEnd create_rdzv_handler[m
+WARNING 2024-03-05 19:34:27,344 Creating EtcdStore as the c10d::Store implementation
+[2024-03-05 19:34:27,345] [INFO] [distributed.py:52:init_distributed] Initializing torch distributed with backend: nccl
 STARTING WITH RANK = 0 and world size = 1 and init_method = None
-[1;35m[0.520 p66534/t140282119112512 DEBUG deepspeed.utils.distributed][m [35m★☆★☆★☆★☆★☆★ FINISHED DIST INITIALIZATION ★☆★☆★☆★☆★☆★[m
+[1;35m[0.516 p69957/t139774945141696 DEBUG deepspeed.utils.distributed][m [35m★☆★☆★☆★☆★☆★ FINISHED DIST INITIALIZATION ★☆★☆★☆★☆★☆★[m
 SEED_LAYERS=False BASE_SEED=1234 SEED_FN=None
-[2024-03-05 18:07:30,958] [INFO] [module.py:581:_partition_layers] Partitioning pipeline stages with method uniform
+[2024-03-05 19:34:27,564] [INFO] [module.py:581:_partition_layers] Partitioning pipeline stages with method uniform
 parts=[0, 10]
 stage=0 layers=10
      0: EncoderLayer
@@ -79,15 +76,13 @@ stage=0 layers=10
      8: LayerNorm
      9: <lambda>
   loss: MSELoss
-[2024-03-05 18:07:48,214] [INFO] [logging.py:68:log_dist] [Rank 0] DeepSpeed info: version=0.5.2+4c7a31c, git-hash=4c7a31c, git-branch=main
-[1;33m[17.936 p66534/t140282119112512 WARNING project_pactum.etcd][m [33mStart create_rdzv_handler[m
-http://localhost:2379/v2/machines
-http://localhost:2379/v2/machines
-WARNING 2024-03-05 18:07:48,221 Etcd machines: ['http://localhost:2379', 'http://localhost:4001']
-[1;33m[17.954 p66534/t140282119112512 WARNING project_pactum.etcd][m [33mEnd create_rdzv_handler[m
-[2024-03-05 18:07:48,233] [INFO] [engine.py:175:__init__] Started rendezvous handler
-WARNING 2024-03-05 18:07:48,234 Creating EtcdStore as the c10d::Store implementation
-[2024-03-05 18:07:48,357] [INFO] [engine.py:242:__init__] DeepSpeed Flops Profiler Enabled: False
+[2024-03-05 19:34:44,089] [INFO] [logging.py:68:log_dist] [Rank 0] DeepSpeed info: version=0.5.2+0803f89, git-hash=0803f89, git-branch=main
+[1;33m[17.210 p69957/t139774945141696 WARNING project_pactum.etcd][m [33mStart create_rdzv_handler[m
+WARNING 2024-03-05 19:34:44,094 Etcd machines: ['http://localhost:2379', 'http://localhost:4001']
+[1;33m[17.221 p69957/t139774945141696 WARNING project_pactum.etcd][m [33mEnd create_rdzv_handler[m
+[2024-03-05 19:34:44,101] [INFO] [engine.py:175:__init__] Started rendezvous handler
+WARNING 2024-03-05 19:34:44,102 Creating EtcdStore as the c10d::Store implementation
+[2024-03-05 19:34:44,219] [INFO] [engine.py:242:__init__] DeepSpeed Flops Profiler Enabled: False
 Using /home/gaoziyuan/.cache/torch_extensions/py37_cu117 as PyTorch extensions root...
 Detected CUDA files, patching ldflags
 Emitting ninja build file /home/gaoziyuan/.cache/torch_extensions/py37_cu117/fused_adam/build.ninja...
@@ -95,14 +90,14 @@ Building extension module fused_adam...
 Allowing ninja to set a default number of workers... (overridable by setting the environment variable MAX_JOBS=N)
 ninja: no work to do.
 Loading extension module fused_adam...
-Time to load fused_adam op: 0.3063499927520752 seconds
-[2024-03-05 18:07:49,196] [INFO] [engine.py:930:_configure_optimizer] Using DeepSpeed Optimizer param name adam as basic optimizer
-[2024-03-05 18:07:49,204] [INFO] [engine.py:937:_configure_optimizer] DeepSpeed Basic Optimizer = FusedAdam
-[2024-03-05 18:07:49,204] [INFO] [logging.py:68:log_dist] [Rank 0] DeepSpeed Final Optimizer = adam
-[2024-03-05 18:07:49,205] [INFO] [engine.py:665:_configure_lr_scheduler] DeepSpeed using client LR scheduler
-[2024-03-05 18:07:49,205] [INFO] [logging.py:68:log_dist] [Rank 0] DeepSpeed LR Scheduler = None
-[2024-03-05 18:07:49,205] [INFO] [config.py:940:print] DeepSpeedEngine configuration:
-[2024-03-05 18:07:49,205] [INFO] [config.py:944:print]   activation_checkpointing_config  {
+Time to load fused_adam op: 0.32738542556762695 seconds
+[2024-03-05 19:34:45,061] [INFO] [engine.py:930:_configure_optimizer] Using DeepSpeed Optimizer param name adam as basic optimizer
+[2024-03-05 19:34:45,067] [INFO] [engine.py:937:_configure_optimizer] DeepSpeed Basic Optimizer = FusedAdam
+[2024-03-05 19:34:45,068] [INFO] [logging.py:68:log_dist] [Rank 0] DeepSpeed Final Optimizer = adam
+[2024-03-05 19:34:45,068] [INFO] [engine.py:665:_configure_lr_scheduler] DeepSpeed using client LR scheduler
+[2024-03-05 19:34:45,068] [INFO] [logging.py:68:log_dist] [Rank 0] DeepSpeed LR Scheduler = None
+[2024-03-05 19:34:45,068] [INFO] [config.py:940:print] DeepSpeedEngine configuration:
+[2024-03-05 19:34:45,069] [INFO] [config.py:944:print]   activation_checkpointing_config  {
     "partition_activations": false, 
     "contiguous_memory_optimization": false, 
     "cpu_checkpointing": false, 
@@ -110,28 +105,28 @@ Time to load fused_adam op: 0.3063499927520752 seconds
     "synchronize_checkpoint_boundary": false, 
     "profile": false
 }
-[2024-03-05 18:07:49,205] [INFO] [config.py:944:print]   aio_config ................... {'block_size': 1048576, 'queue_depth': 8, 'thread_count': 1, 'single_submit': False, 'overlap_events': True}
-[2024-03-05 18:07:49,205] [INFO] [config.py:944:print]   allreduce_always_fp32 ........ False
-[2024-03-05 18:07:49,205] [INFO] [config.py:944:print]   amp_enabled .................. False
-[2024-03-05 18:07:49,205] [INFO] [config.py:944:print]   amp_params ................... False
-[2024-03-05 18:07:49,205] [INFO] [config.py:944:print]   checkpoint_tag_validation_enabled  True
-[2024-03-05 18:07:49,205] [INFO] [config.py:944:print]   checkpoint_tag_validation_fail  False
-[2024-03-05 18:07:49,205] [INFO] [config.py:944:print]   curriculum_enabled ........... False
-[2024-03-05 18:07:49,205] [INFO] [config.py:944:print]   curriculum_params ............ False
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   dataloader_drop_last ......... False
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   disable_allgather ............ False
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   dump_state ................... False
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   dynamic_loss_scale_args ...... None
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   eigenvalue_enabled ........... False
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   eigenvalue_gas_boundary_resolution  1
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   eigenvalue_layer_name ........ bert.encoder.layer
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   eigenvalue_layer_num ......... 0
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   eigenvalue_max_iter .......... 100
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   eigenvalue_stability ......... 1e-06
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   eigenvalue_tol ............... 0.01
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   eigenvalue_verbose ........... False
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   elasticity_enabled ........... False
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   flops_profiler_config ........ {
+[2024-03-05 19:34:45,069] [INFO] [config.py:944:print]   aio_config ................... {'block_size': 1048576, 'queue_depth': 8, 'thread_count': 1, 'single_submit': False, 'overlap_events': True}
+[2024-03-05 19:34:45,069] [INFO] [config.py:944:print]   allreduce_always_fp32 ........ False
+[2024-03-05 19:34:45,069] [INFO] [config.py:944:print]   amp_enabled .................. False
+[2024-03-05 19:34:45,069] [INFO] [config.py:944:print]   amp_params ................... False
+[2024-03-05 19:34:45,069] [INFO] [config.py:944:print]   checkpoint_tag_validation_enabled  True
+[2024-03-05 19:34:45,069] [INFO] [config.py:944:print]   checkpoint_tag_validation_fail  False
+[2024-03-05 19:34:45,069] [INFO] [config.py:944:print]   curriculum_enabled ........... False
+[2024-03-05 19:34:45,069] [INFO] [config.py:944:print]   curriculum_params ............ False
+[2024-03-05 19:34:45,069] [INFO] [config.py:944:print]   dataloader_drop_last ......... False
+[2024-03-05 19:34:45,069] [INFO] [config.py:944:print]   disable_allgather ............ False
+[2024-03-05 19:34:45,069] [INFO] [config.py:944:print]   dump_state ................... False
+[2024-03-05 19:34:45,069] [INFO] [config.py:944:print]   dynamic_loss_scale_args ...... None
+[2024-03-05 19:34:45,069] [INFO] [config.py:944:print]   eigenvalue_enabled ........... False
+[2024-03-05 19:34:45,069] [INFO] [config.py:944:print]   eigenvalue_gas_boundary_resolution  1
+[2024-03-05 19:34:45,069] [INFO] [config.py:944:print]   eigenvalue_layer_name ........ bert.encoder.layer
+[2024-03-05 19:34:45,069] [INFO] [config.py:944:print]   eigenvalue_layer_num ......... 0
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   eigenvalue_max_iter .......... 100
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   eigenvalue_stability ......... 1e-06
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   eigenvalue_tol ............... 0.01
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   eigenvalue_verbose ........... False
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   elasticity_enabled ........... False
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   flops_profiler_config ........ {
     "enabled": false, 
     "profile_step": 1, 
     "module_depth": -1, 
@@ -139,48 +134,48 @@ Time to load fused_adam op: 0.3063499927520752 seconds
     "detailed": true, 
     "output_file": null
 }
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   fp16_enabled ................. False
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   fp16_master_weights_and_gradients  False
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   fp16_mixed_quantize .......... False
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   global_rank .................. 0
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   gradient_accumulation_steps .. 4
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   gradient_clipping ............ 0.0
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   gradient_predivide_factor .... 1.0
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   initial_dynamic_scale ........ 4294967296
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   loss_scale ................... 0
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   memory_breakdown ............. False
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   optimizer_legacy_fusion ...... False
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   optimizer_name ............... adam
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   optimizer_params ............. {'lr': 0.001, 'betas': [0.9, 0.999], 'eps': 1e-08}
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   pipeline ..................... {'stages': 'auto', 'partition': 'best', 'seed_layers': False, 'activation_checkpoint_interval': 0}
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   pld_enabled .................. False
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   pld_params ................... False
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   prescale_gradients ........... False
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   quantize_change_rate ......... 0.001
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   quantize_groups .............. 1
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   quantize_offset .............. 1000
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   quantize_period .............. 1000
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   quantize_rounding ............ 0
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   quantize_start_bits .......... 16
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   quantize_target_bits ......... 8
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   quantize_training_enabled .... False
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   quantize_type ................ 0
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   quantize_verbose ............. False
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   scheduler_name ............... None
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   scheduler_params ............. None
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   sparse_attention ............. None
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   sparse_gradients_enabled ..... False
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   steps_per_print .............. 1
-[2024-03-05 18:07:49,206] [INFO] [config.py:944:print]   tensorboard_enabled .......... False
-[2024-03-05 18:07:49,207] [INFO] [config.py:944:print]   tensorboard_job_name ......... DeepSpeedJobName
-[2024-03-05 18:07:49,207] [INFO] [config.py:944:print]   tensorboard_output_path ...... 
-[2024-03-05 18:07:49,207] [INFO] [config.py:944:print]   train_batch_size ............. 32
-[2024-03-05 18:07:49,207] [INFO] [config.py:944:print]   train_micro_batch_size_per_gpu  8
-[2024-03-05 18:07:49,207] [INFO] [config.py:944:print]   use_quantizer_kernel ......... False
-[2024-03-05 18:07:49,207] [INFO] [config.py:944:print]   wall_clock_breakdown ......... False
-[2024-03-05 18:07:49,207] [INFO] [config.py:944:print]   world_size ................... 1
-[2024-03-05 18:07:49,207] [INFO] [config.py:944:print]   zero_allow_untested_optimizer  False
-[2024-03-05 18:07:49,207] [INFO] [config.py:944:print]   zero_config .................. {
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   fp16_enabled ................. False
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   fp16_master_weights_and_gradients  False
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   fp16_mixed_quantize .......... False
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   global_rank .................. 0
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   gradient_accumulation_steps .. 4
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   gradient_clipping ............ 0.0
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   gradient_predivide_factor .... 1.0
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   initial_dynamic_scale ........ 4294967296
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   loss_scale ................... 0
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   memory_breakdown ............. False
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   optimizer_legacy_fusion ...... False
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   optimizer_name ............... adam
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   optimizer_params ............. {'lr': 0.001, 'betas': [0.9, 0.999], 'eps': 1e-08}
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   pipeline ..................... {'stages': 'auto', 'partition': 'best', 'seed_layers': False, 'activation_checkpoint_interval': 0}
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   pld_enabled .................. False
+[2024-03-05 19:34:45,070] [INFO] [config.py:944:print]   pld_params ................... False
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   prescale_gradients ........... False
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   quantize_change_rate ......... 0.001
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   quantize_groups .............. 1
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   quantize_offset .............. 1000
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   quantize_period .............. 1000
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   quantize_rounding ............ 0
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   quantize_start_bits .......... 16
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   quantize_target_bits ......... 8
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   quantize_training_enabled .... False
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   quantize_type ................ 0
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   quantize_verbose ............. False
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   scheduler_name ............... None
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   scheduler_params ............. None
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   sparse_attention ............. None
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   sparse_gradients_enabled ..... False
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   steps_per_print .............. 1
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   tensorboard_enabled .......... False
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   tensorboard_job_name ......... DeepSpeedJobName
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   tensorboard_output_path ...... 
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   train_batch_size ............. 32
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   train_micro_batch_size_per_gpu  8
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   use_quantizer_kernel ......... False
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   wall_clock_breakdown ......... False
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   world_size ................... 1
+[2024-03-05 19:34:45,071] [INFO] [config.py:944:print]   zero_allow_untested_optimizer  False
+[2024-03-05 19:34:45,072] [INFO] [config.py:944:print]   zero_config .................. {
     "stage": 0, 
     "contiguous_gradients": true, 
     "reduce_scatter": true, 
@@ -202,9 +197,9 @@ Time to load fused_adam op: 0.3063499927520752 seconds
     "round_robin_gradients": false, 
     "legacy_stage1": false
 }
-[2024-03-05 18:07:49,207] [INFO] [config.py:944:print]   zero_enabled ................. False
-[2024-03-05 18:07:49,207] [INFO] [config.py:944:print]   zero_optimization_stage ...... 0
-[2024-03-05 18:07:49,207] [INFO] [config.py:951:print]   json = {
+[2024-03-05 19:34:45,072] [INFO] [config.py:944:print]   zero_enabled ................. False
+[2024-03-05 19:34:45,072] [INFO] [config.py:944:print]   zero_optimization_stage ...... 0
+[2024-03-05 19:34:45,072] [INFO] [config.py:951:print]   json = {
     "train_batch_size": 32, 
     "train_micro_batch_size_per_gpu": 8, 
     "optimizer": {
@@ -224,8 +219,8 @@ Building extension module utils...
 Allowing ninja to set a default number of workers... (overridable by setting the environment variable MAX_JOBS=N)
 ninja: no work to do.
 Loading extension module utils...
-Time to load utils op: 0.319974422454834 seconds
-[2024-03-05 18:07:49,528] [INFO] [engine.py:133:__init__] CONFIG: micro_batches=4 micro_batch_size=8
+Time to load utils op: 0.3232753276824951 seconds
+[2024-03-05 19:34:45,396] [INFO] [engine.py:133:__init__] CONFIG: micro_batches=4 micro_batch_size=8
 [ 00|00 ] STARTING BATCH 0 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
@@ -270,8 +265,8 @@ cmd: BackwardPass(buffer_id=3, stage_id=0)
 cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
-[2024-03-05 18:07:51,181] [INFO] [engine.py:1422:train_batch] steps: 1 loss: 1.0159 iter time (s): 1.374 samples/sec: 23.289
-[ 00|01 ] FINISHING BATCH 1 at 2024-03-05 18:07:51 took 1.3810088634490967 s
+[2024-03-05 19:34:46,768] [INFO] [engine.py:1422:train_batch] steps: 1 loss: 1.0159 iter time (s): 1.113 samples/sec: 28.761
+[ 00|01 ] FINISHING BATCH 1 at 2024-03-05 19:34:46 took 1.121612787246704 s
 [ 00|01 ] STARTING BATCH 1 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
@@ -316,8 +311,8 @@ cmd: BackwardPass(buffer_id=3, stage_id=0)
 cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
-[2024-03-05 18:07:52,197] [INFO] [engine.py:1422:train_batch] steps: 2 loss: 2.3596 iter time (s): 1.004 samples/sec: 31.868
-[ 00|02 ] FINISHING BATCH 2 at 2024-03-05 18:07:52 took 1.0123193264007568 s
+[2024-03-05 19:34:47,640] [INFO] [engine.py:1422:train_batch] steps: 2 loss: 2.3227 iter time (s): 0.858 samples/sec: 37.299
+[ 00|02 ] FINISHING BATCH 2 at 2024-03-05 19:34:47 took 0.8685417175292969 s
 [ 00|02 ] STARTING BATCH 2 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
@@ -362,8 +357,8 @@ cmd: BackwardPass(buffer_id=3, stage_id=0)
 cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
-[2024-03-05 18:07:53,212] [INFO] [engine.py:1422:train_batch] steps: 3 loss: 1.3061 iter time (s): 1.004 samples/sec: 31.868
-[ 00|03 ] FINISHING BATCH 3 at 2024-03-05 18:07:53 took 1.0110878944396973 s
+[2024-03-05 19:34:48,511] [INFO] [engine.py:1422:train_batch] steps: 3 loss: 1.3512 iter time (s): 0.852 samples/sec: 37.568
+[ 00|03 ] FINISHING BATCH 3 at 2024-03-05 19:34:48 took 0.8650901317596436 s
 [ 00|03 ] STARTING BATCH 3 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
@@ -408,8 +403,8 @@ cmd: BackwardPass(buffer_id=3, stage_id=0)
 cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
-[2024-03-05 18:07:54,228] [INFO] [engine.py:1422:train_batch] steps: 4 loss: 1.2818 iter time (s): 1.005 samples/sec: 31.829
-[ 00|04 ] FINISHING BATCH 4 at 2024-03-05 18:07:54 took 1.0129735469818115 s
+[2024-03-05 19:34:49,387] [INFO] [engine.py:1422:train_batch] steps: 4 loss: 1.2125 iter time (s): 0.861 samples/sec: 37.171
+[ 00|04 ] FINISHING BATCH 4 at 2024-03-05 19:34:49 took 0.8712117671966553 s
 [ 00|04 ] STARTING BATCH 4 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
@@ -454,8 +449,8 @@ cmd: BackwardPass(buffer_id=3, stage_id=0)
 cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
-[2024-03-05 18:07:55,245] [INFO] [engine.py:1422:train_batch] steps: 5 loss: 1.1149 iter time (s): 1.001 samples/sec: 31.963
-[ 00|05 ] FINISHING BATCH 5 at 2024-03-05 18:07:55 took 1.0109925270080566 s
+[2024-03-05 19:34:50,270] [INFO] [engine.py:1422:train_batch] steps: 5 loss: 1.0803 iter time (s): 0.864 samples/sec: 37.030
+[ 00|05 ] FINISHING BATCH 5 at 2024-03-05 19:34:50 took 0.8790724277496338 s
 [ 00|05 ] STARTING BATCH 5 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
@@ -500,8 +495,8 @@ cmd: BackwardPass(buffer_id=3, stage_id=0)
 cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
-[2024-03-05 18:07:56,261] [INFO] [engine.py:1422:train_batch] steps: 6 loss: 1.1540 iter time (s): 1.001 samples/sec: 31.980
-[ 00|06 ] FINISHING BATCH 6 at 2024-03-05 18:07:56 took 1.012322187423706 s
+[2024-03-05 19:34:51,145] [INFO] [engine.py:1422:train_batch] steps: 6 loss: 1.1088 iter time (s): 0.859 samples/sec: 37.260
+[ 00|06 ] FINISHING BATCH 6 at 2024-03-05 19:34:51 took 0.8690078258514404 s
 [ 00|06 ] STARTING BATCH 6 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
@@ -546,8 +541,8 @@ cmd: BackwardPass(buffer_id=3, stage_id=0)
 cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
-[2024-03-05 18:07:57,279] [INFO] [engine.py:1422:train_batch] steps: 7 loss: 1.0154 iter time (s): 1.003 samples/sec: 31.892
-[ 00|07 ] FINISHING BATCH 7 at 2024-03-05 18:07:57 took 1.013822078704834 s
+[2024-03-05 19:34:52,019] [INFO] [engine.py:1422:train_batch] steps: 7 loss: 1.0154 iter time (s): 0.853 samples/sec: 37.503
+[ 00|07 ] FINISHING BATCH 7 at 2024-03-05 19:34:52 took 0.8680334091186523 s
 [ 00|07 ] STARTING BATCH 7 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
@@ -592,8 +587,8 @@ cmd: BackwardPass(buffer_id=3, stage_id=0)
 cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
-[2024-03-05 18:07:58,313] [INFO] [engine.py:1422:train_batch] steps: 8 loss: 1.1115 iter time (s): 1.016 samples/sec: 31.486
-[ 00|08 ] FINISHING BATCH 8 at 2024-03-05 18:07:58 took 1.0295817852020264 s
+[2024-03-05 19:34:52,898] [INFO] [engine.py:1422:train_batch] steps: 8 loss: 1.0929 iter time (s): 0.858 samples/sec: 37.311
+[ 00|08 ] FINISHING BATCH 8 at 2024-03-05 19:34:52 took 0.8731353282928467 s
 [ 00|08 ] STARTING BATCH 8 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
@@ -638,8 +633,8 @@ cmd: BackwardPass(buffer_id=3, stage_id=0)
 cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
-[2024-03-05 18:07:59,338] [INFO] [engine.py:1422:train_batch] steps: 9 loss: 1.0942 iter time (s): 1.008 samples/sec: 31.737
-[ 00|09 ] FINISHING BATCH 9 at 2024-03-05 18:07:59 took 1.019740343093872 s
+[2024-03-05 19:34:53,766] [INFO] [engine.py:1422:train_batch] steps: 9 loss: 1.0621 iter time (s): 0.849 samples/sec: 37.705
+[ 00|09 ] FINISHING BATCH 9 at 2024-03-05 19:34:53 took 0.8618900775909424 s
 [ 00|09 ] STARTING BATCH 9 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
@@ -684,47 +679,9 @@ cmd: BackwardPass(buffer_id=3, stage_id=0)
 cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
-[2024-03-05 18:08:00,277] [INFO] [engine.py:1422:train_batch] steps: 10 loss: 1.0149 iter time (s): 0.921 samples/sec: 34.742
-[ 00|10 ] FINISHING BATCH 10 at 2024-03-05 18:08:00 took 0.9338910579681396 s
+[2024-03-05 19:34:54,644] [INFO] [engine.py:1422:train_batch] steps: 10 loss: 1.0171 iter time (s): 0.861 samples/sec: 37.178
+[ 00|10 ] FINISHING BATCH 10 at 2024-03-05 19:34:54 took 0.8728649616241455 s
 Finish Successfully
-[1;31m[42.100 p66388/t140469225686848 ERROR torch.distributed.elastic.multiprocessing.api][m [31mfailed (exitcode: -11) local_rank: 0 (pid: 66534) of binary: /home/gaoziyuan/miniconda3/envs/Bamboo/bin/python[m
-[1;31m[42.105 p66388/t140469225686848 ERROR project_pactum.agent.api][m [31m[default] Worker group failed[m
-[1;36m[42.111 p66388/t140469225686848 INFO project_pactum.agent.api][m [36mself._remaining_restarts, 0, spec.max_restarts, 0[m
-[1;36m[42.116 p66388/t140469225686848 INFO torch.distributed.elastic.agent.server.api][m [36mLocal worker group finished (FAILED). Waiting 300 seconds for other agents to finish[m
-[1;36m[42.253 p66388/t140469225686848 INFO torch.distributed.elastic.agent.server.api][m [36mDone waiting for other agents. Elapsed: 0.13144779205322266 seconds[m
-[1;36m[42.285 p66388/t140469225686848 INFO torch.distributed.elastic.multiprocessing.errors][m [36mlocal_rank 0 FAILED with no error file. Decorate your entrypoint fn with @record for traceback info. See: https://pytorch.org/docs/stable/elastic/errors.html[m
-Traceback (most recent call last):
-  File "/home/gaoziyuan/miniconda3/envs/Bamboo/lib/python3.7/runpy.py", line 193, in _run_module_as_main
-    "__main__", mod_spec)
-  File "/home/gaoziyuan/miniconda3/envs/Bamboo/lib/python3.7/runpy.py", line 85, in _run_code
-    exec(code, run_globals)
-  File "/home/gaoziyuan/project/bamboo/project_pactum/run/__main__.py", line 5, in <module>
-    project_pactum.run.main(sys.argv[1:])
-  File "/home/gaoziyuan/project/bamboo/project_pactum/run/__init__.py", line 246, in main
-    run(options)
-  File "/home/gaoziyuan/project/bamboo/project_pactum/run/__init__.py", line 240, in run
-    )(*cmd_args)
-  File "/home/gaoziyuan/project/bamboo/project_pactum/run/api.py", line 107, in __call__
-    return launch_agent(self._config, self._entrypoint, list(args))
-  File "/home/gaoziyuan/miniconda3/envs/Bamboo/lib/python3.7/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 346, in wrapper
-    return f(*args, **kwargs)
-  File "/home/gaoziyuan/project/bamboo/project_pactum/run/api.py", line 371, in launch_agent
-    failures=result.failures,
-torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
-============================================================
-/home/gaoziyuan/project/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer.py FAILED
-------------------------------------------------------------
-Failures:
-  <NO_OTHER_FAILURES>
-------------------------------------------------------------
-Root Cause (first observed failure):
-[0]:
-  time      : 2024-03-05_18:08:04
-  host      : zkyd
-  rank      : 0 (local_rank: 0)
-  exitcode  : -11 (pid: 66534)
-  error_file: <N/A>
-  traceback : Signal 11 (SIGSEGV) received by PID 66534
-============================================================
-http://localhost:2379/v2/machines
-http://localhost:2379/v2/machines
+[1;36m[37.092 p69799/t140608374449088 INFO project_pactum.agent.api][m [36m[default] worker group successfully finished. Waiting 300 seconds for other agents to finish.[m
+[1;36m[37.098 p69799/t140608374449088 INFO torch.distributed.elastic.agent.server.api][m [36mLocal worker group finished (SUCCEEDED). Waiting 300 seconds for other agents to finish[m
+[1;36m[37.212 p69799/t140608374449088 INFO torch.distributed.elastic.agent.server.api][m [36mDone waiting for other agents. Elapsed: 0.1082460880279541 seconds[m
