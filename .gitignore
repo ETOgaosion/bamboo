@@ -9,3 +9,4 @@ __pycache__/
 tmp/
 project_pactum/external/deepspeed/deepspeed.egg-info/
 *.db
+*.bak

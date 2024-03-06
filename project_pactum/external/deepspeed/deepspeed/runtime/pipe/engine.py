@@ -259,14 +259,22 @@ class PipelineEngine(DeepSpeedEngine):
         # Initialize pipeline communicators. Just send a 0.
         if is_even(self.stage_id):
             if not self.is_last_stage():
+                logger.info("hit1")
                 p2p.send(self.loss, self.next_stage)
+                logger.info("hit2")
             if not self.is_first_stage():
+                logger.info("hit3")
                 p2p.recv(self.loss, self.prev_stage)
+                logger.info("hit4")
         else:
             if not self.is_first_stage():
+                logger.info("hit5")
                 p2p.recv(self.loss, self.prev_stage)
+                logger.info("hit6")
             if not self.is_last_stage():
+                logger.info("hit7")
                 p2p.send(self.loss, self.next_stage)
+                logger.info("hit8")
 
         # Initialize schedule constructor
         self._generate_sched = lambda \

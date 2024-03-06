@@ -9,6 +9,9 @@ It is built on top of [DeepSpeed](https://github.com/microsoft/DeepSpeed).
 It uses redundant computation in the pipeline by taking advantage of
 pipeline bubbles to enable low-pause recovery from failures.
 
+```sh
+etcdctl rm --dir --recursive /torchelastic
+```
 
 ## Setup
 

@@ -12,5 +12,6 @@ Dockerfile
 .dockerignore
 
 /build.sh
-/VERSION
 /version.sh
+*.bak
+*.db
