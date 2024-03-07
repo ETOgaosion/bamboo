@@ -16,6 +16,7 @@ import numpy as np
 import os
 import signal
 import sys
+import pdb
 
 from colorama import Fore
 
@@ -259,22 +260,14 @@ class PipelineEngine(DeepSpeedEngine):
         # Initialize pipeline communicators. Just send a 0.
         if is_even(self.stage_id):
             if not self.is_last_stage():
-                logger.info("hit1")
                 p2p.send(self.loss, self.next_stage)
-                logger.info("hit2")
             if not self.is_first_stage():
-                logger.info("hit3")
                 p2p.recv(self.loss, self.prev_stage)
-                logger.info("hit4")
         else:
             if not self.is_first_stage():
-                logger.info("hit5")
                 p2p.recv(self.loss, self.prev_stage)
-                logger.info("hit6")
             if not self.is_last_stage():
-                logger.info("hit7")
                 p2p.send(self.loss, self.next_stage)
-                logger.info("hit8")
 
         # Initialize schedule constructor
         self._generate_sched = lambda \
@@ -1142,6 +1135,46 @@ class PipelineEngine(DeepSpeedEngine):
         self._compute_loss = True
         # print("set time to kill")
         # self.rdzv_handler.set_time_to_kill()
+        self.log("hit")
+        if os.environ['USE_BARRIER'] == 'true':
+            self.log("enter barrier")
+            while True:
+                try:
+                    val = self.rdzv_handler.test_and_set('/rdzv/lock', '1', '0')
+                    try:
+                        prev = self.rdzv_handler.get('/rdzv/barrier')
+                        if prev == '1':
+                            self.log("barrier enter first, quit")
+                            self.rdzv_handler.write('/rdzv/barrier', '2')
+                            self.rdzv_handler.write('/rdzv/lock', '0')
+                            sys.exit()
+                        elif prev == '0':
+                            self.log("barrier enter second, continue")
+                            self.rdzv_handler.write('/rdzv/barrier', '1')
+                            self.rdzv_handler.write('/rdzv/lock', '0')
+                            while True:
+                                try:
+                                    prev = self.rdzv_handler.get('/rdzv/barrier')
+                                    if prev == '2':
+                                        self.rdzv_handler.write('/rdzv/barrier', '0')
+                                        break
+                                    else:
+                                        continue
+                                except:
+                                    self.log("this shall not happen 1")
+                                    sys.exit()
+                            break
+                        else:
+                            self.log(f'impossible branch 1 {prev} {str(prev == "0")} {type(prev)}')
+                            sys.exit()
+                    except Exception as e:
+                        self.log("this shall not happen 2 " + str(e))
+                        sys.exit()
+                except ValueError as e:
+                    self.log("fail to fetch lock " + str(e))
+                    self.log(f'type(self.rdzv_handler.get("/rdzv/lock")): {type(self.rdzv_handler.get("/rdzv/lock"))}, self.rdzv_handler.get("/rdzv/lock"): {self.rdzv_handler.get("/rdzv/lock")}')
+                
+        self.log(f'self.join: {self.join}')
         if not self.join and self.rdzv_handler.should_reconfigure(self.global_steps, failures):
             ## If a shadow node is going to fail make sure we get its state before it dies
             ## TODO: Make sure this only happens when the state is not available in another

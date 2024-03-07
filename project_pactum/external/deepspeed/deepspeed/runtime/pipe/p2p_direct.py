@@ -10,9 +10,7 @@ def init_process_groups(grid, device):
 
 def send(tensor, dest_stage):
     dest_rank = _grid.stage_to_global(stage_id=dest_stage)
-    print("hit 9")
     dist.send(tensor, dst=dest_rank)
-    print("hit 10")
 
 def recv(buffer, src_stage):
     src_rank = _grid.stage_to_global(stage_id=src_stage)

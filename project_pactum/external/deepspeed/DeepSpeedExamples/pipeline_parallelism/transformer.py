@@ -278,10 +278,9 @@ def test_encoder(args):
         training_data=dataset,
         redundancy_level=args.redundancy_level,
         eager_recovery=args.eager)
-    
-    print("hit")
 
-    for _ in range(engine.global_steps, args.steps):
+    for i in range(engine.global_steps, args.steps):
+        print(f"Step {i}")
         engine.train_batch(debug=args.debug, mem_log=args.mem_log)
 
 

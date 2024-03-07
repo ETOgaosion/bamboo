@@ -15,6 +15,7 @@ echo "ARGS $RDZV_IP $ID $NUM_STAGES $MODEL"
 cmd="""export PROJECT_PACTUM_LOGGING_WARNING='etcd.client,etcd.lock,torch.distributed.distributed_c10d' \
 	export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	export LOGLEVEL=INFO \
+	export USE_BARRIER=true \
 	&& \
 	export PYTHONPATH=${CURRENT_PATH}/project-pactum:\${PYTHONPATH} \
 	&& \

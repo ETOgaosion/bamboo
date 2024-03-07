@@ -209,8 +209,16 @@ class EtcdRendezvousHandler(RendezvousHandler):
 
     def write(self, key, value):
         self._rdzv_impl.write(key, value)
+        
+    def get(self, key):
+        return self._rdzv_impl.get(key)
+    
+    def test_and_set(self, key, value, prev_value):
+        return self._rdzv_impl.test_and_set(key, value, prev_value)
 
     def should_reconfigure(self, global_steps, failures={}):
+        print("==============hit==================")
+        print("==============hit==================")
         if self._rdzv_impl is not None:
             return self._rdzv_impl.should_reconfigure(global_steps, failures)
 
@@ -438,6 +446,8 @@ class EtcdRendezvous(object):
             pass
 
         self.rank_pattern = re.compile(".*/rdzv/v_(\d+)/rank_(\d+)")
+        self.write("/rdzv/lock", '0')
+        self.write("/rdzv/barrier", '0')
 
     def __del__(self):
         # TODO: look into using weakref here instead.
@@ -459,6 +469,14 @@ class EtcdRendezvous(object):
         if isinstance(value, str):
             value = json.dumps(value)
         self.client.write(key, value)
+        
+    def get(self, key):
+        key = self.get_path(key)
+        return json.loads(self.client.get(key).value)
+    
+    def test_and_set(self, key, value, prev_value):
+        key = self.get_path(key)
+        return json.loads(self.client.test_and_set(key, json.dumps(value), json.dumps(prev_value)).value)
 
     def rendezvous_barrier(self, previous_global_rank):
         """
@@ -1092,6 +1110,7 @@ class EtcdRendezvous(object):
                     break
                 num_workers_overloaded += 1
 
+        log.info(f'num_workers_overloaded: {num_workers_overloaded}, num_workers_waiting: {num_workers_waiting}')
         if num_workers_overloaded > 0 and num_workers_waiting >= num_workers_overloaded:
             pass
             #should_reconfigure = True
@@ -1145,6 +1164,8 @@ class EtcdRendezvous(object):
                 active_version, state = self.get_rdzv_state()
             except:
                 return True
+            
+            log.info(f'active_version: {active_version}, state: {state}')
 
             # If this isn't a final state, we need to reconfigure anyways
             if state["status"] != "final":
@@ -1153,12 +1174,14 @@ class EtcdRendezvous(object):
             # Check if a decision has already been made
             try:
                 global_steps = self.client.get(global_steps_key)
+                log.info(f'global_steps: {global_steps.value}, json.loads(global_steps.value): {json.loads(global_steps.value)}')
                 return json.loads(global_steps.value)
             except etcd.EtcdKeyNotFound:
                 pass
 
             # Try to make the decision, if it fails just retry
             try:
+                log.info(f'global_steps: {global_steps}, global_steps_key: {global_steps_key}, failures: {failures}, active_version: {active_version}, state: {state}, self.decide_reconfigure(global_steps, global_steps_key, failures, active_version, state): {self.decide_reconfigure(global_steps, global_steps_key, failures, active_version, state)}')
                 return self.decide_reconfigure(global_steps, global_steps_key, failures, active_version, state)
             except:
                 pass
