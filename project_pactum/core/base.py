@@ -42,26 +42,26 @@ def setup_logging():
 	stream_handler.setFormatter(ProjectPactumFormatter())
 	logging.basicConfig(level=logging.DEBUG, handlers=[stream_handler])
 
-	if 'PROJECT_PACTUM_LOGGING_WARNING' in os.environ:
-		for p in os.environ['PROJECT_PACTUM_LOGGING_WARNING'].split(','):
-			logging.getLogger(p).setLevel(logging.WARNING)
+	if 'PROJECT_PACTUM_LOGGING_INFO' in os.environ:
+		for p in os.environ['PROJECT_PACTUM_LOGGING_INFO'].split(','):
+			logging.getLogger(p).setLevel(logging.INFO)
 
-	logging.getLogger('botocore.auth').setLevel(logging.WARNING)
-	logging.getLogger('botocore.client').setLevel(logging.WARNING)
-	logging.getLogger('botocore.credentials').setLevel(logging.WARNING)
-	logging.getLogger('botocore.endpoint').setLevel(logging.WARNING)
-	logging.getLogger('botocore.handlers').setLevel(logging.WARNING)
-	logging.getLogger('botocore.hooks').setLevel(logging.WARNING)
-	logging.getLogger('botocore.httpsession').setLevel(logging.WARNING)
-	logging.getLogger('botocore.loaders').setLevel(logging.WARNING)
-	logging.getLogger('botocore.parsers').setLevel(logging.WARNING)
-	logging.getLogger('botocore.retryhandler').setLevel(logging.WARNING)
-	logging.getLogger('botocore.utils').setLevel(logging.WARNING)
-	logging.getLogger('boto3.resources.action').setLevel(logging.WARNING)
-	logging.getLogger('boto3.resources.collection').setLevel(logging.WARNING)
-	logging.getLogger('boto3.resources.factory').setLevel(logging.WARNING)
-	logging.getLogger('boto3.resources.model').setLevel(logging.WARNING)
+	logging.getLogger('botocore.auth').setLevel(logging.INFO)
+	logging.getLogger('botocore.client').setLevel(logging.INFO)
+	logging.getLogger('botocore.credentials').setLevel(logging.INFO)
+	logging.getLogger('botocore.endpoint').setLevel(logging.INFO)
+	logging.getLogger('botocore.handlers').setLevel(logging.INFO)
+	logging.getLogger('botocore.hooks').setLevel(logging.INFO)
+	logging.getLogger('botocore.httpsession').setLevel(logging.INFO)
+	logging.getLogger('botocore.loaders').setLevel(logging.INFO)
+	logging.getLogger('botocore.parsers').setLevel(logging.INFO)
+	logging.getLogger('botocore.retryhandler').setLevel(logging.INFO)
+	logging.getLogger('botocore.utils').setLevel(logging.INFO)
+	logging.getLogger('boto3.resources.action').setLevel(logging.INFO)
+	logging.getLogger('boto3.resources.collection').setLevel(logging.INFO)
+	logging.getLogger('boto3.resources.factory').setLevel(logging.INFO)
+	logging.getLogger('boto3.resources.model').setLevel(logging.INFO)
 
-	logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
+	logging.getLogger('urllib3.connectionpool').setLevel(logging.INFO)
 
-	logging.getLogger('matplotlib').setLevel(logging.WARNING)
+	logging.getLogger('matplotlib').setLevel(logging.INFO)

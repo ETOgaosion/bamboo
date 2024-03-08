@@ -217,8 +217,6 @@ class EtcdRendezvousHandler(RendezvousHandler):
         return self._rdzv_impl.test_and_set(key, value, prev_value)
 
     def should_reconfigure(self, global_steps, failures={}):
-        print("==============hit==================")
-        print("==============hit==================")
         if self._rdzv_impl is not None:
             return self._rdzv_impl.should_reconfigure(global_steps, failures)
 
