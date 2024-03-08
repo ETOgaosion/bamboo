@@ -1147,7 +1147,8 @@ class PipelineEngine(DeepSpeedEngine):
                             self.log("barrier enter first, quit")
                             self.rdzv_handler.write('/rdzv/barrier', '2')
                             self.rdzv_handler.write('/rdzv/lock', '0')
-                            sys.exit()
+                            os.kill(os.getpid(), signal.SIGTERM)
+                            return
                         elif prev == '0':
                             self.log("barrier enter second, continue")
                             self.rdzv_handler.write('/rdzv/barrier', '1')
@@ -1156,7 +1157,7 @@ class PipelineEngine(DeepSpeedEngine):
                                 try:
                                     prev = self.rdzv_handler.get('/rdzv/barrier')
                                     if prev == '2':
-                                        self.rdzv_handler.write('/rdzv/barrier', '0')
+                                        # self.rdzv_handler.write('/rdzv/barrier', '0')
                                         break
                                     else:
                                         continue
@@ -1225,6 +1226,7 @@ class PipelineEngine(DeepSpeedEngine):
         schedule_status: Optional[Tuple[int, Exception]] = \
             self._exec_schedule(sched, debug=debug)
 
+        self.log("hit5")
         if schedule_status is None:
             if debug:
                 print('[DEBUG Pipeline] Finish one iteration')
@@ -1961,12 +1963,15 @@ class PipelineEngine(DeepSpeedEngine):
 
     def _exec_send_activations(self, buffer_id, stage_id):
         # Internal communication
+        self.log("hit9")
         if self._inc(stage_id) in self.stage_ids:
             return
 
+        self.log("hit10")
         if self.wall_clock_breakdown():
             self.timers('pipe_send_output').start()
 
+        self.log("hit11")
         if buffer_id >= 0:
             outputs = self.pipe_buffers[f'output_{stage_id}'][buffer_id]
         else:
@@ -1977,12 +1982,17 @@ class PipelineEngine(DeepSpeedEngine):
                 self.first_output_send = False
                 self._send_tensor_meta(outputs, self.next_stage)
 
+        self.log("hit12")
         def send_handler(stage):
             if isinstance(outputs, torch.Tensor):
+                self.log("hit13")
                 p2p.send(outputs, stage)
+                self.log("hit18")
             elif isinstance(outputs, tuple):
+                self.log("hit14")
                 for idx, buffer in enumerate(outputs):
                     p2p.send(buffer, stage)
+                self.log("hit15")
             else:
                 raise NotImplementedError('Could not send output of type '
                                           f'{type(outputs)}')
@@ -1997,8 +2007,10 @@ class PipelineEngine(DeepSpeedEngine):
             self.rdzv_handler.update_coordinates(self.global_rank, self.coordinates)
             raise NextStageException(e)
 
+        self.log("hit16")
         if self.wall_clock_breakdown():
             self.timers('pipe_send_output').stop()
+        self.log("hit17")
 
     def _exec_send_grads(self, buffer_id, stage_id):
         # Internal communication
@@ -2076,6 +2088,7 @@ class PipelineEngine(DeepSpeedEngine):
         if self.wall_clock_breakdown():
             self.timers('pipe_recv_input').start()
 
+        self.log("hit1")
         # Allocate the buffer if necessary
         buffer = None
         if buffer_id >= 0:
@@ -2085,11 +2098,15 @@ class PipelineEngine(DeepSpeedEngine):
         else:
             buffer = self.ping_buffer
 
+        self.log("hit2")
         def recv_handler(stage):
             if isinstance(buffer, torch.Tensor):
+                self.log("hit3")
                 p2p.recv(buffer, stage)
+                self.log("hit100")
                 recvd = buffer.clone().detach()
                 recvd.requires_grad = recvd.is_floating_point()
+                self.log("hit101")
             else:
                 raise NotImplemented("Not support receiving tuple")
 
@@ -2103,11 +2120,14 @@ class PipelineEngine(DeepSpeedEngine):
             self.global_store.set(str(failed_rank), '1')
             raise PrevStageException(e)
 
+        self.log("hit4")
         if buffer_id >= 0:
             self.pipe_buffers[f'input_{stage_id}'][buffer_id] = recvd
 
+        self.log("hit5")
         if self.wall_clock_breakdown():
             self.timers('pipe_recv_input').stop()
+        self.log("hit6")
 
     def _exec_recv_grads(self, buffer_id, stage_id):
         # Internal communicaiton

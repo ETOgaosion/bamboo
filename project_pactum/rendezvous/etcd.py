@@ -1099,6 +1099,7 @@ class EtcdRendezvous(object):
 
         # Check the current alive coordinates
         rank_coordinates = self.get_rank_coordinates_for_version(state, version)
+        logger.info(f'rank_coordinates: {rank_coordinates}')
         for rank, coordinates in rank_coordinates.items():
             if len(coordinates) > 2:
                 should_reconfigure = True
