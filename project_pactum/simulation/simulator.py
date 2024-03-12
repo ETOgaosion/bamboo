@@ -950,7 +950,7 @@ class Simulator:
                 raise ValueError(f'Unknown kind: {kind}')
 
             # We're done our training
-            if duration is None and self.num_steps_complete == self.steps_per_run:
+            if duration is None and (hasattr(self, "steps_per_run") and self.num_steps_complete == self.steps_per_run):
                 break
 
             # We still need to process more events for this delta
