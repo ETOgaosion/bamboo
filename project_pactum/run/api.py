@@ -168,6 +168,7 @@ def config_from_args(args) -> Tuple[ProjectPactumLaunchConfig, Union[Callable, s
 
     # If ``args`` not passed, defaults to ``sys.argv[:1]``
     min_nodes, max_nodes = parse_min_max_nnodes(args.nnodes)
+    logger.info(f"min_nodes: {min_nodes}, max_nodes: {max_nodes}")
     assert 0 < min_nodes <= max_nodes
     assert args.max_restarts >= 0
 

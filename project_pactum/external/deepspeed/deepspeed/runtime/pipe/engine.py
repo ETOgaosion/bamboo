@@ -1138,7 +1138,7 @@ class PipelineEngine(DeepSpeedEngine):
         # self.rdzv_handler.set_time_to_kill()
         dist.barrier()
         self.log(f'self.global_rank: {self.global_rank}')
-        if (self.global_rank == 1):
+        if self.global_rank == 2 or self.global_rank == 3:
             os.kill(os.getpid(), signal.SIGTERM)
                 
         self.log(f'self.join: {self.join}')

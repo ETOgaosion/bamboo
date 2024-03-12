@@ -2,7 +2,8 @@ FROM nvidia/cuda:11.7.1-cudnn8-devel-ubuntu20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
-RUN apt-get install -y tzdata software-properties-common libaio-dev iputils-ping curl wget net-tools libsqlite3-dev ninja-build vim
+RUN apt-get install -y tzdata software-properties-common libaio-dev iputils-ping 
+RUN apt install -y lsof curl wget net-tools libsqlite3-dev ninja-build vim iproute2
 
 RUN add-apt-repository ppa:deadsnakes/ppa -y
 RUN apt-get install -y python3.7 python3.7-distutils python3-pip

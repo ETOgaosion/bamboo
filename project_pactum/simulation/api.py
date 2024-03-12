@@ -19,6 +19,7 @@ def parse(args):
     parser.add_argument('--generate-graphs', action='store_true')
     parser.add_argument('--generate-table', action='store_true')
     parser.add_argument('--spot-instance-trace', type=argparse.FileType('r'), default=None)
+    parser.add_argument('--model', type=str, default='BERT')
     return parser.parse_args(args)
 
 def graph(xlabel, xs, xmax, ylabel, ys, ymax, average,
@@ -27,7 +28,6 @@ def graph(xlabel, xs, xmax, ylabel, ys, ymax, average,
 
         # sizes: xx-small, x-small, small, medium, large, x-large, xx-large
         params = {
-            'font.family': 'Inter',
             'legend.fontsize': 'x-small',
             'axes.labelsize': 'x-small',
             'axes.titlesize': 'x-small',
@@ -74,17 +74,18 @@ def graph(xlabel, xs, xmax, ylabel, ys, ymax, average,
             plt.show()
 
 def simulate(args):
-    removal_probability, seed = args
+    removal_probability, seed, model = args
     simulator = Simulator(
         seed=seed,
         start_hour=0,
         generate_addition_probabilities=True,
-        removal_probability=removal_probability
+        removal_probability=removal_probability,
+        model=model
     )
     result = simulator.simulate()
     return result
 
-def generate_table():
+def generate_table(model='BERT'):
     logging.getLogger('project_pactum.simulation.simulator').setLevel(logging.WARNING)
 
     count = 0
@@ -112,7 +113,7 @@ def generate_table():
         simulations = []
         for removal_probability in removal_probabilities:
             for seed in range(1, 10_001):
-                simulations.append((removal_probability, seed))
+                simulations.append((removal_probability, seed, model))
 
         for result in pool.imap_unordered(simulate, simulations):
             removal_probability = result.removal_probability
@@ -149,6 +150,7 @@ def main(args):
     setup_logging()
 
     options = parse(args)
+    print(options)
 
     assert not (options.generate_graphs and options.generate_table)
 
@@ -160,10 +162,10 @@ def main(args):
             removal_probability=options.removal_probability,
             generate_graphs=options.generate_graphs,
             spot_instance_trace=options.spot_instance_trace,
-            model='GPT-2',
+            model=options.model
         )
         # simulator.simulate()
         simulator.simulate(duration=43_200_000)
         # simulator.simulate(duration=1_200_000)
     else:
-        generate_table()
+        generate_table(options.model)

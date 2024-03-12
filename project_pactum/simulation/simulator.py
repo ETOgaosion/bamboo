@@ -1040,7 +1040,7 @@ class Simulator:
                 max(self.on_demand_num_instances, max(instances_ys)),
                 result.average_instances,
                 on_demand=self.on_demand_num_instances,
-                out=f'instances{pdf_suffix}',
+                out=f'res/instances{pdf_suffix}',
                 show=True,
             )
 
@@ -1054,7 +1054,7 @@ class Simulator:
                 max(self.on_demand_performance, max(self.performance_ys)),
                 result.average_performance,
                 on_demand=self.on_demand_performance,
-                out=f'performance{pdf_suffix}',
+                out=f'res/performance{pdf_suffix}',
                 show=True,
             )
 
@@ -1071,7 +1071,7 @@ class Simulator:
                 max(self.on_demand_cost, max(self.cost_ys)),
                 result.average_cost,
                 on_demand=self.on_demand_cost,
-                out=f'cost{pdf_suffix}',
+                out=f'res/cost{pdf_suffix}',
                 show=True,
             )
 
@@ -1087,7 +1087,7 @@ class Simulator:
                 max(self.on_demand_value, max(self.value_ys)),
                 result.average_value,
                 on_demand=self.on_demand_value,
-                out=f'value{pdf_suffix}',
+                out=f'res/value{pdf_suffix}',
                 show=True,
             )
 
