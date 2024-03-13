@@ -235,6 +235,7 @@ class Simulator:
             self.on_demand_value = self.on_demand_performance / self.on_demand_cost
         elif model == 'ResNet':
             self.samples_per_step = 384
+            self.steps_per_run = 26_194
 
             self.spot_instance_desired_capacity = 32
             self.simulate_step_delta = self.resnet_simulate_step_delta
@@ -247,6 +248,7 @@ class Simulator:
             self.on_demand_value = self.on_demand_performance / self.on_demand_cost
         elif model == 'GNMT':
             self.samples_per_step = 288
+            self.steps_per_run = 23_194
 
             self.spot_instance_desired_capacity = 24
             self.simulate_step_delta = self.gnmt_simulate_step_delta
@@ -259,6 +261,7 @@ class Simulator:
             self.on_demand_value = self.on_demand_performance / self.on_demand_cost
         elif model == 'VGG':
             self.samples_per_step = 384
+            self.steps_per_run = 26_194
 
             self.spot_instance_desired_capacity = 24
             self.simulate_step_delta = self.vgg_simulate_step_delta
@@ -271,6 +274,7 @@ class Simulator:
             self.on_demand_value = self.on_demand_performance / self.on_demand_cost
         elif model == 'AlexNet':
             self.samples_per_step = 384
+            self.steps_per_run = 26_194
 
             self.spot_instance_desired_capacity = 24
             self.simulate_step_delta = self.alexnet_simulate_step_delta
