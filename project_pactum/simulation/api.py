@@ -74,7 +74,7 @@ def graph(xlabel, xs, xmax, ylabel, ys, ymax, average,
             plt.show()
 
 def simulate(args):
-    removal_probability, seed, model = args
+    removal_probability, seed, model, duration = args
     simulator = Simulator(
         seed=seed,
         start_hour=0,
@@ -82,10 +82,10 @@ def simulate(args):
         removal_probability=removal_probability,
         model=model
     )
-    result = simulator.simulate()
+    result = simulator.simulate(duration=duration)
     return result
 
-def generate_table(model='BERT'):
+def generate_table(model='BERT', duration=43_200_000):
     logging.getLogger('project_pactum.simulation.simulator').setLevel(logging.WARNING)
 
     count = 0
@@ -109,11 +109,11 @@ def generate_table(model='BERT'):
         all_cost[removal_probability] = []
         all_value[removal_probability] = []
 
-    with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
+    with multiprocessing.Pool(processes=multiprocessing.cpu_count() // 2) as pool:
         simulations = []
         for removal_probability in removal_probabilities:
             for seed in range(1, 10_001):
-                simulations.append((removal_probability, seed, model))
+                simulations.append((removal_probability, seed, model, duration))
 
         for result in pool.imap_unordered(simulate, simulations):
             removal_probability = result.removal_probability
@@ -168,4 +168,4 @@ def main(args):
         simulator.simulate(duration=43_200_000)
         # simulator.simulate(duration=1_200_000)
     else:
-        generate_table(options.model)
+        generate_table(options.model, duration=43_200_000)

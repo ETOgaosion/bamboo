@@ -932,6 +932,7 @@ class Simulator:
                 delta = duration
                 break
 
+            logger.info(f'kind: {kind}')
             if kind == EventKind.SPOT_INSTANCE_ADD:
                 self.simulate_spot_instance_add(delta, data)
             elif kind == EventKind.SPOT_INSTANCE_REMOVE:
