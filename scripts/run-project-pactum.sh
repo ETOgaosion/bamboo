@@ -30,6 +30,7 @@ cmd="""export PROJECT_PACTUM_LOGGING_INFO='etcd.client,etcd.lock,torch.distribut
 	--max-pipe-parallel-size=24 \
 	--default-num-stages=${NUM_STAGES} \
 	${MODEL}.py \
+	-s 50 \
 	--backend=nccl \
 	--redundancy_level=1 \
 	${@:5} \
