@@ -16,6 +16,7 @@ import torch.distributed as dist
 import time
 from collections import defaultdict, OrderedDict
 from shutil import copyfile
+import traceback, signal
 
 from torch.nn.modules import Module
 from torch.nn.parameter import Parameter
@@ -102,6 +103,8 @@ def print_configuration(args, name):
         dots = '.' * (29 - len(arg))
         logger.info('  {} {} {}'.format(arg, dots, getattr(args, arg)))
 
+def sig_backtrace():
+    traceback.print_stack()
 
 class DeepSpeedEngine(Module):
     r"""DeepSpeed engine for training.
@@ -120,6 +123,7 @@ class DeepSpeedEngine(Module):
                  config_params=None,
                  dont_change_device=False,
                  rdzv_handler=None):
+        signal.signal(signal.SIGTERM, sig_backtrace)
         super(DeepSpeedEngine, self).__init__()
         self.init_args = args
         self.dont_change_device = dont_change_device
