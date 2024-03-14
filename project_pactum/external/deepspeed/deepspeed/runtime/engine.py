@@ -123,7 +123,6 @@ class DeepSpeedEngine(Module):
                  config_params=None,
                  dont_change_device=False,
                  rdzv_handler=None):
-        signal.signal(signal.SIGTERM, sig_backtrace)
         super(DeepSpeedEngine, self).__init__()
         self.init_args = args
         self.dont_change_device = dont_change_device
@@ -808,6 +807,7 @@ class DeepSpeedEngine(Module):
 
         logger.info(f'len(list(self.module.parameters())): {len(list(self.module.parameters()))}')
         num_parameter = 0
+        signal.signal(signal.SIGTERM, sig_backtrace)
         for p in self.module.parameters():
             num_parameter += 1
             logger.info(f'num_parameter: {num_parameter}')
