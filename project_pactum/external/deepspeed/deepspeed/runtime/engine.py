@@ -810,7 +810,7 @@ class DeepSpeedEngine(Module):
         num_parameter = 0
         for p in self.module.parameters():
             num_parameter += 1
-            logger.info(f'p: {p}')
+            logger.info(f'num_parameter: {num_parameter}')
             if hasattr(p, 'allreduce') and not p.allreduce:
                 if torch.is_tensor(p) and is_replicated(p):
                     logger.info('skipping allreduce for {}'.format(p))
