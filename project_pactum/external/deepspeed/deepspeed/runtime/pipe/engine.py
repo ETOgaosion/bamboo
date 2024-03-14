@@ -1070,7 +1070,7 @@ class PipelineEngine(DeepSpeedEngine):
         self.num_pipe_buffers = max(self.num_pipe_buffers, num_buffers)
 
     def train_batch(self, data_iter=None, debug=True, mem_status=False,
-                    mem_log=False):
+                    mem_log=False, index):
         """Progress the pipeline to train the next batch of data. The engine will ingest
         ``self.train_batch_size()`` total samples collectively across all workers.
 
@@ -1138,10 +1138,10 @@ class PipelineEngine(DeepSpeedEngine):
         self._compute_loss = True
         # print("set time to kill")
         # self.rdzv_handler.set_time_to_kill()
-        dist.barrier()
-        self.log(f'self.global_rank: {self.global_rank}')
-        if self.global_rank == 2:
-            os.kill(os.getpid(), signal.SIGTERM)
+        # dist.barrier()
+        # self.log(f'self.global_rank: {self.global_rank}')
+        # if self.global_rank == 2 and index > 2:
+        #     os.kill(os.getpid(), signal.SIGTERM)
                 
         self.log(f'self.join: {self.join}')
         if not self.join and self.rdzv_handler.should_reconfigure(self.global_steps, failures):
