@@ -14,7 +14,7 @@ TORCH_DISTRIBUTED_DEFAULT_PORT = 29500
 # To make an attempt at backwards compatibility with THD, we use an
 # extraordinarily high default timeout, given that THD did not have timeouts.
 # PROJECT-PACTUM: Change default timeout from 30 minutes to 10 seconds
-default_pg_timeout = timedelta(seconds=10)
+default_pg_timeout = timedelta(seconds=1800)
 
 INFERENCE_GENERIC_MODE = 'generic'
 INFERENCE_SPECIALIZED_MODE = 'specialized'
