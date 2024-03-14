@@ -13,9 +13,5 @@
         }
     },
     "steps_per_print": 1,
-    "wall_clock_breakdown": false,
-    "amp": {
-        "enabled": true,
-        "opt_level": "O1"
-    }
+    "wall_clock_breakdown": false
 }
