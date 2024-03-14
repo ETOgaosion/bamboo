@@ -249,8 +249,9 @@ class EtcdRendezvousHandler(RendezvousHandler):
         # set the world size as the workers that are assigned coordinates
         world_size = len([info for info in global_decision if len(info.active_coordinates) != 0])
 
-        log.warning("Creating EtcdStore as the c10d::Store implementation")
+        log.info("next_rendezvous Creating EtcdStore as the c10d::Store implementation")
         store = self._rdzv_impl.setup_kv_store(rdzv_version)
+        log.info('next_rendezvous finish creating etcdstore')
 
         return store, rank, world_size, num_pipelines, num_stages, global_decision
 
@@ -346,8 +347,9 @@ class EtcdRendezvousHandler(RendezvousHandler):
         _, state = self._rdzv_impl.get_rdzv_state()
         rdzv_version = state['version']
 
-        log.warning("Creating EtcdStore as the c10d::Store implementation")
+        log.info("kv store Creating EtcdStore as the c10d::Store implementation")
         store = self._rdzv_impl.setup_kv_store(rdzv_version)
+        log.info('kv store finish creating etcdstore')
 
         return store
 
@@ -1501,7 +1503,9 @@ class EtcdRendezvous(object):
 
     def setup_kv_store(self, rdzv_version):
         store_path = self.get_path(f"/rdzv/v_{rdzv_version}/kv")
+        logger.info(f'store_path: {store_path}')
         self.create_path_if_not_exists(store_path)
+        logger.info(f'after create path')
         return EtcdStore(etcd_client=self.client, etcd_store_prefix=store_path)
 
 

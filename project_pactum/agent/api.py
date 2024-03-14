@@ -151,9 +151,13 @@ class ProjectPactumAgent(SimpleElasticAgent):
         """
 
         spec = worker_group.spec
+        
+        num_cycles = 0
 
         while True:
             store, group_rank, group_world_size, num_pipelines, num_stages, global_decision = spec.rdzv_handler.next_rendezvous()
+            num_cycles += 1
+            log.info(f'finish next rendezvous for index {num_cycles}')
             self._store = store
 
             # PROJECT-PACTUM: Lookup coordinates from global decision
@@ -168,6 +172,9 @@ class ProjectPactumAgent(SimpleElasticAgent):
                 break
 
         workers = self._assign_worker_ranks(store, group_rank, group_world_size, spec, num_pipelines, num_stages, global_decision, coordinates)
+        
+        log.info(f'after assign worker ranks, workers: {workers}')
+
         worker_group.workers = workers
         worker_group.store = store
         worker_group.group_rank = group_rank

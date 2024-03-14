@@ -587,6 +587,7 @@ class PipelineEngine(DeepSpeedEngine):
             if len(info.previous_coordinates) != 0:
                 prev_stages = [s_id for dp_id, s_id in info.previous_coordinates]
                 prev_partition = set(range(old_parts[min(prev_stages)], old_parts[max(prev_stages) + 1]))
+                logger.info(f'Rank {rank} needs layers {needed_layers} and has prev partition {prev_partition}')
                 needed_layers.difference_update(prev_partition)
 
             for other_info in global_decisions:
@@ -610,6 +611,7 @@ class PipelineEngine(DeepSpeedEngine):
 
             recv_decisions[rank] = rank_recv_decisions
 
+            logger.info(f'len(needed_layers): {len(needed_layers)}')
             assert len(needed_layers) == 0
 
         return recv_decisions
@@ -1174,7 +1176,9 @@ class PipelineEngine(DeepSpeedEngine):
             self.rdzv_handler.assign_worker_ranks(store, rank, world_size, spec, num_pipelines, num_stages, global_decision)
             if self.global_rank == 0:
                 self.rdzv_handler.set_master_addr_port(store)
-            master_addr, master_port = self.rdzv_handler.get_master_addr_port(store)
+            master_addr, master_port = self.rdzv_handler.get_master_addr_port(store) 
+            
+            self.log("will reconfigure myself")
 
             self.reconfigure_cluster(store, global_decision, recvd_state)
             failures = {}

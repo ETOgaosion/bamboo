@@ -177,6 +177,7 @@ class DeepSpeedEngine(Module):
                 self.rdzv_handler = rdzv_handler
 
             self.global_store = self.rdzv_handler.setup_kv_store()
+            logger.info('finish setup_kv_store')
             world_size = dist.get_world_size()
             for rank in range(world_size):
                 self.global_store.set(str(rank), '0')
