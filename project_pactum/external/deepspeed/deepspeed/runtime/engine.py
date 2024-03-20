@@ -820,7 +820,7 @@ class DeepSpeedEngine(Module):
                 logger.info('finish broadcast')
             else:
                 if torch.is_tensor(p) and is_replicated(p):
-                    logger.info('broadcasting {}'.format(p))
+                    logger.info(f'broadcasting {p}, self.data_parallel_group: {self.data_parallel_group}')
                     dist.broadcast(p,
                                    self.broadcast_src_rank,
                                    group=self.data_parallel_group)
