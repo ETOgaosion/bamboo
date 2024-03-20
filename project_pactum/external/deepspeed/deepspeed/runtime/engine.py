@@ -808,21 +808,16 @@ class DeepSpeedEngine(Module):
         signal.signal(signal.SIGTERM, sig_backtrace)
         for p in self.module.parameters():
             num_parameter += 1
-            logger.info(f'num_parameter: {num_parameter}')
             if hasattr(p, 'allreduce') and not p.allreduce:
                 if torch.is_tensor(p) and is_replicated(p):
-                    logger.info('skipping allreduce for {}'.format(p))
                     dist.broadcast(p,
                                    self.expert_broadcast_src_rank,
                                    group=self.expert_data_parallel_group)
-                logger.info('finish broadcast')
             else:
                 if torch.is_tensor(p) and is_replicated(p):
-                    logger.info('broadcasting {}'.format(p))
                     dist.broadcast(p,
                                    self.broadcast_src_rank,
                                    group=self.data_parallel_group)
-                logger.info('finish broadcast')
 
     def _configure_distributed_model(self, model):
         self.module = model

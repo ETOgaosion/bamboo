@@ -937,11 +937,9 @@ class DeepSpeedConfig(object):
         self._do_warning_check()
 
     def print(self, name):
-        logger.info('{}:'.format(name))
         for arg in sorted(vars(self)):
             if arg != '_param_dict':
                 dots = '.' * (29 - len(arg))
-                logger.info('  {} {} {}'.format(arg, dots, getattr(self, arg)))
 
         logger.info('  json = {}'.format(
             json.dumps(self._param_dict,

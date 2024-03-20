@@ -2,12 +2,12 @@
 
 CURRENT_PATH=$(pwd)
 
-NUM_NODES=${1:-7}
-NUM_STAGES=${2:-2}
+NUM_NODES=${1:-4}
+NUM_STAGES=${2:-4}
 RDZV_IP=${3:-localhost}
 ID=encoder${4}
 
-MODEL=${CURRENT_PATH}/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer
+MODEL=${CURRENT_PATH}/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/gpt2
 
 echo "ARGS $RDZV_IP $ID $NUM_STAGES $MODEL"
 

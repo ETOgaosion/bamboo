@@ -82,41 +82,6 @@ class ProjectPactumAgent(SimpleElasticAgent):
     def check_for_preemption(self):
         while True:
             pass
-        conn = sqlite3.connect('test.db')
-        c = conn.cursor()
-        c.execute('''
-                  DROP TABLE IF EXISTS TIME_TO_KILL;
-                  ''')
-        c.execute('''
-                  CREATE TABLE TIME_TO_KILL(
-                    ID INTEGER PRIMARY KEY AUTOINCREMENT,
-                    TIME_TO_KILL BOOLEAN NOT NULL
-                  );
-                  ''')
-        c.execute('''
-                  INSERT INTO TIME_TO_KILL (TIME_TO_KILL)
-                  VALUES (FALSE)
-                  ''')
-        conn.commit()
-        time_to_kill = False
-        while not time_to_kill:
-            time_to_kill = c.execute('''
-                                    SELECT TIME_TO_KILL FROM TIME_TO_KILL WHERE ID = 1
-                                    ''').fetchone()[0]
-            log.info(f'time_to_kill: {time_to_kill}')
-            time.sleep(1)
-            pass
-        log.info("Start to kill")
-        while True:
-            rand = random.uniform(0, 1)
-            log.info(str(time.time()) + ", " + str(rand) + ", ready ? " + str(self._check_ready()))
-            # if rand <= self.probability:
-            if rand < 0.5:
-                log.info(str(time.time()) + ", " + str(rand) + ", Preemption detected")
-                os.kill(os.getpid(), signal.SIGTERM)
-                break
-            time.sleep(1)
-        conn.close()
             
     def signal(self, signum, frame):
         role = self._worker_group.spec.role
@@ -185,7 +150,7 @@ class ProjectPactumAgent(SimpleElasticAgent):
         master_addr, master_port = self._get_master_addr_port(store)
         restart_count = spec.max_restarts - self._remaining_restarts
 
-        log.info(
+        log.warning(
             f"[{spec.role}] Rendezvous complete for workers. Result:\n"
             f"  restart_count={restart_count}\n"
             f"  master_addr={master_addr}\n"

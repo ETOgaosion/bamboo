@@ -408,7 +408,6 @@ class EtcdRendezvous(object):
         last_call_timeout,
     ):
         self.client = client
-        log.warning("Etcd machines: " + str(self.client.machines))
 
         self._prefix = prefix
         self._run_id = run_id
@@ -559,12 +558,12 @@ class EtcdRendezvous(object):
         try:
             active_version = self.try_create_rendezvous()
             state = json.loads(active_version.value)
-            log.warning("New rendezvous state created: " + str(state))
+            log.info("New rendezvous state created: " + str(state))
         except etcd.EtcdAlreadyExist:
             active_version, state = self.get_rdzv_state()
             # Note: it is possible for above query to fail (etcd.EtcdKeyNotFound),
             # but this is ok for us - just means we'll restart from beginning.
-            log.warning("Observed existing rendezvous state: " + str(state))
+            log.info("Observed existing rendezvous state: " + str(state))
 
         if state["status"] == "closed":
             raise RendezvousClosedError()
@@ -588,7 +587,7 @@ class EtcdRendezvous(object):
         # Failure to join will propagate an exception, causing a re-entry.
         active_version, this_rank = self.join_rendezvous(expected_version)
         state = json.loads(active_version.value)
-        log.warning(
+        log.info(
             "Joined rendezvous version {} as rank {}. Full state: {}".format(
                 state["version"], this_rank, state
             )
@@ -604,13 +603,13 @@ class EtcdRendezvous(object):
         # when min_num_workers is reached.
 
         if this_rank == self._num_min_workers - 1 and state["status"] == "joinable":
-            log.warning("Rank {} is responsible for join last call.".format(this_rank))
+            log.info("Rank {} is responsible for join last call.".format(this_rank))
             last_call_deadline = time.time() + self._last_call_timeout
             self.handle_join_last_call(expected_version, last_call_deadline)
-            log.warning("Rank {} finished join last call.".format(this_rank))
+            log.info("Rank {} finished join last call.".format(this_rank))
 
         # Wait for rendezvous state to be frozen, which means a fixed set of peers
-        log.warning("Waiting for remaining peers.")
+        log.info("Waiting for remaining peers.")
         active_version = self.wait_for_peers(expected_version)
         state = json.loads(active_version.value)
 
@@ -628,14 +627,14 @@ class EtcdRendezvous(object):
         which would then successfully conclude this rendezvous.
         """
 
-        log.warning("All peers arrived. Confirming membership.")
+        log.info("All peers arrived. Confirming membership.")
         self.confirm_membership(expected_version, this_rank, previous_global_rank)
 
-        log.warning("Waiting for confirmations from all peers.")
+        log.info("Waiting for confirmations from all peers.")
         active_version = self.wait_for_final(expected_version)
         state = json.loads(active_version.value)
 
-        log.warning(
+        log.info(
             "Rendezvous version {} is complete. Final state: {}".format(
                 state["version"], state
             )
@@ -661,14 +660,14 @@ class EtcdRendezvous(object):
         #   1. if it's no longer final -> bail out and re-try
         #   2. if keep alives are missing, destroy it and bail out.
         active_state = self.announce_self_waiting(expected_version)
-        log.warning(
+        log.info(
             "Added self to waiting list. Rendezvous full state: {}".format(
                 active_state.value
             )
         )
 
         self.wait_for_rendezvous_to_free(expected_version)
-        log.warning("Previously existing rendezvous state changed. Will re-try joining.")
+        log.info("Previously existing rendezvous state changed. Will re-try joining.")
 
     def try_create_rendezvous(self):
         """
@@ -682,7 +681,7 @@ class EtcdRendezvous(object):
         # Initially active_version is ephemeral - this is to handle the
         # possibility that might fail to complete the setup transaction,
         # i.e. the transition "setup" -> "joinable".
-        logger.warning(self.get_path("/rdzv/active_version"))
+        logger.info(self.get_path("/rdzv/active_version"))
         active_version = self.client.write(
             key=self.get_path("/rdzv/active_version"),
             value=json.dumps({"status": "setup"}),
@@ -830,9 +829,9 @@ class EtcdRendezvous(object):
         num_stages = default_num_stages
         num_pipelines = num_participants // default_num_stages
         num_active_nodes = num_pipelines * num_stages
-        logger.warning(f'num_active_nodes: {num_active_nodes}')
-        logger.warning(f'num_participants: {num_participants}')
-        logger.warning(f'default_num_stages: {default_num_stages}')
+        logger.info(f'num_active_nodes: {num_active_nodes}')
+        logger.info(f'num_participants: {num_participants}')
+        logger.info(f'default_num_stages: {default_num_stages}')
         if num_participants < default_num_stages:
             raise TooFewNodesException()
 
@@ -1112,7 +1111,6 @@ class EtcdRendezvous(object):
                     break
                 num_workers_overloaded += 1
 
-        log.info(f'num_workers_overloaded: {num_workers_overloaded}, num_workers_waiting: {num_workers_waiting}')
         if num_workers_overloaded > 0 and num_workers_waiting >= num_workers_overloaded:
             pass
             #should_reconfigure = True
@@ -1167,8 +1165,6 @@ class EtcdRendezvous(object):
                 active_version, state = self.get_rdzv_state()
             except:
                 return True
-            
-            log.info(f'active_version: {active_version}, state: {state}')
 
             # If this isn't a final state, we need to reconfigure anyways
             if state["status"] != "final":
@@ -1177,14 +1173,12 @@ class EtcdRendezvous(object):
             # Check if a decision has already been made
             try:
                 global_steps = self.client.get(global_steps_key)
-                log.info(f'global_steps: {global_steps.value}, json.loads(global_steps.value): {json.loads(global_steps.value)}')
                 return json.loads(global_steps.value)
             except etcd.EtcdKeyNotFound:
                 pass
 
             # Try to make the decision, if it fails just retry
             try:
-                log.info(f'global_steps: {global_steps}, global_steps_key: {global_steps_key}, failures: {failures}, active_version: {active_version}, state: {state}, self.decide_reconfigure(global_steps, global_steps_key, failures, active_version, state): {self.decide_reconfigure(global_steps, global_steps_key, failures, active_version, state)}')
                 return self.decide_reconfigure(global_steps, global_steps_key, failures, active_version, state)
             except:
                 pass
@@ -1203,13 +1197,11 @@ class EtcdRendezvous(object):
         while True:
             try:
                 active_version, state = self.get_rdzv_state()
-                log.info("active_version: " + str(active_version) + " state status: " + str(state["status"]) + " state version: " + str(state["version"]) + " expected_version: " + str(expected_version))
                 break
             except:
                 continue
 
         while True:
-            log.info("state status: " + str(state["status"]) + " state version: " + str(state["version"]) + " expected_version: " + str(expected_version))
             if state["status"] != "final" or state["version"] != expected_version:
                 return
 
@@ -1595,7 +1587,7 @@ def create_rdzv_handler(params: RendezvousParameters) -> RendezvousHandler:
         cert - client cert to access etcd, only makes sense with https.
         key - client key to access etcd, only makes sense with https.
     """
-    logger.warning('Start create_rdzv_handler')
+    logger.info('Start create_rdzv_handler')
 
     client = _create_etcd_client(params)
 
@@ -1610,5 +1602,5 @@ def create_rdzv_handler(params: RendezvousParameters) -> RendezvousHandler:
         timeout=params.get_as_int("timeout", _DEFAULT_TIMEOUT),
         last_call_timeout=params.get_as_int("last_call_timeout", _DEFAULT_LAST_CALL_TIMEOUT),
     )
-    logger.warning('End create_rdzv_handler')
+    logger.info('End create_rdzv_handler')
     return EtcdRendezvousHandler(rdzv_impl=rdzv)
