@@ -303,7 +303,7 @@ def train():
         eager_recovery=args.eager)
 
     for i in range(engine.global_steps, args.steps):
-        engine.train_batch(step=i, debug=args.debug, mem_log=args.mem_log)
+        engine.train_batch(debug=args.debug, mem_log=args.mem_log)
 
 
 if __name__ == '__main__':

@@ -2,8 +2,8 @@
 
 CURRENT_PATH=$(pwd)
 
-NUM_NODES=${1:-4}
-NUM_STAGES=${2:-4}
+NUM_NODES=${1:-6}
+NUM_STAGES=${2:-2}
 RDZV_IP=${3:-localhost}
 ID=encoder${4}
 
