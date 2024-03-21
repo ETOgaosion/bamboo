@@ -738,8 +738,6 @@ class PipelineEngine(DeepSpeedEngine):
         prev_stage_rank = self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.prev_stage) if self.prev_stage >= 0 else -1
         next_stage_rank = self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.next_stage) if self.next_stage < self.num_stages else -1
         ranks_to_check = self.grid.current_dp_group + [prev_stage_rank, next_stage_rank]
-        self.log(f'Checking ranks {ranks_to_check} for preemptions')
-        self.log(f'failures: {failures}, self.global_steps: {self.global_steps}, self.next_stage: {self.next_stage}, self.prev_stage: {self.prev_stage}, self.grid.current_dp_group: {self.grid.current_dp_group}, self.num_stages: {self.num_stages}, self.prev_stage: {self.prev_stage}, self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.next_stage): {self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.next_stage)}, self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.prev_stage): {self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.prev_stage)}')
         for rank in ranks_to_check:
             rank_key = str(rank)
 

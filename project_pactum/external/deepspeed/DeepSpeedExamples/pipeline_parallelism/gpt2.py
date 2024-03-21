@@ -122,7 +122,7 @@ class PositionwiseFeedForward(nn.Module):
 
 
 class GPT2Simple(nn.Module):
-    def __init__(self, N=6, d_model=512, d_ff=2048, h=8, dropout=0.1):
+    def __init__(self, N=12, d_model=1024, d_ff=2048, h=8, dropout=0.1):
         """ A simplified bert without embedding and language model heads """
         super().__init__()
         c = copy.deepcopy
@@ -208,8 +208,8 @@ def train():
         parser.add_argument('--seed', type=int, default=1138, help='PRNG seed')
 
         # Model config args
-        parser.add_argument('-N', type=int, default=8)
-        parser.add_argument('--d-model', '-dm', type=int, default=512)
+        parser.add_argument('-N', type=int, default=24)
+        parser.add_argument('--d-model', '-dm', type=int, default=1024)
         parser.add_argument('--d-ff', '-dff', type=int, default=2048)
         parser.add_argument('-H', type=int, default=16)
         parser.add_argument('-seq', type=int, default=256)

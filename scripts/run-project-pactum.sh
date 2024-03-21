@@ -15,7 +15,6 @@ ip a
 
 cmd="""export PROJECT_PACTUM_LOGGING_INFO='etcd.client,etcd.lock,torch.distributed.distributed_c10d' \
 	export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-	export LOGLEVEL=INFO \
 	export USE_BARRIER=true \
 	&& \
 	export PYTHONPATH=${CURRENT_PATH}/project-pactum:\${PYTHONPATH} \
@@ -30,7 +29,7 @@ cmd="""export PROJECT_PACTUM_LOGGING_INFO='etcd.client,etcd.lock,torch.distribut
 	--max-pipe-parallel-size=24 \
 	--default-num-stages=${NUM_STAGES} \
 	${MODEL}.py \
-	-s 50 \
+	-s 100 \
 	--backend=nccl \
 	--redundancy_level=1 \
 	${@:5} \
