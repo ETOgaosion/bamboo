@@ -48,10 +48,11 @@ _log_handler.setFormatter(_log_fmt)
 
 log = logging.getLogger(__name__)
 log.propagate = False
-log.setLevel(logging.INFO)
+log.setLevel(logging.WARNING)
 log.addHandler(_log_handler)
 
 logger = logging.getLogger('project_pactum.etcd')
+logger.setLevel(logging.WARNING)
 
 GlobalInfo = collections.namedtuple(
     'GlobalInfo',
@@ -496,7 +497,6 @@ class EtcdRendezvous(object):
             if time.time() > self._rendezvous_deadline:
                 raise RendezvousTimeoutError()
 
-            log.warning("Attempting to join next rendezvous")
             try:
                 # Dis-own our lease in the previous rendezvous, if exists
                 if self._lease_this_rank_stop is not None:
@@ -514,7 +514,7 @@ class EtcdRendezvous(object):
                 time.sleep(1)
 
             except RendezvousTimeoutError:
-                log.warning("Rendezvous timeout occured in EtcdRendezvousHandler")
+                logger.warning("Rendezvous timeout occured in EtcdRendezvousHandler")
                 raise
 
             except RendezvousClosedError:

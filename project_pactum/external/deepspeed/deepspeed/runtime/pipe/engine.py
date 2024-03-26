@@ -131,6 +131,8 @@ class PipelineEngine(DeepSpeedEngine):
 
         self.micro_batch_size = self.train_micro_batch_size_per_gpu()
         self.micro_batches = self.gradient_accumulation_steps()
+        
+        self.failures = {}
 
         # Set Grid and Communication Groups
         self.grid = self.module._grid
@@ -1091,26 +1093,12 @@ class PipelineEngine(DeepSpeedEngine):
             The arithmetic mean of the losses computed this batch.
         """
         # print(f"before write to rdzv")
-        self.log(f'{datetime.datetime.now()} - STARTING BATCH {self.global_steps} with coordinates {self.coordinates}')
+        global_step = self.global_steps
+        self.log(f'{datetime.datetime.now()} - STARTING BATCH {global_step}')
         self.rdzv_handler.write('/rdzv/cluster_status', 'train')
         
         ## ELACESO: add the start_batch_index
         self.start_batch_index = 0
-
-        global should_stop
-        if should_stop:
-            failures = json.loads(self.global_store.get('failures'))
-            already_deleted = []
-            for rank, step in failures.items():
-                if step < self.global_steps:
-                    already_deleted.append(rank)
-
-            for rank in already_deleted:
-                del failures[rank]
-
-            failures[self.global_rank] = self.global_steps + 1
-            self.global_store.set('failures', json.dumps(failures))
-            should_stop = False
 
         start_step = time.time()
 
@@ -1126,25 +1114,20 @@ class PipelineEngine(DeepSpeedEngine):
         self.module.train()
         self.total_loss = None
         self._compute_loss = True
-        # print("set time to kill")
-        # self.rdzv_handler.set_time_to_kill()
-        # dist.barrier()
-        # if (self.global_steps > 6 and self.global_rank == 3) or (self.global_steps > 8 and self.global_rank == 1):
-        #     os.kill(os.getpid(), signal.SIGTERM)
 
         failures = json.loads(self.global_store.get('failures'))
         if failures:
             self.log(f'FAILURES {failures}', color='r')
 
-        if not self.join and self.rdzv_handler.should_reconfigure(self.global_steps, failures):
-            self.log(f'{datetime.datetime.now()} - STARTING RECONFIGURE {self.global_steps}')
+        if not self.join and self.rdzv_handler.should_reconfigure(global_step, failures):
+            self.log(f'{datetime.datetime.now()} - STARTING RECONFIGURE {global_step}')
             ## If a shadow node is going to fail make sure we get its state before it dies
             ## TODO: Make sure this only happens when the state is not available in another
             ##      pipeline
             recvd_state = self.save_shadow_node_state(failures)
-            self.log(f'{datetime.datetime.now()} - FINISHING SAVE SHADOW NODE STATE {self.global_steps}')
+            self.log(f'{datetime.datetime.now()} - FINISHING SAVE SHADOW NODE STATE {global_step}')
 
-            if failures.get(str(self.global_rank), -1) == self.global_steps:
+            if failures.get(str(self.global_rank), -1) == global_step:
                 print("We are reconfiguring and I will die soon anyway. I'm leaving")
                 self.global_store.set(str(self.global_rank), '1')
                 sys.exit(13)
@@ -1170,16 +1153,15 @@ class PipelineEngine(DeepSpeedEngine):
 
             self.reconfigure_cluster(store, global_decision, recvd_state)
             failures = {}
+            self.log(f'{datetime.datetime.now()} - FINISH RECONFIGURE {global_step}')
 
         self.check_preemptions(failures)
-
+        
         if self.join:
             self.join = False
 
         # Do the work
         self.timers('train_batch').start()
-
-        self.log(f'{datetime.datetime.now()} - STARTING TRAIN {self.global_steps}')
         # First trail
         sched = self._generate_sched()
         schedule_status: Optional[Tuple[int, Exception]] = \
@@ -1193,7 +1175,7 @@ class PipelineEngine(DeepSpeedEngine):
                 print(f'[DEBUG Pipeline] Failed at step {schedule_status[0]} '
                       f'due to {schedule_status[1]}')
 
-            self.rdzv_handler.write('/rdzv/last_reconfig', self.global_steps)
+            self.rdzv_handler.write('/rdzv/last_reconfig', global_step)
 
             failed_step = 0
             if type(schedule_status[1]) == NextStageException:
@@ -1397,52 +1379,75 @@ class PipelineEngine(DeepSpeedEngine):
 
         self.timers('train_batch').stop()
 
-        elapsed = self.timers('train_batch').elapsed(reset=True)
-        iter_time = elapsed / self.steps_per_print()
-        tput = self.train_batch_size() / iter_time
-        if self.global_steps % self.steps_per_print() == 0:
-            msg = f'steps: {self.global_steps} ' \
-                  f'loss: {self.agg_train_loss:0.4f} ' \
-                  f'iter time (s): {iter_time:0.3f} ' \
-                  f'samples/sec: {tput:0.3f}'
-            if mem_log:
-                torch.cuda.synchronize()
-                peak_alloc = torch.cuda.max_memory_allocated()
-                peak_reserve = torch.cuda.max_memory_reserved()
-                curr_alloc = torch.cuda.memory_allocated()
-                curr_reserve = torch.cuda.memory_reserved()
-                msg += f' peak alloc (MB): {peak_alloc / (1024**2):.3f} ' \
-                       f'peak reverse (MB): {peak_reserve / (1024**2):.3f} ' \
-                       f'curr alloc (MB): {curr_alloc / (1024**2):.3f} ' \
-                       f'peak reverse (MB): {curr_reserve / (1024**2):.3f} '
-            logger.info(msg)
-            logger.handlers[0].flush()
+        # elapsed = self.timers('train_batch').elapsed(reset=True)
+        # iter_time = elapsed / self.steps_per_print()
+        # tput = self.train_batch_size() / iter_time
+        # if global_step % self.steps_per_print() == 0:
+        #     msg = f'steps: {global_step} ' \
+        #           f'loss: {self.agg_train_loss:0.4f} ' \
+        #           f'iter time (s): {iter_time:0.3f} ' \
+        #           f'samples/sec: {tput:0.3f}'
+        #     if mem_log:
+        #         torch.cuda.synchronize()
+        #         peak_alloc = torch.cuda.max_memory_allocated()
+        #         peak_reserve = torch.cuda.max_memory_reserved()
+        #         curr_alloc = torch.cuda.memory_allocated()
+        #         curr_reserve = torch.cuda.memory_reserved()
+        #         msg += f' peak alloc (MB): {peak_alloc / (1024**2):.3f} ' \
+        #                f'peak reverse (MB): {peak_reserve / (1024**2):.3f} ' \
+        #                f'curr alloc (MB): {curr_alloc / (1024**2):.3f} ' \
+        #                f'peak reverse (MB): {curr_reserve / (1024**2):.3f} '
+        #     logger.info(msg)
+        #     logger.handlers[0].flush()
 
         # Tensorboard
-        if self.tensorboard_enabled():
-            if self.global_rank == 0:
-                self.summary_events = [(f'Train/Samples/train_loss',
-                                        self.agg_train_loss.mean().item(),
-                                        self.global_samples)]
-                for event in self.summary_events:  # write_summary_events
-                    self.summary_writer.add_scalar(event[0], event[1], event[2])
-                if self.global_steps % self.steps_per_print() == 0:
-                    self.summary_writer.flush()
+        # if self.tensorboard_enabled():
+        #     if self.global_rank == 0:
+        #         self.summary_events = [(f'Train/Samples/train_loss',
+        #                                 self.agg_train_loss.mean().item(),
+        #                                 self.global_samples)]
+        #         for event in self.summary_events:  # write_summary_events
+        #             self.summary_writer.add_scalar(event[0], event[1], event[2])
+        #         if global_step % self.steps_per_print() == 0:
+        #             self.summary_writer.flush()
 
-        if self.wall_clock_breakdown(
-        ) and self.global_steps % self.steps_per_print() == 0:
-            self.timers.log([
-                'pipe_send_output',
-                'pipe_send_grad',
-                'pipe_recv_input',
-                'pipe_recv_grad'
-            ])
+        # if self.wall_clock_breakdown(
+        # ) and global_step % self.steps_per_print() == 0:
+        #     self.timers.log([
+        #         'pipe_send_output',
+        #         'pipe_send_grad',
+        #         'pipe_recv_input',
+        #         'pipe_recv_grad'
+        #     ])
 
         self._clean_pipe_buffers()
 
         step_end = time.time()
-        self.log(f'{datetime.datetime.now()} FINISHING BATCH {self.global_steps} took {step_end - start_step} s')
+        self.log(f'{datetime.datetime.now()} - FINISHING BATCH {global_step} took {step_end - start_step} s')
         # TODO: should return precisely what loss returned and allow others to be queried?
+
+        last_failures_num = len(self.failures)
+        self.failures = json.loads(self.global_store.get('failures'))
+        if len(self.failures) == 0 or last_failures_num != len(self.failures):
+            if (global_step > 5 and self.global_rank == 2):
+                os.kill(os.getpid(), signal.SIGTERM)
+
+            global should_stop
+            if should_stop:
+                self.failures = json.loads(self.global_store.get('failures'))
+                already_deleted = []
+                for rank, step in self.failures.items():
+                    if step < global_step:
+                        already_deleted.append(rank)
+
+                for rank in already_deleted:
+                    del failures[rank]
+
+                self.failures[self.global_rank] = global_step + 1
+                self.global_store.set('failures', json.dumps(self.failures))
+            dist.barrier()
+            if should_stop:
+                exit()
         return self.agg_train_loss, step_end - start_step
 
     def eval_batch(self, data_iter, compute_loss=True, reduce_output='avg'):
@@ -2355,7 +2360,7 @@ class PipelineEngine(DeepSpeedEngine):
         schedule.RecvWeights: _exec_recv_weights
     }
 
-    def _exec_schedule(self, pipe_schedule, start_step=0, debug=False) -> Optional[Tuple[int, Exception]]:
+    def _exec_schedule(self, pipe_schedule, start_step=0, debug=True) -> Optional[Tuple[int, Exception]]:
         """ Execute schedule from `start_step`, and return failed step or None
         indicates success.
         """

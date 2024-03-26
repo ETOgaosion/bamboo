@@ -154,7 +154,7 @@ class PipelineModule(nn.Module):
                 seed_str = self.seed_fn.__name__
             except AttributeError:
                 seed_str = None
-            print(
+            logger.info(
                 f'SEED_LAYERS={self.seed_layers} BASE_SEED={self.base_seed} SEED_FN={seed_str}'
             )
 
@@ -610,11 +610,9 @@ class PipelineModule(nn.Module):
 
         # Print some information on the partitioning.
         if self.global_rank == 0:
-            print(f'parts={self.parts}')
             for stage in range(num_stages):
                 start = self.parts[stage]
                 stop = self.parts[stage + 1]
-                print(f'stage={stage} layers={stop - start}')
                 for idx, layer in enumerate(self._layer_specs[start:stop]):
                     name = str(layer)
                     if isinstance(layer, LayerSpec):
@@ -626,12 +624,6 @@ class PipelineModule(nn.Module):
                             name = layer.__name__
                         except AttributeError:
                             pass
-                    print(f'    {idx+start:2d}: {name}')
-            if self.loss_fn:
-                try:
-                    print(f'  loss: {self.loss_fn.__name__}')
-                except AttributeError:
-                    print(f'  loss: {self.loss_fn.__class__.__name__}')
 
         self._set_bounds(start=self.parts[stage_id], stop=self.parts[stage_id + 1])
 
