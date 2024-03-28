@@ -3,8 +3,8 @@
 CURRENT_PATH=$(pwd)
 
 
-NUM_NODES=${1:-4}
-NUM_STAGES=${2:-4}
+NUM_NODES=${1:-8}
+NUM_STAGES=${2:-2}
 RDZV_IP=${3:-localhost}
 ID=encoder${4}
 
@@ -29,7 +29,7 @@ cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	--max-pipe-parallel-size=24 \
 	--default-num-stages=${NUM_STAGES} \
 	${MODEL}.py \
-	-s 300 \
+	-s 400 \
 	--backend=nccl \
 	--redundancy_level=1 \
 	${@:5} \
