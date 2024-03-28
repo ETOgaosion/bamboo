@@ -10,5 +10,4 @@ tmp/
 project_pactum/external/deepspeed/deepspeed.egg-info/
 *.db
 *.bak
-res/**
 tmp/
