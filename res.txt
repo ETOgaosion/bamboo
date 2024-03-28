@@ -57,7 +57,7 @@ WARNING 2024-03-07 03:58:09,333 Etcd machines: ['http://10.20.23.90:2379', 'http
 [1;33m[0.499 p80833/t140678632600064 WARNING project_pactum.etcd][m [33mEnd create_rdzv_handler[m
 WARNING 2024-03-07 03:58:09,347 Creating EtcdStore as the c10d::Store implementation
 [2024-03-07 03:58:09,349] [INFO] [distributed.py:52:init_distributed] Initializing torch distributed with backend: nccl
-STARTING WITH RANK = 0 and world size = 1 and init_method = None
+START WITH RANK = 0 and world size = 1 and init_method = None
 [1;35m[0.641 p80833/t140678632600064 DEBUG deepspeed.utils.distributed][m [35m★☆★☆★☆★☆★☆★ FINISHED DIST INITIALIZATION ★☆★☆★☆★☆★☆★[m
 SEED_LAYERS=False BASE_SEED=1234 SEED_FN=None
 [2024-03-07 03:58:09,625] [INFO] [module.py:581:_partition_layers] Partitioning pipeline stages with method uniform
@@ -220,7 +220,7 @@ Loading extension module utils...
 Time to load utils op: 0.27133655548095703 seconds
 [2024-03-07 03:58:28,314] [INFO] [engine.py:133:__init__] CONFIG: micro_batches=4 micro_batch_size=8
 hit
-[ 00|00 ] STARTING BATCH 0 with coordinates [[0, 0]]
+[ 00|00 ] START BATCH 0 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
 
@@ -265,8 +265,8 @@ cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
 [2024-03-07 03:58:29,662] [INFO] [engine.py:1430:train_batch] steps: 1 loss: 1.0159 iter time (s): 1.105 samples/sec: 28.956
-[ 00|01 ] FINISHING BATCH 1 at 2024-03-07 03:58:29 took 1.1100633144378662 s
-[ 00|01 ] STARTING BATCH 1 with coordinates [[0, 0]]
+[ 00|01 ] FINISH BATCH 1 at 2024-03-07 03:58:29 took 1.1100633144378662 s
+[ 00|01 ] START BATCH 1 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
 
@@ -311,8 +311,8 @@ cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
 [2024-03-07 03:58:30,529] [INFO] [engine.py:1430:train_batch] steps: 2 loss: 2.2947 iter time (s): 0.859 samples/sec: 37.242
-[ 00|02 ] FINISHING BATCH 2 at 2024-03-07 03:58:30 took 0.8646140098571777 s
-[ 00|02 ] STARTING BATCH 2 with coordinates [[0, 0]]
+[ 00|02 ] FINISH BATCH 2 at 2024-03-07 03:58:30 took 0.8646140098571777 s
+[ 00|02 ] START BATCH 2 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
 
@@ -357,8 +357,8 @@ cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
 [2024-03-07 03:58:31,397] [INFO] [engine.py:1430:train_batch] steps: 3 loss: 1.3325 iter time (s): 0.860 samples/sec: 37.228
-[ 00|03 ] FINISHING BATCH 3 at 2024-03-07 03:58:31 took 0.8650856018066406 s
-[ 00|03 ] STARTING BATCH 3 with coordinates [[0, 0]]
+[ 00|03 ] FINISH BATCH 3 at 2024-03-07 03:58:31 took 0.8650856018066406 s
+[ 00|03 ] START BATCH 3 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
 
@@ -403,8 +403,8 @@ cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
 [2024-03-07 03:58:32,261] [INFO] [engine.py:1430:train_batch] steps: 4 loss: 1.2360 iter time (s): 0.856 samples/sec: 37.403
-[ 00|04 ] FINISHING BATCH 4 at 2024-03-07 03:58:32 took 0.8605058193206787 s
-[ 00|04 ] STARTING BATCH 4 with coordinates [[0, 0]]
+[ 00|04 ] FINISH BATCH 4 at 2024-03-07 03:58:32 took 0.8605058193206787 s
+[ 00|04 ] START BATCH 4 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
 
@@ -449,8 +449,8 @@ cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
 [2024-03-07 03:58:33,129] [INFO] [engine.py:1430:train_batch] steps: 5 loss: 1.0935 iter time (s): 0.857 samples/sec: 37.358
-[ 00|05 ] FINISHING BATCH 5 at 2024-03-07 03:58:33 took 0.8635556697845459 s
-[ 00|05 ] STARTING BATCH 5 with coordinates [[0, 0]]
+[ 00|05 ] FINISH BATCH 5 at 2024-03-07 03:58:33 took 0.8635556697845459 s
+[ 00|05 ] START BATCH 5 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
 
@@ -495,8 +495,8 @@ cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
 [2024-03-07 03:58:33,996] [INFO] [engine.py:1430:train_batch] steps: 6 loss: 1.1223 iter time (s): 0.856 samples/sec: 37.399
-[ 00|06 ] FINISHING BATCH 6 at 2024-03-07 03:58:33 took 0.8634107112884521 s
-[ 00|06 ] STARTING BATCH 6 with coordinates [[0, 0]]
+[ 00|06 ] FINISH BATCH 6 at 2024-03-07 03:58:33 took 0.8634107112884521 s
+[ 00|06 ] START BATCH 6 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
 
@@ -541,8 +541,8 @@ cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
 [2024-03-07 03:58:34,864] [INFO] [engine.py:1430:train_batch] steps: 7 loss: 1.0156 iter time (s): 0.858 samples/sec: 37.275
-[ 00|07 ] FINISHING BATCH 7 at 2024-03-07 03:58:34 took 0.8641014099121094 s
-[ 00|07 ] STARTING BATCH 7 with coordinates [[0, 0]]
+[ 00|07 ] FINISH BATCH 7 at 2024-03-07 03:58:34 took 0.8641014099121094 s
+[ 00|07 ] START BATCH 7 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
 
@@ -587,8 +587,8 @@ cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
 [2024-03-07 03:58:35,729] [INFO] [engine.py:1430:train_batch] steps: 8 loss: 1.1022 iter time (s): 0.855 samples/sec: 37.407
-[ 00|08 ] FINISHING BATCH 8 at 2024-03-07 03:58:35 took 0.860443115234375 s
-[ 00|08 ] STARTING BATCH 8 with coordinates [[0, 0]]
+[ 00|08 ] FINISH BATCH 8 at 2024-03-07 03:58:35 took 0.860443115234375 s
+[ 00|08 ] START BATCH 8 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
 
@@ -633,8 +633,8 @@ cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
 [2024-03-07 03:58:36,596] [INFO] [engine.py:1430:train_batch] steps: 9 loss: 1.0694 iter time (s): 0.858 samples/sec: 37.289
-[ 00|09 ] FINISHING BATCH 9 at 2024-03-07 03:58:36 took 0.8632674217224121 s
-[ 00|09 ] STARTING BATCH 9 with coordinates [[0, 0]]
+[ 00|09 ] FINISH BATCH 9 at 2024-03-07 03:58:36 took 0.8632674217224121 s
+[ 00|09 ] START BATCH 9 with coordinates [[0, 0]]
 [DEBUG Pipeline] Instructions in step 0: RecvActivation(buffer_id=-1, stage_id=0),LoadMicroBatch(buffer_id=0),ForwardPass(buffer_id=0, stage_id=0)
 
 
@@ -679,7 +679,7 @@ cmd: ReduceGrads(stage_id=0)
 cmd: OptimizerStep()
 [DEBUG Pipeline] Finish one iteration
 [2024-03-07 03:58:37,462] [INFO] [engine.py:1430:train_batch] steps: 10 loss: 1.0170 iter time (s): 0.857 samples/sec: 37.339
-[ 00|10 ] FINISHING BATCH 10 at 2024-03-07 03:58:37 took 0.8621175289154053 s
+[ 00|10 ] FINISH BATCH 10 at 2024-03-07 03:58:37 took 0.8621175289154053 s
 Finish Successfully
 [1;36m[36.851 p80690/t139639217918464 INFO project_pactum.agent.api][m [36m[default] worker group successfully finished. Waiting 300 seconds for other agents to finish.[m
 [1;36m[36.857 p80690/t139639217918464 INFO torch.distributed.elastic.agent.server.api][m [36mLocal worker group finished (SUCCEEDED). Waiting 300 seconds for other agents to finish[m

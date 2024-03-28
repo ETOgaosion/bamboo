@@ -3,8 +3,8 @@
 CURRENT_PATH=$(pwd)
 
 
-NUM_NODES=${1:-6}
-NUM_STAGES=${2:-3}
+NUM_NODES=${1:-4}
+NUM_STAGES=${2:-4}
 RDZV_IP=${3:-localhost}
 ID=encoder${4}
 
@@ -14,8 +14,7 @@ echo "ARGS $RDZV_IP $ID $NUM_STAGES $MODEL"
 
 ip a
 
-cmd="""export PROJECT_PACTUM_LOGGING_INFO='etcd.client,etcd.lock,torch.distributed.distributed_c10d' \
-	export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
+cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	export USE_BARRIER=true \
 	&& \
 	export PYTHONPATH=${CURRENT_PATH}/project-pactum:\${PYTHONPATH} \
@@ -30,7 +29,7 @@ cmd="""export PROJECT_PACTUM_LOGGING_INFO='etcd.client,etcd.lock,torch.distribut
 	--max-pipe-parallel-size=24 \
 	--default-num-stages=${NUM_STAGES} \
 	${MODEL}.py \
-	-s 100 \
+	-s 300 \
 	--backend=nccl \
 	--redundancy_level=1 \
 	${@:5} \

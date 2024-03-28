@@ -1131,9 +1131,9 @@ class EtcdRendezvous(object):
             potential_num_pipelines = (num_active_workers + num_workers_waiting - num_workers_overloaded) // num_stages
             logger.info(f'potential_num_pipelines: {potential_num_pipelines}, num_pipelines: {num_pipelines}, num_active_workers: {num_active_workers}, num_workers_waiting: {num_workers_waiting}, num_workers_overloaded: {num_workers_overloaded}, num_stages: {num_stages}')
             if potential_num_pipelines > num_pipelines:
-                print(Fore.LIGHTYELLOW_EX, f'NUM ACT WORKER {num_active_workers}, NUM WAIT {num_workers_waiting}, NUM OVLD {num_workers_overloaded}, num STAGES {num_stages}')
-                print(Fore.LIGHTYELLOW_EX, f'CURRENT PIPELINES = {num_pipelines} but POTENTIAL PIPELINES = {potential_num_pipelines}', Fore.RESET)
-                print(Fore.RED, 'SETTING IT TO TRUE BECAUSE WE HAVE NEW PIPELINES', Fore.RESET)
+                logger.info(f'NUM ACT WORKER {num_active_workers}, NUM WAIT {num_workers_waiting}, NUM OVLD {num_workers_overloaded}, num STAGES {num_stages}')
+                logger.info(f'CURRENT PIPELINES = {num_pipelines} but POTENTIAL PIPELINES = {potential_num_pipelines}')
+                logger.warning('SETTING IT TO TRUE BECAUSE WE HAVE NEW PIPELINES')
                 should_reconfigure = True
         except Exception as e:
             print(Fore.RED, f'GOT ERROR {str(e)}', Fore.RESET)

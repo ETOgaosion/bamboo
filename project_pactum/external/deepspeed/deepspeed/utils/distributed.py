@@ -55,7 +55,7 @@ def init_distributed(dist_backend="nccl",
         assert isinstance(timeout, timedelta)
 
         if store:
-            logger.info(f'STARTING WITH RANK = {rank} and world size = {world_size} and init_method = {init_method}')
+            logger.info(f'START WITH RANK = {rank} and world size = {world_size} and init_method = {init_method}')
             torch.distributed.init_process_group(backend=dist_backend,
                                                 rank=rank,
                                                 world_size=world_size,
