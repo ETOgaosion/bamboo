@@ -11,3 +11,4 @@ project_pactum/external/deepspeed/deepspeed.egg-info/
 *.db
 *.bak
 tmp/
+.DS_Store
