@@ -29,13 +29,13 @@ start_prev_stage_exception_parser = re.compile(r'START PrevStageException fallba
 finish_prev_stage_exception_parser = re.compile(r'FINISH PrevStageException fallback schedule (?P<globalstep>\d+)')
 # extract the reconfigure
 start_reconfigure_parser = re.compile(r'START RECONFIGURE (?P<globalstep>\d+)')
-finish_save_shadow_note_parser = re.compile(r'FINISH SAVE SHADOW NODE STATE (?P<globalstep>\d+)')
+finish_save_shadow_node_parser = re.compile(r'FINISH SAVE SHADOW NODE STATE (?P<globalstep>\d+)')
 start_reconfigure_cluster_parser = re.compile(r'START RECONFIGURE CLUSTER and TRANSFER LAYERS (?P<globalstep>\d+)')
 finish_reconfigure_parser = re.compile(r'FINISH RECONFIGURE (?P<globalstep>\d+)')
 
-raw_data_tags = ['start_batch_times', 'finish_batch_times', 'start_local_model_train_times', 'finish_local_model_train_times', 'batch_times', 'start_next_stage_exception_times', 'finish_next_stage_exception_times', 'start_prev_stage_exception_times', 'finish_prev_stage_exception_times', 'start_reconfigure_times', 'finish_save_shadow_note_times', 'start_reconfigure_cluster_times', 'finish_reconfigure_times', 'fail_point']
-mid_data_tags = ['delta_batch_times', 'delta_local_model_train_times', 'delta_next_stage_exception_times', 'delta_prev_stage_exception_times', 'delta_reconfigure_times', 'delta_reconfigure_cluster_times', 'delta_save_shadow_note_times', 'fail_point', 'maxi', 'mini']
-tags = ['delta_batch_time', 'delta_local_model_train_time', 'delta_next_stage_exception_time', 'delta_prev_stage_exception_time', 'delta_reconfigure_time', 'delta_reconfigure_cluster_time', 'delta_save_shadow_note_time']
+raw_data_tags = ['start_batch_times', 'finish_batch_times', 'start_local_model_train_times', 'finish_local_model_train_times', 'batch_times', 'start_next_stage_exception_times', 'finish_next_stage_exception_times', 'start_prev_stage_exception_times', 'finish_prev_stage_exception_times', 'start_reconfigure_times', 'finish_save_shadow_node_times', 'start_reconfigure_cluster_times', 'finish_reconfigure_times', 'fail_point']
+mid_data_tags = ['delta_batch_times', 'delta_local_model_train_times', 'delta_next_stage_exception_times', 'delta_prev_stage_exception_times', 'delta_reconfigure_times', 'delta_reconfigure_cluster_times', 'delta_save_shadow_node_times', 'fail_point', 'maxi', 'mini']
+tags = ['delta_batch_time', 'delta_local_model_train_time', 'delta_next_stage_exception_time', 'delta_prev_stage_exception_time', 'delta_reconfigure_time', 'delta_reconfigure_cluster_time', 'delta_save_shadow_node_time']
 
 def res_parser(node):
     raw_data = {
@@ -49,7 +49,7 @@ def res_parser(node):
         'start_prev_stage_exception_times': {},
         'finish_prev_stage_exception_times': {},
         'start_reconfigure_times': {},
-        'finish_save_shadow_note_times': {},
+        'finish_save_shadow_node_times': {},
         'start_reconfigure_cluster_times': {},
         'finish_reconfigure_times': {}
     }
@@ -110,10 +110,10 @@ def res_parser(node):
                 globalstep = int(start_reconfigure.group('globalstep'))
                 raw_data['start_reconfigure_times'][globalstep] = dateparser.parse(time.group('time'))
                 continue
-            finish_save_shadow_note = finish_save_shadow_note_parser.search(line)
-            if finish_save_shadow_note:
-                globalstep = int(finish_save_shadow_note.group('globalstep'))
-                raw_data['finish_save_shadow_note_times'][globalstep] = dateparser.parse(time.group('time'))
+            finish_save_shadow_node = finish_save_shadow_node_parser.search(line)
+            if finish_save_shadow_node:
+                globalstep = int(finish_save_shadow_node.group('globalstep'))
+                raw_data['finish_save_shadow_node_times'][globalstep] = dateparser.parse(time.group('time'))
                 continue
             start_reconfigure_cluster = start_reconfigure_cluster_parser.search(line)
             if start_reconfigure_cluster:
@@ -138,7 +138,7 @@ def handle_data(raw_data):
         'delta_prev_stage_exception_times': {},
         'delta_reconfigure_times': {},
         'delta_reconfigure_cluster_times': {},
-        'delta_save_shadow_note_times': {},
+        'delta_save_shadow_node_times': {},
         'fail_point': fail_point
     }
     for k, v in raw_data['start_batch_times'].items():
@@ -152,7 +152,7 @@ def handle_data(raw_data):
     for k, v in raw_data['start_reconfigure_times'].items():
         mid_data['delta_reconfigure_times'][k] = time2int(raw_data['finish_reconfigure_times'][k] - v)
         mid_data['delta_reconfigure_cluster_times'][k] = time2int(raw_data['finish_reconfigure_times'][k] - raw_data['start_reconfigure_cluster_times'][k])
-        mid_data['delta_save_shadow_note_times'][k] = time2int(raw_data['finish_save_shadow_note_times'][k] - v)
+        mid_data['delta_save_shadow_node_times'][k] = time2int(raw_data['finish_save_shadow_node_times'][k] - v)
     data = {}
     for k, v in mid_data['delta_batch_times'].items():
         data[k] = {'delta_batch_time': v, 'delta_local_model_train_time': mid_data['delta_local_model_train_times'][k], 'batch_time': raw_data['batch_times'][k]}
@@ -167,7 +167,7 @@ def handle_data(raw_data):
         if k in mid_data['delta_reconfigure_times']:
             data[k]['delta_reconfigure_time'] = mid_data['delta_reconfigure_times'][k] + data[k]['delta_prev_stage_exception_time']
             data[k]['delta_reconfigure_cluster_time'] = mid_data['delta_reconfigure_cluster_times'][k] + data[k]['delta_reconfigure_time']
-            data[k]['delta_save_shadow_note_time'] = mid_data['delta_save_shadow_note_times'][k] + data[k]['delta_reconfigure_cluster_time']
+            data[k]['delta_save_shadow_node_time'] = mid_data['delta_save_shadow_node_times'][k] + data[k]['delta_reconfigure_cluster_time']
     return data, max(mid_data['delta_batch_times'].values()), min(mid_data['delta_batch_times'].values())
 
 def plot(node, data, maxi, mini, fail_point):
