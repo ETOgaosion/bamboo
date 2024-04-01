@@ -849,7 +849,7 @@ class PipelineEngine(DeepSpeedEngine):
                         curr_sched(),
                         failed_step=failed_step,
                         curr_step=curr_step)
-                self.log(f'{datetime.datetime.now()} - FIINISH PrevStageException fallback schedule {self.global_steps}')
+                self.log(f'{datetime.datetime.now()} - FINISH PrevStageException fallback schedule {self.global_steps}')
 
             ## AllReduceException
             else:
