@@ -266,7 +266,7 @@ class PipelineModule(nn.Module):
         funcs = self.func_buckets[stage_id]
 
         param_names = []
-        print(f'specs[local_start:local_stop]: {specs[local_start:local_stop]}')
+        print(f'layer num: {len(specs[local_start:local_stop])}')
         for local_idx, layer in enumerate(specs[local_start:local_stop]):
             layer_idx = local_idx + local_start
             if self.seed_layers:
