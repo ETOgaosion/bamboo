@@ -210,7 +210,7 @@ def train():
         # Model config args
         parser.add_argument('-N', type=int, default=24)
         parser.add_argument('--d-model', '-dm', type=int, default=1024)
-        parser.add_argument('--d-ff', '-dff', type=int, default=2048)
+        parser.add_argument('--d-ff', '-dff', type=int, default=4096)
         parser.add_argument('-H', type=int, default=16)
         parser.add_argument('-seq', type=int, default=256)
         parser.add_argument('--parts',
