@@ -208,19 +208,6 @@ class Simulator:
         self.on_demand_cost_per_hour = 3.06
         self.spot_instance_cost_per_hour = 0.91
 
-        if model == 'GPT-2':
-            self.samples_per_step = 32
-            self.steps_per_run = 188_828
-
-            self.spot_instance_desired_capacity = 48
-            self.simulate_step_delta = self.gpt_2_simulate_step_delta
-            self.simulate_step_delta_cache = [8100]
-            self.num_stages_target = 2
-
-            self.on_demand_num_instances = 4 * 8
-            self.on_demand_cost = self.on_demand_num_instances * self.on_demand_cost_per_hour
-            self.on_demand_performance = self.samples_per_step / 3.37
-            self.on_demand_value = self.on_demand_performance / self.on_demand_cost
         self.model = model
 
     def generate_probabilities(self):
@@ -229,19 +216,17 @@ class Simulator:
             probability[hour] = self.r.random()
         return probability
 
+    # implement by child
     def global_rendezvous_timeout_delta(self):
-        return 6004.3633 * self.num_pipelines + 75630
+        return 0
     
+    # implement by child
     def fallback_slowdown(self):
-        return -0.057 * (self.num_pipelines * self.num_stages) + 1.8298
+        return 0
 
-    def gpt_2_simulate_step_delta(self):
-        if self.num_pipelines > len(self.simulate_step_delta_cache):
-            for i in range(len(self.simulate_step_delta_cache), self.num_pipelines):
-                self.simulate_step_delta_cache.append(
-                    self.simulate_step_delta_cache[-1] * (0.6891 / (i + 1) + 1)
-                )
-        self.step_delta = self.simulate_step_delta_cache[self.num_pipelines - 1]
+    # implement by child
+    def simulate_step_delta(self):
+        pass
 
     def info(self, delta, message):
         logger.info(f'[{delta/1000.0:.3f}] {message}')
@@ -906,7 +891,7 @@ class Simulator:
                 max(self.on_demand_num_instances, max(instances_ys)),
                 result.average_instances,
                 on_demand=self.on_demand_num_instances,
-                out=f'res/instances{pdf_suffix}',
+                out=f'res/simulator/instances{pdf_suffix}',
                 show=True,
             )
 
@@ -920,7 +905,7 @@ class Simulator:
                 max(self.on_demand_performance, max(self.performance_ys)),
                 result.average_performance,
                 on_demand=self.on_demand_performance,
-                out=f'res/performance{pdf_suffix}',
+                out=f'res/simulator/performance{pdf_suffix}',
                 show=True,
             )
 
@@ -937,7 +922,7 @@ class Simulator:
                 max(self.on_demand_cost, max(self.cost_ys)),
                 result.average_cost,
                 on_demand=self.on_demand_cost,
-                out=f'res/cost{pdf_suffix}',
+                out=f'res/simulator/cost{pdf_suffix}',
                 show=True,
             )
 
@@ -953,7 +938,7 @@ class Simulator:
                 max(self.on_demand_value, max(self.value_ys)),
                 result.average_value,
                 on_demand=self.on_demand_value,
-                out=f'res/value{pdf_suffix}',
+                out=f'res/simulator/value{pdf_suffix}',
                 show=True,
             )
 

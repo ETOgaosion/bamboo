@@ -6,7 +6,7 @@ import multiprocessing
 import random
 import statistics
 
-from project_pactum.simulation.simulator import Simulator
+from project_pactum.simulation.mysimulator import MySimulator
 
 logger = logging.getLogger('project_pactum.simulation')
 
@@ -76,7 +76,7 @@ def graph(xlabel, xs, xmax, ylabel, ys, ymax, average,
 def simulate(args):
     model, duration, spot_instance_trace = args
     print(args)
-    simulator = Simulator(
+    simulator = MySimulator(
         seed=0,
         start_hour=0,
         generate_addition_probabilities=True,
@@ -117,7 +117,7 @@ def main(args):
     assert not (options.generate_graphs and options.generate_table)
 
     if not options.generate_table:
-        simulator = Simulator(
+        simulator = MySimulator(
             seed=options.seed,
             start_hour=options.start_hour,
             generate_addition_probabilities=options.generate_addition_probabilities,
