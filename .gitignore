@@ -12,3 +12,4 @@ project_pactum/external/deepspeed/deepspeed.egg-info/
 *.bak
 tmp/
 .DS_Store
+simu.txt

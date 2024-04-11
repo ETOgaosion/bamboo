@@ -20,7 +20,7 @@ def plot(name, xs, ys):
     plt.plot(xs, ys)
     plt.xlabel('Time (hours)')
     plt.ylabel('# Instances')
-    plt.xticks(rotation='25')
+    plt.xticks(rotation=25)
     # plt.xticks(range(0, duration//self.hour + 1, 12))
     # plt.hlines(result.average_instances, 0, duration //
     # 		self.hour, color='tab:blue', linestyles='dashed')

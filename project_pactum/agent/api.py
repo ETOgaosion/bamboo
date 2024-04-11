@@ -9,6 +9,7 @@ import sys
 import tempfile
 import threading
 import time
+import datetime
 import random
 
 from colorama import Fore
@@ -151,7 +152,7 @@ class ProjectPactumAgent(SimpleElasticAgent):
         restart_count = spec.max_restarts - self._remaining_restarts
 
         log.warning(
-            f"[{spec.role}] Rendezvous complete for workers. Result:\n"
+            f"[{spec.role}] {datetime.datetime.now()} Rendezvous complete for workers. Result:\n"
             f"  restart_count={restart_count}\n"
             f"  master_addr={master_addr}\n"
             f"  master_port={master_port}\n"
