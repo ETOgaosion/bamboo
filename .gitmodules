@@ -1,6 +1,6 @@
 [submodule "external/apex"]
 	path = external/apex
 	url = https://github.com/NVIDIA/apex
-[submodule "test/bamboo-test"]
+[submodule "test/bambootest"]
 	path = test/bambootest
 	url = git@github.com:ETOgaosion/bamboo-test.git
