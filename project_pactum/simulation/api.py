@@ -5,8 +5,9 @@ import logging
 import multiprocessing
 import random
 import statistics
+from pathlib import Path
 
-from project_pactum.simulation.mysimulator import MySimulator
+from project_pactum.simulation.mysimulator import TeslaT4Simulator
 
 logger = logging.getLogger('project_pactum.simulation')
 
@@ -18,9 +19,12 @@ def parse(args):
     parser.add_argument('--removal-probability', type=float, default=None)
     parser.add_argument('--generate-graphs', action='store_true')
     parser.add_argument('--generate-table', action='store_true')
-    parser.add_argument('--spot-instance-trace', type=str, default='traces/p3-trace.csv')
+    parser.add_argument('--spot-instance-trace', type=str, default=None)
     parser.add_argument('--model', type=str, default='GPT-2')
+    parser.add_argument('--fig-directory', type=str, default='res/simulator')
     return parser.parse_args(args)
+
+fig_directory = 'res/simulator'
 
 def graph(xlabel, xs, xmax, ylabel, ys, ymax, average,
           on_demand=None, out=None, show=False):
@@ -33,7 +37,7 @@ def graph(xlabel, xs, xmax, ylabel, ys, ymax, average,
             'axes.titlesize': 'x-small',
             'xtick.labelsize': 'x-small',
             'ytick.labelsize': 'x-small',
-            'figure.figsize': (3.0, 1.7),
+            'figure.figsize': (15.0, 5.0),
         }
         plt.rcParams.update(params)
 
@@ -62,12 +66,15 @@ def graph(xlabel, xs, xmax, ylabel, ys, ymax, average,
         ax = plt.gca()
         ax.spines['right'].set_visible(False)
         ax.spines['top'].set_visible(False)
+        
+        global fig_directory
+        Path(fig_directory).mkdir(parents=True, exist_ok=True)
 
         if out is not None:
            plt.savefig(
-               out,
+               fig_directory + out,
                bbox_inches='tight',
-               pad_inches=0
+               pad_inches=0.25
            )
 
         if show:
@@ -76,7 +83,7 @@ def graph(xlabel, xs, xmax, ylabel, ys, ymax, average,
 def simulate(args):
     model, duration, spot_instance_trace = args
     print(args)
-    simulator = MySimulator(
+    simulator = TeslaT4Simulator(
         seed=0,
         start_hour=0,
         generate_addition_probabilities=True,
@@ -113,11 +120,13 @@ def main(args):
 
     options = parse(args)
     print(options)
+    global fig_directory
+    fig_directory = options.fig_directory
 
     assert not (options.generate_graphs and options.generate_table)
 
     if not options.generate_table:
-        simulator = MySimulator(
+        simulator = TeslaT4Simulator(
             seed=options.seed,
             start_hour=options.start_hour,
             generate_addition_probabilities=options.generate_addition_probabilities,

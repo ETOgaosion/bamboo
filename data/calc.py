@@ -30,6 +30,8 @@ def calc_r():
                     r_map[int(data["spot_advisor"][instances][OS][inst_type]["r"])] += 1
     print(max_r)
     print(total/size)
+    for r in r_map:
+        print(r, r_map[r]/size)
     plt.bar(r_map.keys(), r_map.values())
     plt.xlabel('r value')
     plt.ylabel('count')

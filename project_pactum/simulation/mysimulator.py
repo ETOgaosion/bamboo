@@ -1,7 +1,7 @@
 
 from project_pactum.simulation.simulator import Simulator
 
-class MySimulator(Simulator):
+class TeslaT4Simulator(Simulator):
     def __init__(self,
                  seed=None,
                  start_hour=None,
@@ -12,17 +12,18 @@ class MySimulator(Simulator):
                  generate_graphs=False):
         super().__init__(seed=seed, start_hour=start_hour, model=model, spot_instance_trace=spot_instance_trace, generate_addition_probabilities=generate_addition_probabilities, removal_probability=removal_probability, generate_graphs=generate_graphs)
 
+        # Amazon EC2 Tesla T4
         if model == 'GPT-2':
-            self.samples_per_step = 32
+            self.samples_per_step = 96
             self.steps_per_run = 188_828
 
             self.spot_instance_desired_capacity = 48
             self.simulate_step_delta_cache = [8100]
             self.num_stages_target = 2
 
-            self.on_demand_num_instances = 4 * 8
+            self.on_demand_num_instances = 32
             self.on_demand_cost = self.on_demand_num_instances * self.on_demand_cost_per_hour
-            self.on_demand_performance = self.samples_per_step / 3.37
+            self.on_demand_performance = self.samples_per_step / (self.simulate_step_delta_calc(self.on_demand_num_instances // self.num_stages_target) / 1000)
             self.on_demand_value = self.on_demand_performance / self.on_demand_cost
     
 
@@ -30,12 +31,15 @@ class MySimulator(Simulator):
         return 6004.3633 * self.num_pipelines + 75630
     
     def fallback_slowdown(self):
-        return -0.057 * (self.num_pipelines * self.num_stages) + 1.8298
+        return 2.4297 / (self.num_pipelines * self.num_stages) + 1
 
     def simulate_step_delta(self):
-        if self.num_pipelines > len(self.simulate_step_delta_cache):
-            for i in range(len(self.simulate_step_delta_cache), self.num_pipelines):
+        self.step_delta = self.simulate_step_delta_calc(self.num_pipelines)
+    
+    def simulate_step_delta_calc(self, num_pipelines):
+        if num_pipelines > len(self.simulate_step_delta_cache):
+            for i in range(len(self.simulate_step_delta_cache), num_pipelines):
                 self.simulate_step_delta_cache.append(
-                    self.simulate_step_delta_cache[-1] * (0.6891 / (i + 1) + 1)
+                    self.simulate_step_delta_cache[-1] / (0.6891 / (i + 1) + 1)
                 )
-        self.step_delta = self.simulate_step_delta_cache[self.num_pipelines - 1]
+        return self.simulate_step_delta_cache[num_pipelines - 1]
