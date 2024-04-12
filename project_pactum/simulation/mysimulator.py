@@ -1,5 +1,6 @@
 
 from project_pactum.simulation.simulator import Simulator
+from test.bambootest.lab_res_parser import *
 
 class TeslaT4Simulator(Simulator):
     def __init__(self,
@@ -11,6 +12,13 @@ class TeslaT4Simulator(Simulator):
                  removal_probability=None,
                  generate_graphs=False):
         super().__init__(seed=seed, start_hour=start_hour, model=model, spot_instance_trace=spot_instance_trace, generate_addition_probabilities=generate_addition_probabilities, removal_probability=removal_probability, generate_graphs=generate_graphs)
+        global base_dir
+        dirs = sorted(os.listdir(base_dir + 'res'))
+        while '.DS_Store' in dirs: dirs.remove('.DS_Store')
+        while '.gitignore' in dirs: dirs.remove('.gitignore')
+        self.rdzv_model = calculate_rdzv_main()
+        self.fall_back_model = calculate_fallback_main(dirs)
+        self.pipeline_delta_model = calculate_pipeline_delta()
 
         # Amazon EC2 Tesla T4
         if model == 'GPT-2':
@@ -28,10 +36,12 @@ class TeslaT4Simulator(Simulator):
     
 
     def global_rendezvous_timeout_delta(self):
-        return 6004.3633 * self.num_pipelines + 75630
+        # return 6004.3633 * self.num_pipelines + 75630
+        return self.rdzv_model.predict(sm.add_constant(np.array([0, self.num_pipelines]))).item(1)
     
     def fallback_slowdown(self):
-        return 2.4297 / (self.num_pipelines * self.num_stages) + 1
+        # return 2.4297 / (self.num_pipelines * self.num_stages) + 1
+        return self.fall_back_model.predict(np.ones(1)/np.array([self.num_pipelines * self.num_stages])).item(0) + 1
 
     def simulate_step_delta(self):
         self.step_delta = self.simulate_step_delta_calc(self.num_pipelines)
@@ -40,6 +50,7 @@ class TeslaT4Simulator(Simulator):
         if num_pipelines > len(self.simulate_step_delta_cache):
             for i in range(len(self.simulate_step_delta_cache), num_pipelines):
                 self.simulate_step_delta_cache.append(
-                    self.simulate_step_delta_cache[-1] / (0.6891 / (i + 1) + 1)
+                    # self.simulate_step_delta_cache[-1] / (0.6891 / (i + 1) + 1)
+                    self.simulate_step_delta_cache[-1] / (self.pipeline_delta_model.predict((np.ones(1)/np.array([i + 1]))).item(0) + 1)
                 )
         return self.simulate_step_delta_cache[num_pipelines - 1]

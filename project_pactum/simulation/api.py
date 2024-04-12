@@ -1,10 +1,5 @@
 import argparse
-import collections
-import json
 import logging
-import multiprocessing
-import random
-import statistics
 from pathlib import Path
 
 from project_pactum.simulation.mysimulator import TeslaT4Simulator
