@@ -1,16 +1,17 @@
 FROM nvidia/cuda:11.7.1-cudnn8-devel-ubuntu20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
+RUN sed -i s@/archive.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list
 RUN apt-get update
 RUN apt-get install -y tzdata software-properties-common libaio-dev iputils-ping 
-RUN apt install -y lsof curl wget net-tools libsqlite3-dev ninja-build vim iproute2
+RUN apt-get install -y lsof curl wget net-tools libsqlite3-dev ninja-build vim iproute2 python3.8 python3-pip
 
-RUN add-apt-repository ppa:deadsnakes/ppa -y
-RUN apt-get install -y python3.7 python3.7-distutils python3-pip
-RUN ln /usr/bin/python3 /usr/bin/python
+RUN ln /usr/bin/python3.8 /usr/bin/python
 
 # COPY project_pactum/external/apex /workspace/external/apex
 # RUN cd /workspace/external/apex && pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
 
 COPY requirements.txt /workspace/requirements.txt
+RUN python -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade pip
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 RUN pip install -U pip && pip install -r /workspace/requirements.txt

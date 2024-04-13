@@ -8,7 +8,7 @@ if [ $CUR_NODE -eq 0 ]; then
     etcdctl rm --dir --recursive /torchelastic
 fi
 
-cmd="""docker run --rm -it --net "host" --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
+cmd="""docker run -it --net "host" --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
     /bin/bash -c './scripts/run-project-pactum-localhost.sh' > res/lab/node_$CUR_NODE.txt 2>&1"""
 
 # cmd="""docker run --rm -it --net "host" --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
