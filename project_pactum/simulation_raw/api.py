@@ -31,7 +31,7 @@ def graph(xlabel, xs, xmax, ylabel, ys, ymax, average,
             'axes.titlesize': 'x-small',
             'xtick.labelsize': 'x-small',
             'ytick.labelsize': 'x-small',
-            'figure.figsize': (10.0, 5.0),
+            'figure.figsize': (15.0, 5.0),
         }
         plt.rcParams.update(params)
 
@@ -68,7 +68,7 @@ def graph(xlabel, xs, xmax, ylabel, ys, ymax, average,
            plt.savefig(
                out,
                bbox_inches='tight',
-               pad_inches=0.5
+               pad_inches=0.25
            )
 
         if show:
