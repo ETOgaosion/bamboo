@@ -964,7 +964,8 @@ class Simulator:
             plt.rcParams.update(params)
             
             fig, axs = plt.subplots(4)
-            fig.suptitle('Result Comparison', y=0.92)
+            fig.suptitle('Result Comparison')
+            plt.tight_layout(pad=1, w_pad=1, h_pad=2)
             
             graph_together(
                 axs[0],
