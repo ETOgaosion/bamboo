@@ -3,15 +3,9 @@ from project_pactum.simulation.simulator import Simulator
 from test.bambootest.lab_res_parser import *
 
 class TeslaT4Simulator(Simulator):
-    def __init__(self,
-                 seed=None,
-                 start_hour=None,
-                 model='GPT-2',
-                 spot_instance_trace=None,
-                 generate_addition_probabilities=False,
-                 removal_probability=None,
-                 generate_graphs=False):
-        super().__init__(seed=seed, start_hour=start_hour, model=model, spot_instance_trace=spot_instance_trace, generate_addition_probabilities=generate_addition_probabilities, removal_probability=removal_probability, generate_graphs=generate_graphs)
+    def __init__(self, seed=None, start_hour=None,
+                 model='GPT-2', spot_instance_trace=None, generate_addition_probabilities=False, removal_probability=None, generate_graphs=False):
+        super().__init__(seed, start_hour, model, spot_instance_trace, generate_addition_probabilities, removal_probability, generate_graphs)
         global base_dir
         dirs = sorted(os.listdir(base_dir + 'res'))
         while '.DS_Store' in dirs: dirs.remove('.DS_Store')
@@ -24,11 +18,9 @@ class TeslaT4Simulator(Simulator):
         if model == 'GPT-2':
             self.samples_per_step = 96
             self.steps_per_run = 188_828
-
             self.spot_instance_desired_capacity = 48
             self.simulate_step_delta_cache = [8100]
             self.num_stages_target = 2
-
             self.on_demand_num_instances = 32
             self.on_demand_cost = self.on_demand_num_instances * self.on_demand_cost_per_hour
             self.on_demand_performance = self.samples_per_step / (self.simulate_step_delta_calc(self.on_demand_num_instances // self.num_stages_target) / 1000)

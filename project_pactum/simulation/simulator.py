@@ -179,7 +179,7 @@ class Simulator:
 
         self.start_hour = start_hour
         # I do not understand why we need this
-        self.spot_instance_creation_time = 0 # milliseconds
+        self.spot_instance_creation_time = 45_000 # milliseconds
         # self.global_rendezvous_timeout_delta = 30_000 # milliseconds
 
         self.spot_instances = {}
