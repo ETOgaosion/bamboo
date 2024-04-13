@@ -17,6 +17,8 @@ def graph_together(axis, xlabel, xs, xmax, ylabel, ys, ymax, average,
 
     axis.set_xlim(0, xmax)
     axis.set_ylim(0, ymax)
+    axis.spines['right'].set_visible(False)
+    axis.spines['top'].set_visible(False)
 
     axis.hlines(average, 0, xmax, color='tab:blue', linestyles='dotted')
     if on_demand is not None:
