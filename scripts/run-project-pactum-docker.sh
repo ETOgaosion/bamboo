@@ -8,7 +8,10 @@ if [ $CUR_NODE -eq 0 ]; then
 fi
 
 cmd="""docker run --rm -it --net "host" --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
-    /bin/bash -c './scripts/run-project-pactum.sh'"""
+    /bin/bash -c './scripts/run-project-pactum-localhost.sh' > res/lab/node_$CUR_NODE.txt 2>&1"""
+
+# cmd="""docker run --rm -it --net "host" --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
+#     /bin/bash -c './scripts/run-project-pactum.sh'"""
 
 echo "RUNNING CMD $cmd"
 

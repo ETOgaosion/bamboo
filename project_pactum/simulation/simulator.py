@@ -8,6 +8,10 @@ import math
 import random
 import statistics
 import typing
+import matplotlib.pyplot as plt
+from pathlib import Path
+
+from project_pactum.simulation.utils import *
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +26,7 @@ class EventKind(enum.IntEnum):
 
 @dataclasses.dataclass(order=True)
 class Event:
-    delta: int
+    delta: float
     kind: EventKind
     data: typing.Dict = dataclasses.field(compare=False)
 
@@ -88,12 +92,15 @@ class Simulator:
     def __init__(self,
                  seed=None,
                  start_hour=None,
-                 model='BERT',
+                 model='GPT-2',
                  spot_instance_trace=None,
                  generate_addition_probabilities=False,
                  removal_probability=None,
                  generate_graphs=False):
-        self.spot_instance_trace = spot_instance_trace
+        if spot_instance_trace is not None:
+            self.spot_instance_trace = open(spot_instance_trace, 'r')
+        else:
+            self.spot_instance_trace = None
         self.generate_graphs = generate_graphs
 
         self.seed = seed
@@ -175,8 +182,9 @@ class Simulator:
                 self.spot_instance_removal_probability[hour] = removal_probability
 
         self.start_hour = start_hour
+        # I do not understand why we need this
         self.spot_instance_creation_time = 45_000 # milliseconds
-        self.global_rendezvous_timeout_delta = 30_000 # milliseconds
+        # self.global_rendezvous_timeout_delta = 30_000 # milliseconds
 
         self.spot_instances = {}
         self.rendezvous_version = 0
@@ -189,7 +197,7 @@ class Simulator:
         self.num_fatal_failures = 0
         self.num_spot_instance_removals = 0
 
-        self.fallback_slowdown = 1.5
+        # self.fallback_slowdown = 1.5
         self.fallback_event = None
         self.fallback_handled = False
 
@@ -207,86 +215,6 @@ class Simulator:
         self.on_demand_cost_per_hour = 3.06
         self.spot_instance_cost_per_hour = 0.91
 
-        if model == 'GPT-2':
-            self.samples_per_step = 32
-            self.steps_per_run = 188_828
-
-            self.spot_instance_desired_capacity = 48
-            self.simulate_step_delta = self.gpt_2_simulate_step_delta
-            self.local_rendezvous_timeout_delta = 20_000 # milliseconds
-            self.num_stages_target = 12
-
-            self.on_demand_num_instances = 4 * 8
-            self.on_demand_cost = self.on_demand_num_instances * self.on_demand_cost_per_hour
-            self.on_demand_performance = self.samples_per_step / 3.37
-            self.on_demand_value = self.on_demand_performance / self.on_demand_cost
-        elif model == 'BERT':
-            self.samples_per_step = 264
-            self.steps_per_run = 22_194
-
-            self.spot_instance_desired_capacity = 48
-            self.num_stages_target = 12
-            self.simulate_step_delta = self.bert_simulate_step_delta
-            self.local_rendezvous_timeout_delta = 20_000 # milliseconds
-
-            self.on_demand_num_instances = 4 * 5
-            self.on_demand_cost = self.on_demand_num_instances * self.on_demand_cost_per_hour
-            self.on_demand_performance = self.samples_per_step / 2.51
-            self.on_demand_value = self.on_demand_performance / self.on_demand_cost
-        elif model == 'ResNet':
-            self.samples_per_step = 384
-            self.steps_per_run = 26_194
-
-            self.spot_instance_desired_capacity = 32
-            self.simulate_step_delta = self.resnet_simulate_step_delta
-            self.local_rendezvous_timeout_delta = 10_000 # milliseconds
-            self.num_stages_target = 8
-
-            self.on_demand_num_instances = 4 * 5
-            self.on_demand_cost = self.on_demand_num_instances * self.on_demand_cost_per_hour
-            self.on_demand_performance = self.samples_per_step / 1.3
-            self.on_demand_value = self.on_demand_performance / self.on_demand_cost
-        elif model == 'GNMT':
-            self.samples_per_step = 288
-            self.steps_per_run = 23_194
-
-            self.spot_instance_desired_capacity = 24
-            self.simulate_step_delta = self.gnmt_simulate_step_delta
-            self.local_rendezvous_timeout_delta = 10_000 # milliseconds
-            self.num_stages_target = 6
-
-            self.on_demand_num_instances = 4 * 4
-            self.on_demand_cost = self.on_demand_num_instances * self.on_demand_cost_per_hour
-            self.on_demand_performance = self.samples_per_step / 0.9
-            self.on_demand_value = self.on_demand_performance / self.on_demand_cost
-        elif model == 'VGG':
-            self.samples_per_step = 384
-            self.steps_per_run = 26_194
-
-            self.spot_instance_desired_capacity = 24
-            self.simulate_step_delta = self.vgg_simulate_step_delta
-            self.local_rendezvous_timeout_delta = 5_000 # milliseconds
-            self.num_stages_target = 6
-
-            self.on_demand_num_instances = 4 * 4
-            self.on_demand_cost = self.on_demand_num_instances * self.on_demand_cost_per_hour
-            self.on_demand_performance = self.samples_per_step / 2.2
-            self.on_demand_value = self.on_demand_performance / self.on_demand_cost
-        elif model == 'AlexNet':
-            self.samples_per_step = 384
-            self.steps_per_run = 26_194
-
-            self.spot_instance_desired_capacity = 24
-            self.simulate_step_delta = self.alexnet_simulate_step_delta
-            self.local_rendezvous_timeout_delta = 5_000 # milliseconds
-            self.num_stages_target = 6
-
-            self.on_demand_num_instances = 4 * 4
-            self.on_demand_cost = self.on_demand_num_instances * self.on_demand_cost_per_hour
-            self.on_demand_performance = self.samples_per_step / 1.6
-            self.on_demand_value = self.on_demand_performance / self.on_demand_cost
-        else:
-            raise NotImplementedError
         self.model = model
 
     def generate_probabilities(self):
@@ -295,93 +223,17 @@ class Simulator:
             probability[hour] = self.r.random()
         return probability
 
-    def gpt_2_simulate_step_delta(self):
-        if self.num_pipelines == 4 and self.num_stages == 12:
-            self.step_delta = 1_008 # milliseconds
-        elif self.num_pipelines == 3 and self.num_stages == 12:
-            self.step_delta = 1_046 # milliseconds
-        elif self.num_pipelines == 2 and self.num_stages == 12:
-            self.step_delta = 1_085 # milliseconds
-        elif self.num_pipelines == 1 and self.num_stages == 12:
-            self.step_delta = 1_200 # milliseconds
-        else:
-            raise NotImplementedError
+    # implement by child
+    def global_rendezvous_timeout_delta(self):
+        return 0
+    
+    # implement by child
+    def fallback_slowdown(self):
+        return 0
 
-    def bert_simulate_step_delta(self):
-        if self.num_pipelines == 4 and self.num_stages == 8:
-            self.step_delta = 1_770 # milliseconds
-        elif self.num_pipelines == 3 and self.num_stages == 8:
-            self.step_delta = 2_300 # milliseconds
-        elif self.num_pipelines == 2 and self.num_stages == 8:
-            self.step_delta = 3_100 # milliseconds
-        elif self.num_pipelines == 1 and self.num_stages == 8:
-            self.step_delta = 5_700 # milliseconds
-        elif self.num_pipelines == 4 and self.num_stages == 12:
-            self.step_delta = 1_450 # milliseconds
-        elif self.num_pipelines == 3 and self.num_stages == 12:
-            self.step_delta = 1_805 # milliseconds
-        elif self.num_pipelines == 2 and self.num_stages == 12:
-            self.step_delta = 2_390 # milliseconds
-        elif self.num_pipelines == 1 and self.num_stages == 12:
-            self.step_delta = 4_310 # milliseconds
-        elif self.num_pipelines == 4 and self.num_stages == 15:
-            self.step_delta = 3_700 # milliseconds
-        elif self.num_pipelines == 3 and self.num_stages == 15:
-            self.step_delta = 4_780 # milliseconds
-        elif self.num_pipelines == 2 and self.num_stages == 15:
-            self.step_delta = 6_600 # milliseconds
-        elif self.num_pipelines == 1 and self.num_stages == 15:
-            self.step_delta = 12_750 # milliseconds
-        else:
-            raise NotImplementedError
-
-    def resnet_simulate_step_delta(self):
-        if self.num_pipelines == 4 and self.num_stages == 8:
-            self.step_delta = 1_600 # milliseconds
-        elif self.num_pipelines == 3 and self.num_stages == 8:
-            self.step_delta = 2_400 # milliseconds
-        elif self.num_pipelines == 2 and self.num_stages == 8:
-            self.step_delta = 3_200 # milliseconds
-        elif self.num_pipelines == 1 and self.num_stages == 8:
-            self.step_delta = 6_100 # milliseconds
-        else:
-            raise NotImplementedError
-
-    def gnmt_simulate_step_delta(self):
-        if self.num_pipelines == 4 and self.num_stages == 6:
-            self.step_delta = 950 # milliseconds
-        elif self.num_pipelines == 3 and self.num_stages == 6:
-            self.step_delta = 1_185 # milliseconds
-        elif self.num_pipelines == 2 and self.num_stages == 6:
-            self.step_delta = 1_660 # milliseconds
-        elif self.num_pipelines == 1 and self.num_stages == 6:
-            self.step_delta = 3_100 # milliseconds
-        else:
-            raise NotImplementedError
-
-    def vgg_simulate_step_delta(self):
-        if self.num_pipelines == 4 and self.num_stages == 6:
-            self.step_delta = 2_750 # milliseconds
-        elif self.num_pipelines == 3 and self.num_stages == 6:
-            self.step_delta = 3_440 # milliseconds
-        elif self.num_pipelines == 2 and self.num_stages == 6:
-            self.step_delta = 4_900 # milliseconds
-        elif self.num_pipelines == 1 and self.num_stages == 6:
-            self.step_delta = 9_300 # milliseconds
-        else:
-            raise NotImplementedError
-
-    def alexnet_simulate_step_delta(self):
-        if self.num_pipelines == 4 and self.num_stages == 6:
-            self.step_delta = 1_550 # milliseconds
-        elif self.num_pipelines == 3 and self.num_stages == 6:
-            self.step_delta = 2_000 # milliseconds
-        elif self.num_pipelines == 2 and self.num_stages == 6:
-            self.step_delta = 3_100 # milliseconds
-        elif self.num_pipelines == 1 and self.num_stages == 6:
-            self.step_delta = 6_180 # milliseconds
-        else:
-            raise NotImplementedError
+    # implement by child
+    def simulate_step_delta(self):
+        pass
 
     def info(self, delta, message):
         logger.info(f'[{delta/1000.0:.3f}] {message}')
@@ -427,7 +279,6 @@ class Simulator:
         if isinstance(delta, datetime.timedelta):
             event = Event(delta // self.millisecond, kind, data)
         else:
-            assert type(delta) == int
             event = Event(delta, kind, data)
         heapq.heappush(self.events, event)
         return event
@@ -453,15 +304,8 @@ class Simulator:
 
     def create_global_rendezvous_timeout_event(self, delta):
         return self.create_event(
-            delta + self.global_rendezvous_timeout_delta,
+            delta + self.global_rendezvous_timeout_delta(),
             EventKind.GLOBAL_RENDEZVOUS_TIMEOUT,
-            {}
-        )
-
-    def create_local_rendezvous_timeout_event(self, delta):
-        return self.create_event(
-            delta + self.local_rendezvous_timeout_delta,
-            EventKind.LOCAL_RENDEZVOUS_TIMEOUT,
             {}
         )
 
@@ -491,6 +335,7 @@ class Simulator:
 
     # def generate_spot_instance_events(self, start, duration): # TODO
     def generate_spot_instance_events(self, start, delta):
+        self.info(delta, f'generate_spot_instance_events {delta}')
         current_delta = delta * self.millisecond
         self.create_spot_instance_generate_event(current_delta + self.hour)
 
@@ -570,6 +415,7 @@ class Simulator:
     #     )
 
     def simulate_spot_instance_add(self, delta, data):
+        self.info(delta, f'{data["name"]} simulate_spot_instance_add: {delta}')
         name = data['name']
         self.spot_instances[name] = SpotInstance(name, delta)
         self.create_spot_instance_ready_event(
@@ -577,15 +423,17 @@ class Simulator:
             name,
         )
 
-    def simulate_fatal_failure(self, delta, name):
+    def simulate_fatal_failure(self, delta, name, data):
+        self.info(delta, f'{data["name"]} simulate_fatal_failure: {delta}')
         self.info(
             delta,
             f'{name} caused a fatal failure, starting global rendezvous'
         )
         self.num_fatal_failures += 1
-        self.simulate_rendezvous_start(delta, True)
+        self.simulate_rendezvous_start(delta, data)
 
     def simulate_spot_instance_remove(self, delta, data):
+        self.info(delta, f'{data["name"]} simulate_spot_instance_remove: {delta}')
         name = data['name']
         instance = self.spot_instances[name]
 
@@ -597,7 +445,7 @@ class Simulator:
         if instance.is_running():
             # This is a fatal failure
             if len(instance.active_coordinates) > 1:
-                self.simulate_fatal_failure(delta, name)
+                self.simulate_fatal_failure(delta, name, data)
                 return
 
             coordinates = instance.active_coordinates[0]
@@ -625,39 +473,36 @@ class Simulator:
             if self.fallback_event is None:
                 self.fallback_event = (self.num_steps_complete, delta)
                 self.fallback_handled = False
-                self.step_delta = int(self.step_delta * self.fallback_slowdown)
+                self.step_delta = int(self.step_delta * self.fallback_slowdown()) # Fucking strange
 
-    def simulate_rendezvous_start(self, delta, is_global):
+    def simulate_rendezvous_start(self, delta, data):
+        self.info(delta, f'simulate_rendezvous_start: {delta}')
         self.status = SystemStatus.RENDEZVOUS
-        self.simulate_rendezvous_restart(delta)
-        if is_global:
-            self.create_global_rendezvous_timeout_event(delta)
-        else:
-            self.create_local_rendezvous_timeout_event(delta)
+        self.simulate_rendezvous_restart(delta, data)
+        self.create_global_rendezvous_timeout_event(delta)
 
-    def simulate_rendezvous_restart(self, delta):
+    def simulate_rendezvous_restart(self, delta, data):
+        self.info(delta, f'simulate_rendezvous_restart: {delta}')
         assert self.status == SystemStatus.RENDEZVOUS
         self.rendezvous = []
         for name, instance, in self.spot_instances.items():
             if instance.is_ready() or instance.is_running():
                 self.rendezvous.append(name)
 
-    def simulate_rendezvous_timeout(self, delta, is_global):
+    def simulate_rendezvous_timeout(self, delta, data):
+        self.info(delta, f'simulate_rendezvous_timeout: {delta}')
         for i, name in enumerate(self.rendezvous):
             if name not in self.spot_instances:
                 self.info(
                     delta,
                     f'{name} terminated during redezvous, restarting'
                 )
-                self.simulate_rendezvous_restart(delta)
-                if is_global:
-                   self.create_global_rendezvous_timeout_event(delta)
-                else:
-                   self.create_local_rendezvous_timeout_event(delta)
+                self.simulate_rendezvous_restart(delta, data)
+                self.create_global_rendezvous_timeout_event(delta)
                 return
             instance = self.spot_instances[name]
             instance.global_id = i
-        self.simulate_assign_coordinates()
+        self.simulate_assign_coordinates(delta, data)
         self.fallback_event = None
         self.fallback_handled = False
         self.rendezvous_version += 1
@@ -680,6 +525,7 @@ class Simulator:
             self.status = SystemStatus.STOPPED
 
     def simulate_spot_instance_ready(self, delta, data):
+        self.info(delta, f'{data["name"]} simulate_spot_instance_ready: {delta}')
         name = data['name']
 
         # This node has already been removed
@@ -691,19 +537,22 @@ class Simulator:
 
         if self.status == SystemStatus.STOPPED:
             self.info(delta, f'{name} starting global rendezvous')
-            self.simulate_rendezvous_start(delta, True)
+            self.simulate_rendezvous_start(delta, data)
         elif self.status == SystemStatus.RENDEZVOUS:
             self.rendezvous.append(name)
         elif self.status == SystemStatus.RUNNING:
             self.num_workers_waiting += 1
 
     def simulate_global_rendezvous_timeout(self, delta, data):
-        self.simulate_rendezvous_timeout(delta, True)
+        self.info(delta, f'simulate_global_rendezvous_timeout: {delta}')
+        self.simulate_rendezvous_timeout(delta, data)
 
     def simulate_local_rendezvous_timeout(self, delta, data):
-        self.simulate_rendezvous_timeout(delta, False)
+        self.info(delta, f'simulate_local_rendezvous_timeout: {delta}')
+        self.simulate_rendezvous_timeout(delta, data)
 
-    def simulate_assign_coordinates(self):
+    def simulate_assign_coordinates(self, delta, data):
+        self.info(delta, f'simulate_assign_coordinates')
         if len(self.rendezvous) < self.num_stages_target:
             num_pipelines = 0
             num_stages = 0
@@ -781,7 +630,7 @@ class Simulator:
             event_num_steps_complete, event_delta = self.fallback_event
             if not self.fallback_handled and event_num_steps_complete == self.num_steps_complete:
                 # The duration we need to add to handle the fallback
-                d = int((delta - event_delta) * (self.fallback_slowdown - 1.0))
+                d = int((delta - event_delta) * (self.fallback_slowdown() - 1.0))
                 self.create_training_step_complete_event_absolute(
                     d + delta,
                     rendezvous_version
@@ -859,7 +708,7 @@ class Simulator:
                 delta,
                 f'reconfiguration after step {self.num_steps_complete}'
             )
-            self.simulate_rendezvous_start(delta, False)
+            self.simulate_rendezvous_start(delta, data)
         else:
             self.create_training_step_complete_event(
                 delta,
@@ -893,22 +742,25 @@ class Simulator:
         total += (duration - previous_x) * previous_y
         return total / duration
         
-    def simulate(self, duration=None):
+    def simulate(self, duration=None, fig_directory="res/simulator"):
         start = datetime.datetime.now(datetime.timezone.utc)
         start = start.replace(minute=0, second=0, microsecond=0)
         if self.start_hour is not None:
             start = start.replace(hour=self.start_hour)
 
         logger.info(f'Starting at {start}')
+        
+        delta = 0
 
         if self.spot_instance_trace is None:
-            logger.info(f'Generating spot instance events...')
+            logger.info(f' Generating spot instance events...')
             self.generate_spot_instance_initial_events(start)
         else:
             reader = csv.reader(self.spot_instance_trace)
+            logger.info(f'read {self.spot_instance_trace} reader: {reader.line_num}')
             for row in reader:
-                delta, event, name = row
-                delta = int(delta)
+                delta_str, event, name = row
+                delta = int(delta_str)
                 if event == 'add':
                     self.create_spot_instance_add_event(delta, name)
                 elif event == 'remove':
@@ -924,6 +776,8 @@ class Simulator:
         self.cost_ys = []
         self.value_xs = []
         self.value_ys = []
+        
+        logger.info(f'len(self.events): {len(self.events)}')
 
         while len(self.events) > 0:
             event = heapq.heappop(self.events)
@@ -936,7 +790,6 @@ class Simulator:
                 delta = duration
                 break
 
-            logger.info(f'kind: {kind}')
             if kind == EventKind.SPOT_INSTANCE_ADD:
                 self.simulate_spot_instance_add(delta, data)
             elif kind == EventKind.SPOT_INSTANCE_REMOVE:
@@ -1031,9 +884,11 @@ class Simulator:
         )
 
         if self.generate_graphs:
-            from .api import graph
             #pdf_suffix = f'-seed-{self.seed}-start-hour-{self.start_hour}-generate-addition-probabilities-{self.generate_addition_probabilities}-removal-probability-{self.removal_probability}.pdf'
             pdf_suffix = f'-{self.model}.pdf'
+            
+    
+            Path(fig_directory).mkdir(parents=True, exist_ok=True)
 
             # Instances graph
             graph(
@@ -1045,9 +900,10 @@ class Simulator:
                 max(self.on_demand_num_instances, max(instances_ys)),
                 result.average_instances,
                 on_demand=self.on_demand_num_instances,
-                out=f'res/instances{pdf_suffix}',
-                show=True,
+                out=f'{fig_directory}/instances{pdf_suffix}',
             )
+            
+            print(self.on_demand_performance, max(self.performance_ys), result.average_performance)
 
             # Performance graph
             graph(
@@ -1059,8 +915,7 @@ class Simulator:
                 max(self.on_demand_performance, max(self.performance_ys)),
                 result.average_performance,
                 on_demand=self.on_demand_performance,
-                out=f'res/performance{pdf_suffix}',
-                show=True,
+                out=f'{fig_directory}/performance{pdf_suffix}',
             )
 
             print('Model:', self.model)
@@ -1076,8 +931,7 @@ class Simulator:
                 max(self.on_demand_cost, max(self.cost_ys)),
                 result.average_cost,
                 on_demand=self.on_demand_cost,
-                out=f'res/cost{pdf_suffix}',
-                show=True,
+                out=f'{fig_directory}/cost{pdf_suffix}',
             )
 
             print('  Cost:', 'D', self.on_demand_cost, 'B', result.average_cost)
@@ -1092,11 +946,83 @@ class Simulator:
                 max(self.on_demand_value, max(self.value_ys)),
                 result.average_value,
                 on_demand=self.on_demand_value,
-                out=f'res/value{pdf_suffix}',
-                show=True,
+                out=f'{fig_directory}/value{pdf_suffix}',
             )
 
             print('  Value:', 'D', self.on_demand_value, 'B', result.average_value)
+            
+            # ======================== Plot on single graph ========================
+            plt.clf()
+            params = {
+                'legend.fontsize': 'x-small',
+                'axes.labelsize': 'x-small',
+                'axes.titlesize': 'x-small',
+                'xtick.labelsize': 'x-small',
+                'ytick.labelsize': 'x-small',
+                'figure.figsize': (15.0, 10.0),
+            }
+            plt.rcParams.update(params)
+            
+            fig, axs = plt.subplots(4)
+            fig.suptitle('Result Comparison')
+            plt.tight_layout(pad=1, w_pad=1, h_pad=2)
+            
+            graph_together(
+                axs[0],
+                'Time (hours)',
+                instances_xs,
+                duration_hours_whole,
+                '# Instances',
+                instances_ys,
+                max(self.on_demand_num_instances, max(instances_ys)),
+                result.average_instances,
+                on_demand=self.on_demand_num_instances
+            )
+
+            # Performance graph
+            graph_together(
+                axs[1],
+                'Time (hours)',
+                self.performance_xs,
+                duration_hours_whole,
+                'Performance (samples per second)',
+                self.performance_ys,
+                max(self.on_demand_performance, max(self.performance_ys)),
+                result.average_performance,
+                on_demand=self.on_demand_performance
+            )
+            
+            # Cost graph
+            graph_together(
+                axs[2],
+                'Time (hours)',
+                self.cost_xs,
+                duration_hours_whole,
+                'Cost ($ per hour)',
+                self.cost_ys,
+                max(self.on_demand_cost, max(self.cost_ys)),
+                result.average_cost,
+                on_demand=self.on_demand_cost
+            )
+
+            # Value graph
+            graph_together(
+                axs[3],
+                'Time (hours)',
+                self.value_xs,
+                duration_hours_whole,
+                'Value (performance per cost)',
+                self.value_ys,
+                max(self.on_demand_value, max(self.value_ys)),
+                result.average_value,
+                on_demand=self.on_demand_value
+            )
+            
+            plt.savefig(
+                f'{fig_directory}/total{pdf_suffix}',
+                bbox_inches='tight',
+                pad_inches=0.25
+            )
 
         # print('Preemptions')
         # print('  - Mean:', result.preemption_mean, 'hours')
@@ -1110,6 +1036,6 @@ class Simulator:
         # print('Number of fatal failures:', result.num_fatal_failures)
         # print('Number of steps complete:', result.num_steps_complete)
 
-        logger.info(f'Ending after {duration_hours} hours')
+        self.info(delta, f'Ending after {duration_hours} hours')
 
         return result

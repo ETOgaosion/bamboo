@@ -17,6 +17,8 @@ import os
 import signal
 import sys
 import pdb
+import datetime
+import traceback
 
 from colorama import Fore
 
@@ -73,6 +75,7 @@ def sig_handler(signum, frame):
     print('[Engine] Signal handler called with signal', signum)
     global should_stop
     should_stop = True
+    traceback.print_stack(frame)
 
 mem_alloced = 0
 mem_cached = 0
@@ -128,6 +131,8 @@ class PipelineEngine(DeepSpeedEngine):
 
         self.micro_batch_size = self.train_micro_batch_size_per_gpu()
         self.micro_batches = self.gradient_accumulation_steps()
+        
+        self.failures = {}
 
         # Set Grid and Communication Groups
         self.grid = self.module._grid
@@ -587,7 +592,6 @@ class PipelineEngine(DeepSpeedEngine):
             if len(info.previous_coordinates) != 0:
                 prev_stages = [s_id for dp_id, s_id in info.previous_coordinates]
                 prev_partition = set(range(old_parts[min(prev_stages)], old_parts[max(prev_stages) + 1]))
-                logger.info(f'Rank {rank} needs layers {needed_layers} and has prev partition {prev_partition}')
                 needed_layers.difference_update(prev_partition)
 
             for other_info in global_decisions:
@@ -610,8 +614,6 @@ class PipelineEngine(DeepSpeedEngine):
                     break
 
             recv_decisions[rank] = rank_recv_decisions
-
-            logger.info(f'len(needed_layers): {len(needed_layers)}')
             assert len(needed_layers) == 0
 
         return recv_decisions
@@ -750,10 +752,10 @@ class PipelineEngine(DeepSpeedEngine):
             if rank == self.global_rank:
                 self.global_store.set(str(self.global_rank), '1')
                 sys.exit(13)
-
             ## NextStageException
             if self.next_stage < self.num_stages and rank == self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.next_stage):
-                self.log('Next node is going to fail. Using fallback schedule', color='r')
+                self.log(f'rank {rank} Next node is going to fail. Using fallback schedule', color='r')
+                self.log(f'{datetime.datetime.now()} - START NextStageException fallback schedule {self.global_steps}')
                 if self.next_stage not in self.param_buffers or \
                     self.next_stage not in self.state_buffers:
                     raise RuntimeError(
@@ -808,9 +810,9 @@ class PipelineEngine(DeepSpeedEngine):
                 # Update global decision
                 self.coordinates.append([self.grid.get_data_parallel_id(), self.next_stage])
                 self.rdzv_handler.update_coordinates(self.global_rank, self.coordinates)
+                self.log(f'{datetime.datetime.now()} - FINISH NextStageException fallback schedule {self.global_steps}')
 
                 # Update neighboring stage information
-                self.next_stage = self._inc(self.next_stage)
 
                 # FIXME(pengzhan): There are several cases I have not
                 # implemented yet. For a 4 node pipeline (0,1,2,3) with
@@ -825,6 +827,7 @@ class PipelineEngine(DeepSpeedEngine):
             ## PrevStageException
             elif self.prev_stage >= 0 and rank == self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.prev_stage):
                 self.log('Previous node is going to fail. Using fallback schedule', color='r')
+                self.log(f'{datetime.datetime.now()} - START PrevStageException fallback schedule {self.global_steps}')
                 # Map coordinate of previous node to the rank of the node
                 # in front of previous node.
                 prev_rank = self.grid.stage_to_global(self.prev_stage)
@@ -846,6 +849,7 @@ class PipelineEngine(DeepSpeedEngine):
                         curr_sched(),
                         failed_step=failed_step,
                         curr_step=curr_step)
+                self.log(f'{datetime.datetime.now()} - FINISH PrevStageException fallback schedule {self.global_steps}')
 
             ## AllReduceException
             else:
@@ -921,8 +925,6 @@ class PipelineEngine(DeepSpeedEngine):
         layer_tensor = self.flatten(layer_bucket).cuda()
         optim_tensor = self.flatten(optim_bucket).cuda()
 
-        self.log(f'SIZE OF LAYER TENSOR {layer_tensor.size()}', color='lg')
-        self.log(f'SIZE OF OPTIM TENSOR {optim_tensor.size()}', color='lg')
         #group = None if layer_tensor.is_cuda else self.gloo_pg
 
         ## Send the layers and optimizer state
@@ -1095,32 +1097,12 @@ class PipelineEngine(DeepSpeedEngine):
             The arithmetic mean of the losses computed this batch.
         """
         # print(f"before write to rdzv")
+        global_step = self.global_steps
+        self.log(f'{datetime.datetime.now()} - START BATCH {global_step}')
         self.rdzv_handler.write('/rdzv/cluster_status', 'train')
-        # print(f"after write to rdzv")
-        self.log(f'STARTING BATCH {self.global_steps} with coordinates {self.coordinates}')
         
         ## ELACESO: add the start_batch_index
         self.start_batch_index = 0
-
-        global should_stop
-        if should_stop:
-            self.log('------- EXITING ---------', color='r')
-            failures = json.loads(self.global_store.get('failures'))
-            already_deleted = []
-            for rank, step in failures.items():
-                if step < self.global_steps:
-                    already_deleted.append(rank)
-
-            for rank in already_deleted:
-                del failures[rank]
-
-            failures[self.global_rank] = self.global_steps + 1
-            self.global_store.set('failures', json.dumps(failures))
-            should_stop = False
-
-        failures = json.loads(self.global_store.get('failures'))
-        if failures:
-            self.log(f'FAILURES {failures}', color='r')
 
         start_step = time.time()
 
@@ -1133,32 +1115,30 @@ class PipelineEngine(DeepSpeedEngine):
         if data_iter:
             self.set_dataiterator(data_iter)
 
+        self.log(f'{datetime.datetime.now()} - START LOCAL MODEL TRAIN {global_step}')
         self.module.train()
         self.total_loss = None
         self._compute_loss = True
-        # print("set time to kill")
-        # self.rdzv_handler.set_time_to_kill()
-        # dist.barrier()
-        # self.log(f'self.global_rank: {self.global_rank}')
-        # if self.global_rank == 2:
-        #     os.kill(os.getpid(), signal.SIGTERM)
-                
-        self.log(f'self.join: {self.join}')
-        if not self.join and self.rdzv_handler.should_reconfigure(self.global_steps, failures):
+        self.log(f'{datetime.datetime.now()} - FINISH LOCAL MODEL TRAIN {global_step}')
+
+        failures = json.loads(self.global_store.get('failures'))
+        if failures:
+            self.log(f'FAILURES {failures}', color='r')
+
+        if not self.join and self.rdzv_handler.should_reconfigure(global_step, failures):
+            self.log(f'{datetime.datetime.now()} - START RECONFIGURE {global_step}')
             ## If a shadow node is going to fail make sure we get its state before it dies
             ## TODO: Make sure this only happens when the state is not available in another
             ##      pipeline
             recvd_state = self.save_shadow_node_state(failures)
+            self.log(f'{datetime.datetime.now()} - FINISH SAVE SHADOW NODE STATE {global_step}')
 
-            if failures.get(str(self.global_rank), -1) == self.global_steps:
+            if failures.get(str(self.global_rank), -1) == global_step:
                 print("We are reconfiguring and I will die soon anyway. I'm leaving")
                 self.global_store.set(str(self.global_rank), '1')
                 sys.exit(13)
 
-            self.log(f'Triggered a reconfiguration on global step {self.global_steps}')
             store, rank, world_size, num_pipelines, num_stages, global_decision = self.rdzv_handler.next_rendezvous(self.global_rank)
-            self.log(f'Rendezvous complete! rank: {rank}, world_size: {world_size}, num_pipelines: {num_pipelines}, num_stages: {num_stages}')
-            self.log(f'Global decision, {global_decision}')
             self.global_rank = rank
             self.world_size = world_size
             self.global_store = store
@@ -1168,7 +1148,6 @@ class PipelineEngine(DeepSpeedEngine):
             for info in global_decision:
                 if info.rank == rank:
                     if len(info.active_coordinates) == 0:
-                        self.log(f"-------- I'M LEAVING!!", color=True)
                         sys.exit(125)
 
             Spec = collections.namedtuple('WorkerSpec', ['role', 'local_world_size'])
@@ -1176,21 +1155,20 @@ class PipelineEngine(DeepSpeedEngine):
             self.rdzv_handler.assign_worker_ranks(store, rank, world_size, spec, num_pipelines, num_stages, global_decision)
             if self.global_rank == 0:
                 self.rdzv_handler.set_master_addr_port(store)
-            master_addr, master_port = self.rdzv_handler.get_master_addr_port(store) 
-            
-            self.log("will reconfigure myself")
+            master_addr, master_port = self.rdzv_handler.get_master_addr_port(store)
 
+            self.log(f'{datetime.datetime.now()} - START RECONFIGURE CLUSTER and TRANSFER LAYERS {global_step}')
             self.reconfigure_cluster(store, global_decision, recvd_state)
             failures = {}
+            self.log(f'{datetime.datetime.now()} - FINISH RECONFIGURE {global_step}')
 
         self.check_preemptions(failures)
-
+        
         if self.join:
             self.join = False
 
         # Do the work
         self.timers('train_batch').start()
-
         # First trail
         sched = self._generate_sched()
         schedule_status: Optional[Tuple[int, Exception]] = \
@@ -1204,15 +1182,12 @@ class PipelineEngine(DeepSpeedEngine):
                 print(f'[DEBUG Pipeline] Failed at step {schedule_status[0]} '
                       f'due to {schedule_status[1]}')
 
-            self.rdzv_handler.write('/rdzv/last_reconfig', self.global_steps)
-            
-            print(f'schedule_status[1]: {schedule_status[1]}')
-            logger.info(f'schedule_status[1]: {schedule_status[1]}')
+            self.rdzv_handler.write('/rdzv/last_reconfig', global_step)
 
             failed_step = 0
             if type(schedule_status[1]) == NextStageException:
                 if self.next_stage not in self.param_buffers or self.next_stage not in self.state_buffers:
-                    raise RuntimeError("Doesn't have param or state to recover")
+                    raise RuntimeError(f'Do not have param or state to recover')
 
                 # Map coordinate of next node to the rank of this node.
                 next_rank = self.grid.stage_to_global(self.next_stage)
@@ -1223,7 +1198,6 @@ class PipelineEngine(DeepSpeedEngine):
                 self.fail_lock.acquire(blocking=True, lock_ttl=10)
                 fail_step = json.loads(self.global_store.get(f'fail-step-{next_rank}'))
                 fail_step.append(schedule_status[0])
-                self.log(f'FAIL STEP {next_rank} = {fail_step}')
                 self.global_store.set(f'fail-step-{next_rank}', json.dumps(fail_step))
                 self.fail_lock.release()
 
@@ -1234,7 +1208,6 @@ class PipelineEngine(DeepSpeedEngine):
                         self.fail_lock.release()
 
                 failed_step = min(fail_step)
-                self.log(f'FINAL VERSION OF FAIL STEP = {fail_step}. Got FAILED_STEP = {failed_step}')
 
                 # Re-generate schedule
                 # self._generate_sched = lambda \
@@ -1413,52 +1386,70 @@ class PipelineEngine(DeepSpeedEngine):
 
         self.timers('train_batch').stop()
 
-        elapsed = self.timers('train_batch').elapsed(reset=True)
-        iter_time = elapsed / self.steps_per_print()
-        tput = self.train_batch_size() / iter_time
-        if self.global_steps % self.steps_per_print() == 0:
-            msg = f'steps: {self.global_steps} ' \
-                  f'loss: {self.agg_train_loss:0.4f} ' \
-                  f'iter time (s): {iter_time:0.3f} ' \
-                  f'samples/sec: {tput:0.3f}'
-            if mem_log:
-                torch.cuda.synchronize()
-                peak_alloc = torch.cuda.max_memory_allocated()
-                peak_reserve = torch.cuda.max_memory_reserved()
-                curr_alloc = torch.cuda.memory_allocated()
-                curr_reserve = torch.cuda.memory_reserved()
-                msg += f' peak alloc (MB): {peak_alloc / (1024**2):.3f} ' \
-                       f'peak reverse (MB): {peak_reserve / (1024**2):.3f} ' \
-                       f'curr alloc (MB): {curr_alloc / (1024**2):.3f} ' \
-                       f'peak reverse (MB): {curr_reserve / (1024**2):.3f} '
-            logger.info(msg)
-            logger.handlers[0].flush()
+        # elapsed = self.timers('train_batch').elapsed(reset=True)
+        # iter_time = elapsed / self.steps_per_print()
+        # tput = self.train_batch_size() / iter_time
+        # if global_step % self.steps_per_print() == 0:
+        #     msg = f'steps: {global_step} ' \
+        #           f'loss: {self.agg_train_loss:0.4f} ' \
+        #           f'iter time (s): {iter_time:0.3f} ' \
+        #           f'samples/sec: {tput:0.3f}'
+        #     if mem_log:
+        #         torch.cuda.synchronize()
+        #         peak_alloc = torch.cuda.max_memory_allocated()
+        #         peak_reserve = torch.cuda.max_memory_reserved()
+        #         curr_alloc = torch.cuda.memory_allocated()
+        #         curr_reserve = torch.cuda.memory_reserved()
+        #         msg += f' peak alloc (MB): {peak_alloc / (1024**2):.3f} ' \
+        #                f'peak reverse (MB): {peak_reserve / (1024**2):.3f} ' \
+        #                f'curr alloc (MB): {curr_alloc / (1024**2):.3f} ' \
+        #                f'peak reverse (MB): {curr_reserve / (1024**2):.3f} '
+        #     logger.info(msg)
+        #     logger.handlers[0].flush()
 
         # Tensorboard
-        if self.tensorboard_enabled():
-            if self.global_rank == 0:
-                self.summary_events = [(f'Train/Samples/train_loss',
-                                        self.agg_train_loss.mean().item(),
-                                        self.global_samples)]
-                for event in self.summary_events:  # write_summary_events
-                    self.summary_writer.add_scalar(event[0], event[1], event[2])
-                if self.global_steps % self.steps_per_print() == 0:
-                    self.summary_writer.flush()
+        # if self.tensorboard_enabled():
+        #     if self.global_rank == 0:
+        #         self.summary_events = [(f'Train/Samples/train_loss',
+        #                                 self.agg_train_loss.mean().item(),
+        #                                 self.global_samples)]
+        #         for event in self.summary_events:  # write_summary_events
+        #             self.summary_writer.add_scalar(event[0], event[1], event[2])
+        #         if global_step % self.steps_per_print() == 0:
+        #             self.summary_writer.flush()
 
-        if self.wall_clock_breakdown(
-        ) and self.global_steps % self.steps_per_print() == 0:
-            self.timers.log([
-                'pipe_send_output',
-                'pipe_send_grad',
-                'pipe_recv_input',
-                'pipe_recv_grad'
-            ])
+        # if self.wall_clock_breakdown(
+        # ) and global_step % self.steps_per_print() == 0:
+        #     self.timers.log([
+        #         'pipe_send_output',
+        #         'pipe_send_grad',
+        #         'pipe_recv_input',
+        #         'pipe_recv_grad'
+        #     ])
 
         self._clean_pipe_buffers()
 
         step_end = time.time()
-        self.log(f'FINISHING BATCH {self.global_steps} at {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} took {step_end - start_step} s')
+        self.log(f'{datetime.datetime.now()} - FINISH BATCH {global_step} took {step_end - start_step} s')
         # TODO: should return precisely what loss returned and allow others to be queried?
+
+        if (global_step >= 25 and self.global_rank == 2):
+            os.kill(os.getpid(), signal.SIGTERM)
+        global should_stop
+        if should_stop:
+            self.failures = json.loads(self.global_store.get('failures'))
+            already_deleted = []
+            for rank, step in self.failures.items():
+                if step < global_step:
+                    already_deleted.append(rank)
+
+            for rank in already_deleted:
+                del failures[rank]
+
+            self.failures[self.global_rank] = global_step + 1
+            self.global_store.set('failures', json.dumps(self.failures))
+        if should_stop:
+            exit()
         return self.agg_train_loss, step_end - start_step
 
     def eval_batch(self, data_iter, compute_loss=True, reduce_output='avg'):
@@ -1961,11 +1952,11 @@ class PipelineEngine(DeepSpeedEngine):
         try:
             send_handler(self.next_stage)
         except Exception as e:
-            self.log(f"---- SEND ACTS FAILED!!!! RESORTING TO FALLBACK", color=True)
             failed_rank = self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.next_stage)
             self.global_store.set(str(failed_rank), '1')
             self.coordinates.append([self.grid.get_data_parallel_id(), self.next_stage])
             self.rdzv_handler.update_coordinates(self.global_rank, self.coordinates)
+            self.log(f'FAILED RANK={failed_rank} - {self.coordinates}')
             raise NextStageException(e)
 
         if self.wall_clock_breakdown():
@@ -2017,7 +2008,6 @@ class PipelineEngine(DeepSpeedEngine):
         try:
             send_handler(self.prev_stage)
         except Exception as e:
-            self.log(f"---- SEND GRADS FAILED!!!! RESORTING TO FALLBACK", color=True)
             failed_rank = self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.prev_stage)
             self.global_store.set(str(failed_rank), '1')
             raise PrevStageException(e)
@@ -2068,8 +2058,6 @@ class PipelineEngine(DeepSpeedEngine):
         try:
             recvd = recv_handler(self.prev_stage)
         except Exception as e:
-            # self.log(f"---- RECV ACTS FAILED!!!! RESORTING TO FALLBACK", color=True)
-            logger.info(f"---- RECV ACTS FAILED!!!! RESORTING TO FALLBACK")
             failed_rank = self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.prev_stage)
             self.global_store.set(str(failed_rank), '1')
             raise PrevStageException(e)
@@ -2111,11 +2099,11 @@ class PipelineEngine(DeepSpeedEngine):
         try:
             recv_handler(self.next_stage)
         except Exception as e:
-            self.log(f"---- RECV GRADS FAILED!!!! RESORTING TO FALLBACK", color=True)
             failed_rank = self.grid._topo.get_rank(data=self.grid.get_data_parallel_id(), pipe=self.next_stage)
             self.global_store.set(str(failed_rank), '1')
             self.coordinates.append([self.grid.get_data_parallel_id(), self.next_stage])
             self.rdzv_handler.update_coordinates(self.global_rank, self.coordinates)
+            self.log(f'FAILED RANK={failed_rank} - {self.coordinates}')
             raise NextStageException(e)
 
         if self.wall_clock_breakdown():
@@ -2376,7 +2364,7 @@ class PipelineEngine(DeepSpeedEngine):
         schedule.RecvWeights: _exec_recv_weights
     }
 
-    def _exec_schedule(self, pipe_schedule, start_step=0, debug=False) -> Optional[Tuple[int, Exception]]:
+    def _exec_schedule(self, pipe_schedule, start_step=0, debug=True) -> Optional[Tuple[int, Exception]]:
         """ Execute schedule from `start_step`, and return failed step or None
         indicates success.
         """
@@ -2395,7 +2383,7 @@ class PipelineEngine(DeepSpeedEngine):
             if i < start_step:
                 continue
 
-            if debug or DEBUG:
+            if debug:
                 print(f'[DEBUG Pipeline] Instructions in step {i}:', end=' ')
                 print(*step_cmds, sep=',')
                 print("\n")
@@ -2408,7 +2396,6 @@ class PipelineEngine(DeepSpeedEngine):
                 for rank in self.grid.current_dp_group:
                     if int(self.global_store.get(str(rank))) == 1:
                         failed_data_parallel_id = self.grid._topo.get_coord(rank).data
-                        self.log(f'RANK {rank} FROM PIPELINE {failed_data_parallel_id} IN ALL-REDUCE GROUP FAILED. USING FALLBACK', color=True)
                         e = AllReduceException(failed_data_parallel_id, f'RANK {rank} FROM PIPELINE {failed_data_parallel_id} IN ALL-REDUCE GROUP FAILED. USING FALLBACK')
                         msg = f'{type(cmd)}: {e}'
                         e = type(e)(e.src, msg)
@@ -2422,9 +2409,9 @@ class PipelineEngine(DeepSpeedEngine):
                         raise RuntimeError(f'{self.__class__.__name__} does not understand instruction {repr(cmd)}')
 
                     self._exec_instr = MethodType(self._INSTRUCTION_MAP[type(cmd)], self)
-                    if debug: print(f'cmd: {cmd}')
                     self._INSTRUCTION_MAP[type(cmd)](self, **cmd.kwargs)
                 except Exception as e:
+                    self.log(f'failed cmd: {cmd}')
                     msg = f'{type(cmd)}: {e}'
                     if hasattr(e, 'src'):
                         e = type(e)(e.src, msg)

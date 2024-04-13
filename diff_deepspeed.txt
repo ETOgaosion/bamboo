@@ -1611,7 +1611,7 @@ diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/pipe/engine.py
              The arithmetic mean of the losses computed this batch.
          """
 +        self.rdzv_handler.write('/rdzv/cluster_status', 'train')
-+        self.log(f'STARTING BATCH {self.global_steps} with coordinates {self.coordinates}')
++        self.log(f'START BATCH {self.global_steps} with coordinates {self.coordinates}')
 +
 +        global should_stop
 +        if should_stop:
@@ -1932,7 +1932,7 @@ diff --color -bur --no-dereference ../DeepSpeed/deepspeed/runtime/pipe/engine.py
 +        self._clean_pipe_buffers()
 +
 +        step_end = time.time()
-+        self.log(f'FINISHING BATCH {self.global_steps} at {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} took {step_end - start_step} s')
++        self.log(f'FINISH BATCH {self.global_steps} at {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} took {step_end - start_step} s')
 +
          # TODO: should return precisely what loss returned and allow others to be queried?
          return self.agg_train_loss
@@ -4265,7 +4265,7 @@ diff --color -bur --no-dereference ../DeepSpeed/deepspeed/utils/distributed.py p
          assert isinstance(timeout, timedelta)
 +
 +        if store:
-+            print(f'STARTING WITH RANK = {rank} and world size = {world_size} and init_method = {init_method}')
++            print(f'START WITH RANK = {rank} and world size = {world_size} and init_method = {init_method}')
          torch.distributed.init_process_group(backend=dist_backend,
 +                                                rank=rank,
 +                                                world_size=world_size,

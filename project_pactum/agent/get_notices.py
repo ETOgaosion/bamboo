@@ -13,7 +13,7 @@ _log_handler.setFormatter(_log_fmt)
 
 log = logging.getLogger(__name__)
 log.propagate = False
-log.setLevel(logging.INFO)
+log.setLevel(logging.WARNING)
 log.addHandler(_log_handler)
 
 logger = logging.getLogger('project_pactum.etcd')

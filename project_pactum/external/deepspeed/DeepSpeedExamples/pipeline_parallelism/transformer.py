@@ -47,7 +47,7 @@ def get_args():
                         default=False)
     parser.add_argument('--debug',
                         action='store_true',
-                        default=True)
+                        default=False)
     parser.add_argument('--mem_log',
                         action='store_true',
                         default=False)

@@ -232,8 +232,6 @@ class DeepSpeedEngine(Module):
         self._configure_distributed_model(model)
 
         see_memory_usage(f"DeepSpeed Engine: After configure distributed model")
-        
-        logger.info("hit6")
 
         # Configure wall clock timer
         self.timers = SynchronizedWallClockTimer()
@@ -810,27 +808,20 @@ class DeepSpeedEngine(Module):
         signal.signal(signal.SIGTERM, sig_backtrace)
         for p in self.module.parameters():
             num_parameter += 1
-            logger.info(f'num_parameter: {num_parameter}')
             if hasattr(p, 'allreduce') and not p.allreduce:
                 if torch.is_tensor(p) and is_replicated(p):
-                    logger.info('skipping allreduce for {}'.format(p))
                     dist.broadcast(p,
                                    self.expert_broadcast_src_rank,
                                    group=self.expert_data_parallel_group)
-                logger.info('finish broadcast')
             else:
                 if torch.is_tensor(p) and is_replicated(p):
-                    logger.info(f'broadcasting {p}, self.data_parallel_group: {self.data_parallel_group}')
                     dist.broadcast(p,
                                    self.broadcast_src_rank,
                                    group=self.data_parallel_group)
-                logger.info('finish broadcast')
 
     def _configure_distributed_model(self, model):
-        logger.info("hit1")
         self.module = model
         if self.fp16_enabled():
-            logger.info("hit11")
             if self.zero_optimization_partition_weights() and any(
                 [hasattr(param,
                          'ds_id') for param in self.module.parameters()]):
@@ -854,8 +845,6 @@ class DeepSpeedEngine(Module):
                 raise ValueError(
                     f"fp32 is enabled but the following parameters have dtype that is not fp32: {', '.join(names)}"
                 )
-        
-        logger.info("hit2")
 
         if not self.dont_change_device:
             self.module.to(self.device)
@@ -866,8 +855,6 @@ class DeepSpeedEngine(Module):
                 self.has_moe_layers = True
                 self.num_experts = module.num_experts
                 break
-        
-        logger.info("hit3")
 
         if not self.pipeline_parallelism:
             # PipeEngine's mpu object is different from Megatron's mpu object
@@ -901,8 +888,6 @@ class DeepSpeedEngine(Module):
             self.broadcast_src_rank = get_global_rank(
                 self.mpu.get_data_parallel_group(),
                 0)
-        
-        logger.info("hit3")
 
         if self.has_moe_layers:
             # No assert needed because this will only be true if MoE Layer creation was successful
@@ -912,13 +897,9 @@ class DeepSpeedEngine(Module):
             self.expert_broadcast_src_rank = get_global_rank(
                 groups.get_expert_data_parallel_group(),
                 0)
-        
-        logger.info("hit4")
 
         if not self.amp_enabled():
             self._broadcast_model()
-        
-        logger.info("hit5")
 
     #check if parmaeters are duplicated in optimizer param_groups
     def _check_for_duplicates(self, optimizer):

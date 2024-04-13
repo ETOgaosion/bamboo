@@ -2,20 +2,19 @@
 
 CURRENT_PATH=$(pwd)
 
-NUM_NODES=${1:-7}
+
+NUM_NODES=${1:-8}
 NUM_STAGES=${2:-3}
-RDZV_IP=${3:-10.20.23.90}
+RDZV_IP=${3:-18.217.230.209}
 ID=encoder${4}
 
-MODEL=${CURRENT_PATH}/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/transformer
+MODEL=${CURRENT_PATH}/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/gpt2
 
 echo "ARGS $RDZV_IP $ID $NUM_STAGES $MODEL"
 
 ip a
 
-cmd="""export PROJECT_PACTUM_LOGGING_INFO='etcd.client,etcd.lock,torch.distributed.distributed_c10d' \
-	export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-	export LOGLEVEL=INFO \
+cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	export USE_BARRIER=true \
 	&& \
 	export PYTHONPATH=${CURRENT_PATH}/project-pactum:\${PYTHONPATH} \

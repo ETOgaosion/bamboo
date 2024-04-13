@@ -11,10 +11,12 @@ from ..constants import TORCH_DISTRIBUTED_DEFAULT_PORT, default_pg_timeout
 import logging
 bamboo_logger = logging.getLogger(__name__)
 
+logger.setLevel(logging.WARNING)
+
 def init_distributed(dist_backend="nccl",
                      auto_mpi_discovery=True,
                      distributed_port=TORCH_DISTRIBUTED_DEFAULT_PORT,
-                     verbose=True,
+                     verbose=False,
                      timeout=default_pg_timeout,
                      rank=0,
                      store=None,
@@ -53,7 +55,7 @@ def init_distributed(dist_backend="nccl",
         assert isinstance(timeout, timedelta)
 
         if store:
-            print(f'STARTING WITH RANK = {rank} and world size = {world_size} and init_method = {init_method}')
+            logger.info(f'START WITH RANK = {rank} and world size = {world_size} and init_method = {init_method}')
             torch.distributed.init_process_group(backend=dist_backend,
                                                 rank=rank,
                                                 world_size=world_size,
