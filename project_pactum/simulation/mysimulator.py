@@ -6,14 +6,8 @@ class TeslaT4Simulator(Simulator):
     def __init__(self, seed=None, start_hour=None,
                  model='GPT-2', spot_instance_trace=None, generate_addition_probabilities=False, removal_probability=None, generate_graphs=False):
         super().__init__(seed, start_hour, model, spot_instance_trace, generate_addition_probabilities, removal_probability, generate_graphs)
-        global base_dir
-        dirs = sorted(os.listdir(base_dir + 'res'))
-        while '.DS_Store' in dirs: dirs.remove('.DS_Store')
-        while '.gitignore' in dirs: dirs.remove('.gitignore')
-        self.rdzv_model = calculate_rdzv_main()
-        self.fall_back_model = calculate_fallback_main(dirs)
-        self.pipeline_delta_model = calculate_pipeline_delta()
-
+        self.rdzv_model, self.fall_back_model, self.pipeline_delta_model = res_parser_init()
+    
         # Amazon EC2 Tesla T4
         if model == 'GPT-2':
             self.samples_per_step = 96
