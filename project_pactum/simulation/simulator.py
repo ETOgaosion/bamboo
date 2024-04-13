@@ -8,6 +8,10 @@ import math
 import random
 import statistics
 import typing
+import matplotlib.pyplot as plt
+from pathlib import Path
+
+from project_pactum.simulation.utils import *
 
 logger = logging.getLogger(__name__)
 
@@ -738,7 +742,7 @@ class Simulator:
         total += (duration - previous_x) * previous_y
         return total / duration
         
-    def simulate(self, duration=None):
+    def simulate(self, duration=None, fig_directory="res/simulator"):
         start = datetime.datetime.now(datetime.timezone.utc)
         start = start.replace(minute=0, second=0, microsecond=0)
         if self.start_hour is not None:
@@ -880,9 +884,11 @@ class Simulator:
         )
 
         if self.generate_graphs:
-            from .api import graph
             #pdf_suffix = f'-seed-{self.seed}-start-hour-{self.start_hour}-generate-addition-probabilities-{self.generate_addition_probabilities}-removal-probability-{self.removal_probability}.pdf'
             pdf_suffix = f'-{self.model}.pdf'
+            
+    
+            Path(fig_directory).mkdir(parents=True, exist_ok=True)
 
             # Instances graph
             graph(
@@ -894,8 +900,7 @@ class Simulator:
                 max(self.on_demand_num_instances, max(instances_ys)),
                 result.average_instances,
                 on_demand=self.on_demand_num_instances,
-                out=f'/instances{pdf_suffix}',
-                show=True,
+                out=f'{fig_directory}/instances{pdf_suffix}',
             )
             
             print(self.on_demand_performance, max(self.performance_ys), result.average_performance)
@@ -910,8 +915,7 @@ class Simulator:
                 max(self.on_demand_performance, max(self.performance_ys)),
                 result.average_performance,
                 on_demand=self.on_demand_performance,
-                out=f'/performance{pdf_suffix}',
-                show=True,
+                out=f'{fig_directory}/performance{pdf_suffix}',
             )
 
             print('Model:', self.model)
@@ -927,8 +931,7 @@ class Simulator:
                 max(self.on_demand_cost, max(self.cost_ys)),
                 result.average_cost,
                 on_demand=self.on_demand_cost,
-                out=f'/cost{pdf_suffix}',
-                show=True,
+                out=f'{fig_directory}/cost{pdf_suffix}',
             )
 
             print('  Cost:', 'D', self.on_demand_cost, 'B', result.average_cost)
@@ -943,11 +946,82 @@ class Simulator:
                 max(self.on_demand_value, max(self.value_ys)),
                 result.average_value,
                 on_demand=self.on_demand_value,
-                out=f'/value{pdf_suffix}',
-                show=True,
+                out=f'{fig_directory}/value{pdf_suffix}',
             )
 
             print('  Value:', 'D', self.on_demand_value, 'B', result.average_value)
+            
+            # ======================== Plot on single graph ========================
+            plt.clf()
+            params = {
+                'legend.fontsize': 'x-small',
+                'axes.labelsize': 'x-small',
+                'axes.titlesize': 'x-small',
+                'xtick.labelsize': 'x-small',
+                'ytick.labelsize': 'x-small',
+                'figure.figsize': (15.0, 10.0),
+            }
+            plt.rcParams.update(params)
+            
+            fig, axs = plt.subplots(4)
+            fig.suptitle('Result Comparison', y=0.92)
+            
+            graph_together(
+                axs[0],
+                'Time (hours)',
+                instances_xs,
+                duration_hours_whole,
+                '# Instances',
+                instances_ys,
+                max(self.on_demand_num_instances, max(instances_ys)),
+                result.average_instances,
+                on_demand=self.on_demand_num_instances
+            )
+
+            # Performance graph
+            graph_together(
+                axs[1],
+                'Time (hours)',
+                self.performance_xs,
+                duration_hours_whole,
+                'Performance (samples per second)',
+                self.performance_ys,
+                max(self.on_demand_performance, max(self.performance_ys)),
+                result.average_performance,
+                on_demand=self.on_demand_performance
+            )
+            
+            # Cost graph
+            graph_together(
+                axs[2],
+                'Time (hours)',
+                self.cost_xs,
+                duration_hours_whole,
+                'Cost ($ per hour)',
+                self.cost_ys,
+                max(self.on_demand_cost, max(self.cost_ys)),
+                result.average_cost,
+                on_demand=self.on_demand_cost
+            )
+
+            # Value graph
+            graph_together(
+                axs[3],
+                'Time (hours)',
+                self.value_xs,
+                duration_hours_whole,
+                'Value (performance per cost)',
+                self.value_ys,
+                max(self.on_demand_value, max(self.value_ys)),
+                result.average_value,
+                on_demand=self.on_demand_value
+            )
+            
+            plt.savefig(
+                f'{fig_directory}/total{pdf_suffix}',
+                bbox_inches='tight',
+                pad_inches=0.25
+            )
 
         # print('Preemptions')
         # print('  - Mean:', result.preemption_mean, 'hours')
