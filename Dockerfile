@@ -4,6 +4,6 @@ ENV PATH=/workspace/bin:$PATH
 
 COPY . /workspace
 RUN pip install -e /workspace/project_pactum/external/deepspeed
-RUN mkdir -p /root/.cache/torch_extensions
-RUN mv /workspace/.cache/torch_extensions/py38_cu117 /root/.cache/torch_extensions/
-RUN chmod a=r -R /root/.cache/torch_extensions/py38_cu117
+# RUN mkdir -p /root/.cache/torch_extensions
+# RUN mv /workspace/.cache/torch_extensions/py38_cu117 /root/.cache/torch_extensions/
+# RUN chmod a=r -R /root/.cache/torch_extensions/py38_cu117

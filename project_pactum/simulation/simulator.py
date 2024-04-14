@@ -236,7 +236,7 @@ class Simulator:
         pass
 
     def info(self, delta, message):
-        logger.info(f'[{delta/1000.0:.3f}] {message}')
+        print(f'[{delta/1000.0:.3f}] {message}')
  
     def get_spot_instance_next_name(self):
         name = self.spot_instance_name_format.format(
