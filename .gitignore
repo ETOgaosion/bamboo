@@ -13,3 +13,5 @@ project_pactum/external/deepspeed/deepspeed.egg-info/
 tmp/
 .DS_Store
 simu.txt
+*.bkp
+~*

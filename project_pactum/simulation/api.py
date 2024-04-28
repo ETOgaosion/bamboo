@@ -1,7 +1,7 @@
 import argparse
 import logging
 
-from project_pactum.simulation.mysimulator import TeslaT4Simulator
+from project_pactum.simulation.mysimulator import MySimulator
 
 logger = logging.getLogger('project_pactum.simulation')
 
@@ -23,7 +23,7 @@ def parse(args):
 def simulate(args):
     model, duration, spot_instance_trace, fig_directory = args
     print(args)
-    simulator = TeslaT4Simulator(
+    simulator = MySimulator(
         seed=0,
         start_hour=0,
         generate_addition_probabilities=True,
@@ -64,7 +64,7 @@ def main(args):
     assert not (options.generate_graphs and options.generate_table)
 
     if not options.generate_table:
-        simulator = TeslaT4Simulator(
+        simulator = MySimulator(
             seed=options.seed,
             start_hour=options.start_hour,
             generate_addition_probabilities=options.generate_addition_probabilities,

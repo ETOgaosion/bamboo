@@ -2,7 +2,7 @@
 from project_pactum.simulation.simulator import Simulator
 from test.bambootest.lab_res_parser import *
 
-class TeslaT4Simulator(Simulator):
+class MySimulator(Simulator):
     def __init__(self, seed=None, start_hour=None,
                  model='GPT-2', spot_instance_trace=None, generate_addition_probabilities=False, removal_probability=None, generate_graphs=False):
         super().__init__(seed, start_hour, model, spot_instance_trace, generate_addition_probabilities, removal_probability, generate_graphs)
@@ -20,11 +20,14 @@ class TeslaT4Simulator(Simulator):
             self.on_demand_performance = self.samples_per_step / (self.simulate_step_delta_calc(self.on_demand_num_instances // self.num_stages_target) / 1000)
             self.on_demand_value = self.on_demand_performance / self.on_demand_cost
     
-
-    def global_rendezvous_timeout_delta(self):
+    def global_preparation_delta(self):
         # return 6004.3633 * self.num_pipelines + 75630
         return self.rdzv_model.predict(sm.add_constant(np.array([0, self.num_pipelines]))).item(1)
-    
+
+    def local_preparation_delta(self):
+        # return 6004.3633 * self.num_pipelines + 75630
+        return self.rdzv_model.predict(sm.add_constant(np.array([0, self.num_pipelines]))).item(1)
+
     def fallback_slowdown(self):
         # return 2.4297 / (self.num_pipelines * self.num_stages) + 1
         return self.fall_back_model.predict(np.ones(1)/np.array([self.num_pipelines * self.num_stages])).item(0) + 1
