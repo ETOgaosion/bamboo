@@ -16,8 +16,8 @@ class EventKind(enum.IntEnum):
     SPOT_INSTANCE_REMOVE = 2
     SPOT_INSTANCE_GENERATE = 3
     SPOT_INSTANCE_READY = 4
-    GLOBAL_RENDEZVOUS_TIMEOUT = 5
-    LOCAL_RENDEZVOUS_TIMEOUT = 6
+    GLOBAL_PREPARATION = 5
+    LOCAL_PREPARATION = 6
     TRAINING_STEP_COMPLETE = 7
 
 @dataclasses.dataclass(order=True)
@@ -176,7 +176,7 @@ class Simulator:
 
         self.start_hour = start_hour
         self.spot_instance_creation_time = 45_000 # milliseconds
-        self.global_rendezvous_timeout_delta = 30_000 # milliseconds
+        self.global_preparation_delta = 30_000 # milliseconds
 
         self.spot_instances = {}
         self.rendezvous_version = 0
@@ -197,7 +197,7 @@ class Simulator:
         self.spot_instance_lifetimes = []
 
         self.start_delta = None
-        self.previous_step_complete_delta = 0
+        self.previous_iteration_execute_delta = 0
 
         self.events = []
         heapq.heapify(self.events)
@@ -213,7 +213,7 @@ class Simulator:
 
             self.spot_instance_desired_capacity = 48
             self.simulate_step_delta = self.gpt_2_simulate_step_delta
-            self.local_rendezvous_timeout_delta = 20_000 # milliseconds
+            self.local_preparation_delta = 20_000 # milliseconds
             self.num_stages_target = 12
 
             self.on_demand_num_instances = 4 * 8
@@ -227,7 +227,7 @@ class Simulator:
             self.spot_instance_desired_capacity = 48
             self.num_stages_target = 12
             self.simulate_step_delta = self.bert_simulate_step_delta
-            self.local_rendezvous_timeout_delta = 20_000 # milliseconds
+            self.local_preparation_delta = 20_000 # milliseconds
 
             self.on_demand_num_instances = 4 * 5
             self.on_demand_cost = self.on_demand_num_instances * self.on_demand_cost_per_hour
@@ -238,7 +238,7 @@ class Simulator:
 
             self.spot_instance_desired_capacity = 32
             self.simulate_step_delta = self.resnet_simulate_step_delta
-            self.local_rendezvous_timeout_delta = 10_000 # milliseconds
+            self.local_preparation_delta = 10_000 # milliseconds
             self.num_stages_target = 8
 
             self.on_demand_num_instances = 4 * 5
@@ -250,7 +250,7 @@ class Simulator:
 
             self.spot_instance_desired_capacity = 24
             self.simulate_step_delta = self.gnmt_simulate_step_delta
-            self.local_rendezvous_timeout_delta = 10_000 # milliseconds
+            self.local_preparation_delta = 10_000 # milliseconds
             self.num_stages_target = 6
 
             self.on_demand_num_instances = 4 * 4
@@ -262,7 +262,7 @@ class Simulator:
 
             self.spot_instance_desired_capacity = 24
             self.simulate_step_delta = self.vgg_simulate_step_delta
-            self.local_rendezvous_timeout_delta = 5_000 # milliseconds
+            self.local_preparation_delta = 5_000 # milliseconds
             self.num_stages_target = 6
 
             self.on_demand_num_instances = 4 * 4
@@ -274,7 +274,7 @@ class Simulator:
 
             self.spot_instance_desired_capacity = 24
             self.simulate_step_delta = self.alexnet_simulate_step_delta
-            self.local_rendezvous_timeout_delta = 5_000 # milliseconds
+            self.local_preparation_delta = 5_000 # milliseconds
             self.num_stages_target = 6
 
             self.on_demand_num_instances = 4 * 4
@@ -447,28 +447,28 @@ class Simulator:
             'name': name,
         })
 
-    def create_global_rendezvous_timeout_event(self, delta):
+    def create_global_preparation_event(self, delta):
         return self.create_event(
-            delta + self.global_rendezvous_timeout_delta,
-            EventKind.GLOBAL_RENDEZVOUS_TIMEOUT,
+            delta + self.global_preparation_delta,
+            EventKind.GLOBAL_PREPARATION,
             {}
         )
 
-    def create_local_rendezvous_timeout_event(self, delta):
+    def create_local_preparation_event(self, delta):
         return self.create_event(
-            delta + self.local_rendezvous_timeout_delta,
-            EventKind.LOCAL_RENDEZVOUS_TIMEOUT,
+            delta + self.local_preparation_delta,
+            EventKind.LOCAL_PREPARATION,
             {}
         )
 
-    def create_training_step_complete_event(self, delta, rendezvous_version):
+    def create_training_iteration_execute_event(self, delta, rendezvous_version):
         return self.create_event(
             delta + self.step_delta,
             EventKind.TRAINING_STEP_COMPLETE,
             {'rendezvous_version': rendezvous_version}
         )
 
-    def create_training_step_complete_event_absolute(self, delta,
+    def create_training_iteration_execute_event_absolute(self, delta,
                                                      rendezvous_version):
         return self.create_event(
             delta,
@@ -627,9 +627,9 @@ class Simulator:
         self.status = SystemStatus.RENDEZVOUS
         self.simulate_rendezvous_restart(delta)
         if is_global:
-            self.create_global_rendezvous_timeout_event(delta)
+            self.create_global_preparation_event(delta)
         else:
-            self.create_local_rendezvous_timeout_event(delta)
+            self.create_local_preparation_event(delta)
 
     def simulate_rendezvous_restart(self, delta):
         assert self.status == SystemStatus.RENDEZVOUS
@@ -638,7 +638,7 @@ class Simulator:
             if instance.is_ready() or instance.is_running():
                 self.rendezvous.append(name)
 
-    def simulate_rendezvous_timeout(self, delta, is_global):
+    def simulate_preparation(self, delta, is_global):
         for i, name in enumerate(self.rendezvous):
             if name not in self.spot_instances:
                 self.info(
@@ -647,9 +647,9 @@ class Simulator:
                 )
                 self.simulate_rendezvous_restart(delta)
                 if is_global:
-                   self.create_global_rendezvous_timeout_event(delta)
+                   self.create_global_preparation_event(delta)
                 else:
-                   self.create_local_rendezvous_timeout_event(delta)
+                   self.create_local_preparation_event(delta)
                 return
             instance = self.spot_instances[name]
             instance.global_id = i
@@ -667,11 +667,11 @@ class Simulator:
         if self.num_pipelines != 0:
             self.status = SystemStatus.RUNNING
             self.simulate_step_delta()
-            self.create_training_step_complete_event(delta,
+            self.create_training_iteration_execute_event(delta,
                                                      self.rendezvous_version)
             if self.start_delta is None:
                 self.start_delta = delta
-                self.previous_step_complete_delta = self.start_delta
+                self.previous_iteration_execute_delta = self.start_delta
         else:
             self.status = SystemStatus.STOPPED
 
@@ -693,11 +693,11 @@ class Simulator:
         elif self.status == SystemStatus.RUNNING:
             self.num_workers_waiting += 1
 
-    def simulate_global_rendezvous_timeout(self, delta, data):
-        self.simulate_rendezvous_timeout(delta, True)
+    def simulate_global_preparation(self, delta, data):
+        self.simulate_preparation(delta, True)
 
-    def simulate_local_rendezvous_timeout(self, delta, data):
-        self.simulate_rendezvous_timeout(delta, False)
+    def simulate_local_preparation(self, delta, data):
+        self.simulate_preparation(delta, False)
 
     def simulate_assign_coordinates(self):
         if len(self.rendezvous) < self.num_stages_target:
@@ -767,7 +767,7 @@ class Simulator:
 
         return False
 
-    def simulate_training_step_complete(self, delta, data):
+    def simulate_training_iteration_execute(self, delta, data):
         rendezvous_version = data['rendezvous_version']
         if rendezvous_version != self.rendezvous_version:
             return
@@ -778,7 +778,7 @@ class Simulator:
             if not self.fallback_handled and event_num_steps_complete == self.num_steps_complete:
                 # The duration we need to add to handle the fallback
                 d = int((delta - event_delta) * (self.fallback_slowdown - 1.0))
-                self.create_training_step_complete_event_absolute(
+                self.create_training_iteration_execute_event_absolute(
                     d + delta,
                     rendezvous_version
                 )
@@ -788,7 +788,7 @@ class Simulator:
         self.num_steps_complete += 1
 
         # Calculate performance
-        step_duration = delta - self.previous_step_complete_delta # milliseconds
+        step_duration = delta - self.previous_iteration_execute_delta # milliseconds
         #print('Step duration:', step_duration)
         step_duration_seconds = step_duration / self.milliseconds_per_second
         step_duration_hours = step_duration / self.milliseconds_per_hour
@@ -796,7 +796,7 @@ class Simulator:
         samples_per_second = self.samples_per_step / step_duration_seconds
 
 
-        previous_delta_hours = self.previous_step_complete_delta / self.milliseconds_per_hour
+        previous_delta_hours = self.previous_iteration_execute_delta / self.milliseconds_per_hour
         delta_hours = delta / self.milliseconds_per_hour
         self.performance_xs.append(previous_delta_hours)
         self.performance_ys.append(samples_per_second)
@@ -846,7 +846,7 @@ class Simulator:
 
         #assert False
 
-        self.previous_step_complete_delta = delta
+        self.previous_iteration_execute_delta = delta
 
         if self.num_steps_complete % 100 == 0:
             self.info(delta, f'{self.num_steps_complete} steps complete')
@@ -857,7 +857,7 @@ class Simulator:
             )
             self.simulate_rendezvous_start(delta, False)
         else:
-            self.create_training_step_complete_event(
+            self.create_training_iteration_execute_event(
                 delta,
                 self.rendezvous_version
             )
@@ -941,12 +941,12 @@ class Simulator:
                 self.generate_spot_instance_events(start, delta)
             elif kind == EventKind.SPOT_INSTANCE_READY:
                 self.simulate_spot_instance_ready(delta, data)
-            elif kind == EventKind.GLOBAL_RENDEZVOUS_TIMEOUT:
-                self.simulate_global_rendezvous_timeout(delta, data)
-            elif kind == EventKind.LOCAL_RENDEZVOUS_TIMEOUT:
-                self.simulate_local_rendezvous_timeout(delta, data)
+            elif kind == EventKind.GLOBAL_PREPARATION:
+                self.simulate_global_preparation(delta, data)
+            elif kind == EventKind.LOCAL_PREPARATION:
+                self.simulate_local_preparation(delta, data)
             elif kind == EventKind.TRAINING_STEP_COMPLETE:
-                self.simulate_training_step_complete(delta, data)
+                self.simulate_training_iteration_execute(delta, data)
             else:
                 raise ValueError(f'Unknown kind: {kind}')
 
