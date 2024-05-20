@@ -1,7 +1,7 @@
 FROM nvidia/cuda:11.6.1-cudnn8-devel-ubuntu20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
-RUN sed -i s@/archive.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list
+RUN sed -i s@/archive.ubuntu.com/@/mirrors.tuna.tsinghua.edu.cn/@g /etc/apt/sources.list
 RUN apt-get update
 RUN apt-get install -y tzdata software-properties-common libaio-dev iputils-ping 
 RUN apt-get install -y lsof curl wget net-tools libsqlite3-dev ninja-build vim iproute2 python3.8 python3-pip
