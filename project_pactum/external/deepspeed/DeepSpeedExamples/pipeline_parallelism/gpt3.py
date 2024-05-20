@@ -76,12 +76,12 @@ def attention(query, key, value, mask=None, dropout=None):
 
 
 class MultiHeadedAttention(nn.Module):
-    def __init__(self, h, d_model, d_head, dropout=0.1):
+    def __init__(self, h, d_model, dropout=0.1):
         "Take in model size and number of heads."
         super(MultiHeadedAttention, self).__init__()
         # We assume d_v always equals d_k
         assert d_model % h == 0
-        self.d_k = d_head
+        self.d_k = d_model // h
         self.h = h
         self.linears = clones(nn.Linear(d_model, d_model), 4)
         self.attn = None
@@ -122,12 +122,12 @@ class PositionwiseFeedForward(nn.Module):
 
 
 class GPT3Simple(nn.Module):
-    def __init__(self, N=96, d_model=12288, d_ff=2048, h=8, d_head=49152, dropout=0.1):
+    def __init__(self, N=96, d_model=12288, d_ff=2048, h=8, dropout=0.1):
         """ A simplified bert without embedding and language model heads """
         super().__init__()
         c = copy.deepcopy
 
-        attn = MultiHeadedAttention(h, d_model, d_head)
+        attn = MultiHeadedAttention(h, d_model)
         ff = PositionwiseFeedForward(d_model, d_ff, dropout)
         layer = DecoderLayerSimple(d_model, c(attn), c(attn), c(ff), dropout)
         self.layers = clones(layer, N)
