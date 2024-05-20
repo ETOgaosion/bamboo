@@ -79,7 +79,6 @@ class MultiHeadedAttention(nn.Module):
     def __init__(self, h, d_model, d_head, dropout=0.1):
         "Take in model size and number of heads."
         super(MultiHeadedAttention, self).__init__()
-        assert d_model % h == 0
         # We assume d_v always equals d_k
         self.d_k = d_head
         self.h = h
