@@ -5,7 +5,7 @@ CURRENT_PATH=$(pwd)
 
 NUM_NODES=${1:-8}
 NUM_STAGES=${2:-8}
-RDZV_IP=${3:-10.20.24.90}
+RDZV_IP=${3:-10.20.23.90}
 ID=encoder${4}
 
 MODEL=${CURRENT_PATH}/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/gpt3
