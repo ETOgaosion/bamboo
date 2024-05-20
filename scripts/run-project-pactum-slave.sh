@@ -12,8 +12,6 @@ MODEL=${CURRENT_PATH}/project_pactum/external/deepspeed/DeepSpeedExamples/pipeli
 
 echo "ARGS $RDZV_IP $ID $NUM_STAGES $MODEL"
 
-ip a
-
 cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	export USE_BARRIER=true \
 	&& \
