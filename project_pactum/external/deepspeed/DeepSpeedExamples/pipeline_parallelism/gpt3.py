@@ -80,6 +80,7 @@ class MultiHeadedAttention(nn.Module):
         "Take in model size and number of heads."
         super(MultiHeadedAttention, self).__init__()
         # We assume d_v always equals d_k
+        assert d_model % h == 0
         self.d_k = d_head
         self.h = h
         self.linears = clones(nn.Linear(d_model, d_model), 4)
@@ -211,7 +212,7 @@ def train():
         parser.add_argument('-N', type=int, default=24)
         parser.add_argument('--d-model', '-dm', type=int, default=2048)
         parser.add_argument('--d-ff', '-dff', type=int, default=8192)
-        parser.add_argument('-H', type=int, default=24)
+        parser.add_argument('-H', type=int, default=32)
         parser.add_argument('--d-head', type=int, default=128)
         
         parser.add_argument('-seq', type=int, default=2048)
@@ -283,7 +284,7 @@ def train():
                            activation_checkpoint_interval=0)
 
     class DatasetSimple(torch.utils.data.Dataset):
-        def __init__(self, seq, d_model, size=2000):
+        def __init__(self, seq, d_model, size=20):
             self._size = size
             self._inputs = np.random.randn(size, seq, d_model)
             self._labels = np.random.randn(size, seq)
