@@ -14,6 +14,7 @@ echo "ARGS $RDZV_IP $ID $NUM_STAGES $MODEL"
 
 cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	export NCCL_SOCKET_IFNAME=eno1 \
+	export NCCL_DEBUG=INFO \
 	export USE_BARRIER=true \
 	&& \
 	export PYTHONPATH=${CURRENT_PATH}/project-pactum:\${PYTHONPATH} \
