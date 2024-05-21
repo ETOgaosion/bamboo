@@ -8,7 +8,7 @@ NUM_STAGES=${2:-16}
 RDZV_IP=${3:-10.20.23.90}
 ID=encoder${4}
 
-MODEL=${CURRENT_PATH}/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/gpt2
+MODEL=${CURRENT_PATH}/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/gpt3
 
 echo "ARGS $RDZV_IP $ID $NUM_STAGES $MODEL"
 
