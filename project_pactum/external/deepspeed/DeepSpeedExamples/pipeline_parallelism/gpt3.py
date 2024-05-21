@@ -209,11 +209,11 @@ def train():
 
         # Model config args
         # GPT-3 XL
-        # parser.add_argument('-N', type=int, default=24)
-        # parser.add_argument('--d-model', '-dm', type=int, default=2048)
-        # parser.add_argument('--d-ff', '-dff', type=int, default=8192)
-        # parser.add_argument('-H', type=int, default=32)
-        # parser.add_argument('--d-head', type=int, default=128)
+        parser.add_argument('-N', type=int, default=24)
+        parser.add_argument('--d-model', '-dm', type=int, default=2048)
+        parser.add_argument('--d-ff', '-dff', type=int, default=8192)
+        parser.add_argument('-H', type=int, default=32)
+        parser.add_argument('--d-head', type=int, default=128)
         
         # GPT-3 Medium
         # parser.add_argument('-N', type=int, default=24)
@@ -223,11 +223,11 @@ def train():
         # parser.add_argument('--d-head', type=int, default=64)
         
         # GPT-3 Small
-        parser.add_argument('-N', type=int, default=12)
-        parser.add_argument('--d-model', '-dm', type=int, default=768)
-        parser.add_argument('--d-ff', '-dff', type=int, default=3072)
-        parser.add_argument('-H', type=int, default=12)
-        parser.add_argument('--d-head', type=int, default=64)
+        # parser.add_argument('-N', type=int, default=12)
+        # parser.add_argument('--d-model', '-dm', type=int, default=768)
+        # parser.add_argument('--d-ff', '-dff', type=int, default=3072)
+        # parser.add_argument('-H', type=int, default=12)
+        # parser.add_argument('--d-head', type=int, default=64)
 
         parser.add_argument('-seq', type=int, default=256)
         parser.add_argument('--parts',
