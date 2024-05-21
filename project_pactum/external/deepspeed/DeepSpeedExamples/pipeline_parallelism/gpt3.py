@@ -222,7 +222,7 @@ def train():
         parser.add_argument('-H', type=int, default=16)
         parser.add_argument('--d-head', type=int, default=64)
         
-        parser.add_argument('-seq', type=int, default=256)
+        parser.add_argument('-seq', type=int, default=2048)
         parser.add_argument('--parts',
                             type=str,
                             default='',
