@@ -215,7 +215,14 @@ def train():
         parser.add_argument('-H', type=int, default=32)
         parser.add_argument('--d-head', type=int, default=128)
         
-        parser.add_argument('-seq', type=int, default=2048)
+        # GPT-3 Medium
+        # parser.add_argument('-N', type=int, default=24)
+        # parser.add_argument('--d-model', '-dm', type=int, default=1024)
+        # parser.add_argument('--d-ff', '-dff', type=int, default=4098)
+        # parser.add_argument('-H', type=int, default=16)
+        # parser.add_argument('--d-head', type=int, default=64)
+        
+        parser.add_argument('-seq', type=int, default=256)
         parser.add_argument('--parts',
                             type=str,
                             default='',
