@@ -229,7 +229,7 @@ def train():
         # parser.add_argument('-H', type=int, default=12)
         # parser.add_argument('--d-head', type=int, default=64)
 
-        parser.add_argument('-seq', type=int, default=1024)
+        parser.add_argument('-seq', type=int, default=512)
         parser.add_argument('--parts',
                             type=str,
                             default='',
@@ -287,6 +287,7 @@ def train():
             parts = [0] + [sum(parts[:i]) + p for i, p in enumerate(parts)]
         return parts
     parts = gen_parts(args)
+    print(f'parts: {parts}')
 
     layers = make_model(args.N, args.d_model, args.d_ff, args.H).join_layers()
     model = PipelineModule(layers=layers,
