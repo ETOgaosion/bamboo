@@ -12,7 +12,7 @@ fi
 
 mkdir -p "res/lab/nodes_append"
 
-cmd="""docker run -it --net iptastic --ip 172.0.$SUBNET.$CUR_NODE --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
+cmd="""docker run -it --net iptastic --ip 172.0.$SUBNET.$(($CUR_NODE+2)) --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
     /bin/bash -c './scripts/run-project-pactum-slave.sh $NUM_NODES $NUM_STAGES' > res/lab/nodes_append/node_$CUR_NODE.txt 2>&1"""
 
 # cmd="""docker run --rm -it --net "host" --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
