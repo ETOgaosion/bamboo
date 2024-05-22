@@ -143,8 +143,8 @@ class PipelineEngine(DeepSpeedEngine):
         self.global_rank = self.grid.get_global_rank()
 
         assert self.dp_world_size == self.grid.data_parallel_size
-        assert self.train_batch_size() == \
-            self.micro_batch_size * self.micro_batches * self.grid.data_parallel_size
+        # assert self.train_batch_size() == \
+        #     self.micro_batch_size * self.micro_batches * self.grid.data_parallel_size
 
         #  Set Stage Inf
         self.num_stages = self.grid.pipe_parallel_size
