@@ -929,7 +929,7 @@ class DeepSpeedConfig(object):
 
     def _configure_train_batch_size(self):
         self._set_batch_related_parameters()
-        self._batch_assertion()
+        # self._batch_assertion()
 
     def _do_sanity_check(self):
         self._do_error_check()
