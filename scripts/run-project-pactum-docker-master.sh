@@ -10,7 +10,7 @@ if [ $CUR_NODE -eq 0 ]; then
     etcdctl rm --dir --recursive /torchelastic
 fi
 
-mkdir -p res/lab/nodes_$NUM_NODES
+mkdir -p "res/lab/nodes_append"
 
 cmd="""docker run -it --net "host" --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
     /bin/bash -c './scripts/run-project-pactum-master.sh $NUM_NODES $NUM_STAGES' > res/lab/nodes_$NUM_NODES/node_$CUR_NODE.txt 2>&1"""

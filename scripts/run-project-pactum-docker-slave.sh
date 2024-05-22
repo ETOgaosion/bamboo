@@ -5,11 +5,11 @@ NUM_NODES=${2:-16}
 NUM_STAGES=${3:-16}
 
 if [ $CUR_NODE -eq 0 ]; then
-    echo "Running on master node"
+    echo "Running on slave node"
     docker build -t whatcanyousee/bamboo:latest .
 fi
 
-mkdir -p "res/lab/nodes_$NUM_NODES"
+mkdir -p "res/lab/nodes_append"
 
 cmd="""docker run -it --net "host" --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
     /bin/bash -c './scripts/run-project-pactum-slave.sh $NUM_NODES $NUM_STAGES' > res/lab/nodes_$NUM_NODES/node_$CUR_NODE.txt 2>&1"""
