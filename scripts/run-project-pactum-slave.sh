@@ -27,7 +27,7 @@ cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	--max-pipe-parallel-size=24 \
 	--default-num-stages=${NUM_STAGES} \
 	${MODEL}.py \
-	-s 10 \
+	-s 5 \
 	--backend=nccl \
 	--redundancy_level=1 \
 	${@:5} \
