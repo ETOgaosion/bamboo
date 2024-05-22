@@ -775,7 +775,8 @@ class EtcdRendezvous(object):
                 return active_version, this_rank
 
             except etcd.EtcdCompareFailed:
-                log.warning("Join rendezvous CAS unsuccessful, retrying")
+                # log.warning("Join rendezvous CAS unsuccessful, retrying")'
+                pass
 
     def wait_for_peers(self, expected_version):
         """
@@ -1338,7 +1339,7 @@ class EtcdRendezvous(object):
                     etcd_index=active_version.etcd_index + 1, timeout=timeout
                 )
             except etcd.EtcdCompareFailed:
-                log.warning("Join last-call TTL refresh CAS unsuccessful, will retry")
+                # log.warning("Join last-call TTL refresh CAS unsuccessful, will retry")
                 cas_delay()
                 active_version, state = self.get_rdzv_state()
 
