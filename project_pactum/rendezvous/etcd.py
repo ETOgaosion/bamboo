@@ -531,8 +531,8 @@ class EtcdRendezvous(object):
                 # to avoid spamming etcd
                 # FIXME: there are a few things that fall under this like
                 # etcd.EtcdKeyNotFound, etc, which could be handled more explicitly.
-                log.warning("Rendezvous attempt failed, will retry. Reason:")
-                traceback.print_exc()
+                log.info("Rendezvous attempt failed, will retry. Reason:")
+                # traceback.print_exc()
 
                 time.sleep(1)
 
@@ -1007,7 +1007,8 @@ class EtcdRendezvous(object):
                 return active_version
 
             except etcd.EtcdCompareFailed:
-                log.warning("Confirm membership CAS unsuccessful, retrying")
+                # log.warning("Confirm membership CAS unsuccessful, retrying")
+                pass
 
     def wait_for_final(self, expected_version):
         """
