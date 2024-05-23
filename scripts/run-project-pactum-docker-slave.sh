@@ -10,10 +10,10 @@ if [ $CUR_NODE -eq 0 ]; then
     docker build -t whatcanyousee/bamboo:latest .
 fi
 
-mkdir -p "res/lab/nodes_append"
+mkdir -p "res/lab/nodes_decrease_$NUM_NODES"
 
-cmd="""docker run -it --net iptastic --ip 172.0.$SUBNET.$(($CUR_NODE+2)) --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
-    /bin/bash -c './scripts/run-project-pactum-slave.sh $NUM_NODES $NUM_STAGES' > res/lab/nodes_append/node_$CUR_NODE.txt 2>&1"""
+cmd="""docker run -it --net "host" --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
+    /bin/bash -c './scripts/run-project-pactum-slave.sh $NUM_NODES $NUM_STAGES' > res/lab/nodes_decrease_$NUM_NODES/node_$CUR_NODE.txt 2>&1"""
 
 # cmd="""docker run --rm -it --net "host" --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
 #     /bin/bash -c './scripts/run-project-pactum-slave.sh $NUM_NODES $NUM_STAGES'"""

@@ -1433,8 +1433,8 @@ class PipelineEngine(DeepSpeedEngine):
         self.log(f'{datetime.datetime.now()} - FINISH BATCH {global_step} took {step_end - start_step} s')
         # TODO: should return precisely what loss returned and allow others to be queried?
 
-        # if (global_step >= 5 and self.global_rank == 8):
-        #     os.kill(os.getpid(), signal.SIGTERM)
+        if (global_step >= 5 and self.global_rank == 15):
+            os.kill(os.getpid(), signal.SIGTERM)
         global should_stop
         if should_stop:
             self.failures = json.loads(self.global_store.get('failures'))
