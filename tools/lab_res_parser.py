@@ -278,21 +278,21 @@ def handle_data(pre_handled_data, append_points, fail_point):
     return data, fail_point
 
 
+# for i in range(8, 17):
+#     if i == 13:
+#         continue
+#     file = 'res/lab/nodes_' + str(i) + '/node_' + str(random.randint(0, 3)) + '.txt'
+#     if i == 16:
+#         file = 'res/lab/nodes_' + str(i) + '/node_0.txt'
+#     raw_data, append_points, fail_point = res_parser(file)
+#     mid_data, data, maxi = pre_handle_data(raw_data)
+#     data, fail_point = handle_data(mid_data, append_points, fail_point)
+#     print(data[-1]['delta_batch_time'])
+
 for i in range(8, 17):
     if i == 13:
         continue
-    file = 'res/lab/nodes_' + str(i) + '/node_' + str(random.randint(0, 3)) + '.txt'
-    if i == 16:
-        file = 'res/lab/nodes_' + str(i) + '/node_0.txt'
-    raw_data, append_points, fail_point = res_parser(file)
-    mid_data, data, maxi = pre_handle_data(raw_data)
-    data, fail_point = handle_data(mid_data, append_points, fail_point)
-    print(data[-1]['delta_batch_time'])
-
-for i in range(9, 17):
-    if i == 13:
-        continue
-    file = 'res/lab/nodes_decrease_' + str(i) + '/node_' + str(random.randint(0, 3)) + '.txt'
+    file = 'res/lab/nodes_decrease_' + str(i) + '/node_0.txt'
     raw_data, append_points, fail_point = res_parser(file)
     mid_data, data, maxi = pre_handle_data(raw_data)
     data, fail_point = handle_data(mid_data, append_points, fail_point)
