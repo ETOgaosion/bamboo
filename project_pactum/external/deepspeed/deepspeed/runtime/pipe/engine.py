@@ -2419,7 +2419,7 @@ class PipelineEngine(DeepSpeedEngine):
 
             # For each instruction in the step
             for cmd in step_cmds:
-                self.log(f'{datetime.datetime.now()} - Execute Command {cmd}')
+                self.log(f'{datetime.datetime.now()} - Execute step {i} Command {cmd}')
                 try:
                     if type(cmd) not in self._INSTRUCTION_MAP:
                         raise RuntimeError(f'{self.__class__.__name__} does not understand instruction {repr(cmd)}')
