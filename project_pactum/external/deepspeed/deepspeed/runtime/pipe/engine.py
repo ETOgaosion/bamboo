@@ -152,6 +152,13 @@ class PipelineEngine(DeepSpeedEngine):
         self.prev_stage = self._dec(self.stage_id)
         self.next_stage = self._inc(self.stage_id)
         self.stage_ids = [self.stage_id]
+        logger.info(f'CONFIG: micro_batches={self.micro_batches} '
+                    f'micro_batch_size={self.micro_batch_size}'
+                    f'num_stages={self.num_stages}'
+                    f'stage_id={self.stage_id}'
+                    f'prev_stage={self.prev_stage}'
+                    f'next_stage={self.next_stage}'
+                    f'stage_ids={self.stage_ids}')
 
         global_decisions = self.rdzv_handler.get_global_decision()
         for info in global_decisions:
