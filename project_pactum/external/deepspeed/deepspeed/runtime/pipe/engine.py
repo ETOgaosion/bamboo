@@ -152,7 +152,7 @@ class PipelineEngine(DeepSpeedEngine):
         self.prev_stage = self._dec(self.stage_id)
         self.next_stage = self._inc(self.stage_id)
         self.stage_ids = [self.stage_id]
-        logger.info(f'CONFIG: micro_batches={self.micro_batches} '
+        logger.warning(f'CONFIG: micro_batches={self.micro_batches} '
                     f'micro_batch_size={self.micro_batch_size}'
                     f'num_stages={self.num_stages}'
                     f'stage_id={self.stage_id}'
