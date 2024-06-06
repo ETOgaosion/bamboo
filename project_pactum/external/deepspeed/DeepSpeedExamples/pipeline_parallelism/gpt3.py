@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import datetime
 
 
 PAD_IDX = 0
@@ -229,7 +230,7 @@ def train():
         # parser.add_argument('-H', type=int, default=12)
         # parser.add_argument('--d-head', type=int, default=64)
 
-        parser.add_argument('-seq', type=int, default=2048)
+        parser.add_argument('-seq', type=int, default=512)
         parser.add_argument('--parts',
                             type=str,
                             default='',
@@ -320,7 +321,9 @@ def train():
         eager_recovery=args.eager)
 
     for i in range(engine.global_steps, args.steps):
+        print(f'{datetime.datetime.now()} - START TRAIN {i}')
         engine.train_batch(debug=args.debug, mem_log=args.mem_log)
+        print(f'{datetime.datetime.now()} - FINISH TRAIN {i}')
     print("finish all")
 
 

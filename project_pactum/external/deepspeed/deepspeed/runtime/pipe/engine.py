@@ -1170,22 +1170,28 @@ class PipelineEngine(DeepSpeedEngine):
         # Do the work
         self.timers('train_batch').start()
         # First trail
+        self.log(f'{datetime.datetime.now()} - START FIRST TRY TO SCHEDULE {global_step}')
         sched = self._generate_sched()
         schedule_status: Optional[Tuple[int, Exception]] = \
             self._exec_schedule(sched, debug=debug)
+        self.log(f'{datetime.datetime.now()} - FINISH FIRST TRY TO SCHEDULE {global_step}')
 
         if schedule_status is None:
             if debug:
-                print('[DEBUG Pipeline] Finish one iteration')
+                print('[DEBUG Pipeline] SCHEDULE NO ERROR')
+            self.log(f'{datetime.datetime.now()} - SCHEDULE NO ERROR {global_step}')
         else:
             if debug:
                 print(f'[DEBUG Pipeline] Failed at step {schedule_status[0]} '
                       f'due to {schedule_status[1]}')
+            self.log(f'{datetime.datetime.now()} - Failed at step {schedule_status[0]} '
+                     f'due to {schedule_status[1]}')
 
             self.rdzv_handler.write('/rdzv/last_reconfig', global_step)
 
             failed_step = 0
             if type(schedule_status[1]) == NextStageException:
+                self.log(f'{datetime.datetime.now()} - NextStageException {global_step}')
                 if self.next_stage not in self.param_buffers or self.next_stage not in self.state_buffers:
                     raise RuntimeError(f'Do not have param or state to recover')
 
@@ -1277,6 +1283,7 @@ class PipelineEngine(DeepSpeedEngine):
                 # to send weights (stage B and C) to Node 0.
 
             elif type(schedule_status[1]) == PrevStageException:
+                self.log(f'{datetime.datetime.now()} - PrevStageException {global_step}')
                 # Map coordinate of previous node to the rank of the node
                 # in front of previous node.
                 prev_rank = self.grid.stage_to_global(self.prev_stage)
@@ -1316,6 +1323,7 @@ class PipelineEngine(DeepSpeedEngine):
                         curr_step=curr_step)
 
             elif type(schedule_status[1]) == AllReduceException:
+                self.log(f'{datetime.datetime.now()} - AllReduceException {global_step}')
                 # FIXME(pengzhan): Support recursive recovery. Here we assume
                 # the topology has not been changed, so we can get corrent rank
                 # exceptional node and its previous node. Consider what will
@@ -1433,8 +1441,8 @@ class PipelineEngine(DeepSpeedEngine):
         self.log(f'{datetime.datetime.now()} - FINISH BATCH {global_step} took {step_end - start_step} s')
         # TODO: should return precisely what loss returned and allow others to be queried?
 
-        if (global_step >= 5 and self.global_rank == 7):
-            os.kill(os.getpid(), signal.SIGTERM)
+        # if (global_step >= 5 and self.global_rank == 7):
+        #     os.kill(os.getpid(), signal.SIGTERM)
         global should_stop
         if should_stop:
             self.failures = json.loads(self.global_store.get('failures'))
@@ -2382,7 +2390,7 @@ class PipelineEngine(DeepSpeedEngine):
         for i, step_cmds in enumerate(pipe_schedule):
             if i < start_step:
                 continue
-
+            
             if debug:
                 print(f'[DEBUG Pipeline] Instructions in step {i}:', end=' ')
                 print(*step_cmds, sep=',')
@@ -2404,6 +2412,7 @@ class PipelineEngine(DeepSpeedEngine):
 
             # For each instruction in the step
             for cmd in step_cmds:
+                self.log(f'{datetime.datetime.now()} - Execute Command {cmd}')
                 try:
                     if type(cmd) not in self._INSTRUCTION_MAP:
                         raise RuntimeError(f'{self.__class__.__name__} does not understand instruction {repr(cmd)}')
