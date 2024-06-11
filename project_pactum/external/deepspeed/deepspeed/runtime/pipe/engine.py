@@ -2430,7 +2430,7 @@ class PipelineEngine(DeepSpeedEngine):
                     if not os.path.exists('log'):
                         os.mkdir('log')
                     torch.cuda.memory._save_memory_usage(f'log/dump_snapshot.svg')
-                    torch.cuda.memory._record_memory_history(enabled=None)
+                    torch.cuda.memory._record_memory_history(enabled=False)
                     self.log(f'failed cmd: {cmd}')
                     msg = f'{type(cmd)}: {e}'
                     if hasattr(e, 'src'):
