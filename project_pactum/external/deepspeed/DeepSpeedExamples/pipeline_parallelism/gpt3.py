@@ -320,7 +320,7 @@ def train():
         redundancy_level=args.redundancy_level,
         eager_recovery=args.eager)
 
-    torch.cuda.memory._record_memory_history()
+    torch.cuda.memory._record_memory_history(enabled=True)
 
     for i in range(engine.global_steps, args.steps):
         print(f'{datetime.datetime.now()} - START TRAIN {i}')
