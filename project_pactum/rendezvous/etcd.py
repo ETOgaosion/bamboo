@@ -21,6 +21,7 @@ import traceback
 from contextlib import closing
 from colorama import Fore
 
+import os
 from datetime import datetime
 
 from torch.distributed.elastic import rendezvous
@@ -750,7 +751,9 @@ class EtcdRendezvous(object):
                 len(state["participants"]) < self._num_max_workers
             ), "Logic error: joinable rendezvous should always have space left"
 
-            this_rank = len(state["participants"])
+            # this_rank = len(state["participants"])
+            # we assign rank with command
+            this_rank = int(os.environ['GLOBAL_RANK'])
             state["participants"].append(this_rank)
 
             # When reaching min workers, or changing state to frozen, we'll set

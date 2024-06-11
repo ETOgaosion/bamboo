@@ -43,6 +43,8 @@ cmd_parser                          = re.compile(r'Execute step (?P<cmdstep>\d+)
 
 global_rank_parser                  = re.compile(r'group_rank=(?P<rank>\d+)')
 
+cmd_color_map = {'RecvActivation': 'blue', 'SendActivation': 'cyan', 'ForwardPass': 'green', 'BackwardPass': 'lime', 'RecvGrad': 'pink', 'SendGrad': 'yellow', 'ReduceGrads': 'goldenrod', 'OptimizerStep': 'magenta'}
+
 global_ranks = {}
 global_ranks_raw_filename = {}
 total_time_list = {}
@@ -114,105 +116,134 @@ def res_parser(file):
     cache_time_data[file] = time_data
     return cmds, time_data
 
-def plot(file, targetdir=""):
-    cmds, time_data = res_parser(file)
-    fig, ax = plt.subplots()
-    fig.set_size_inches(15, 10)
-    cmd_color_map = {'RecvActivation': 'blue', 'SendActivation': 'cyan', 'ForwardPass': 'green', 'BackwardPass': 'lime', 'RecvGrad': 'pink', 'SendGrad': 'yellow', 'ReduceGrads': 'goldenrod', 'OptimizerStep': 'magenta'}
-    for i, cmd in enumerate(cmds):
-        ax.bar(i, time_data[i], color=cmd_color_map[cmd])
-    ax.set(xlabel='cmd', ylabel='times', title='cmd')
-    ax.set_ylim(0, 1200000)
-    plt.legend(handles=[mpatches.Patch(color=color, label=label) for label, color in cmd_color_map.items()], bbox_to_anchor=(1, 0.5))
-    plt.tight_layout()
-    plt.savefig('res/graph/' + targetdir + "/" + file.split('/')[-2] + '_' + file.split('/')[-1].split('.')[0] + '.png')
-    plt.close(fig)
+# def plot(file, targetdir=""):
+#     cmds, time_data = res_parser(file)
+#     fig, ax = plt.subplots()
+#     fig.set_size_inches(15, 10)
+#     for i, cmd in enumerate(cmds):
+#         ax.bar(i, time_data[i], color=cmd_color_map[cmd])
+#     ax.set(xlabel='cmd', ylabel='times', title='cmd')
+#     ax.set_ylim(0, 1200000)
+#     plt.legend(handles=[mpatches.Patch(color=color, label=label) for label, color in cmd_color_map.items()], bbox_to_anchor=(1, 0.5))
+#     plt.tight_layout()
+#     plt.savefig('res/graph/' + targetdir + "/" + file.split('/')[-2] + '_' + file.split('/')[-1].split('.')[0] + '.png')
+#     plt.close(fig)
 
-plot('res/others/90/nodes_8/node_0.txt')
-plot('res/others/90/nodes_8/node_1.txt')
-plot('res/others/91/nodes_8/node_0.txt')
-plot('res/others/91/nodes_8/node_1.txt')
-plot('res/others/92/nodes_8/node_0.txt')
-plot('res/others/92/nodes_8/node_1.txt')
-plot('res/others/46/nodes_8/node_0.txt')
-plot('res/others/46/nodes_8/node_1.txt')
+# plot('res/others/90/nodes_8/node_0.txt')
+# plot('res/others/90/nodes_8/node_1.txt')
+# plot('res/others/91/nodes_8/node_0.txt')
+# plot('res/others/91/nodes_8/node_1.txt')
+# plot('res/others/92/nodes_8/node_0.txt')
+# plot('res/others/92/nodes_8/node_1.txt')
+# plot('res/others/46/nodes_8/node_0.txt')
+# plot('res/others/46/nodes_8/node_1.txt')
 
+# for i in range(4):
+#     plot('res/others/90/nodes_8/node_' + str(i) + '.txt', '90')
+#     plot('res/others/90/nodes_9/node_' + str(i) + '.txt', '90')
+#     plot('res/others/90/nodes_10/node_' + str(i) + '.txt', '90')
+#     plot('res/others/90/nodes_11/node_' + str(i) + '.txt', '90')
+#     plot('res/others/90/nodes_12/node_' + str(i) + '.txt', '90')
+#     plot('res/others/90/nodes_14/node_' + str(i) + '.txt', '90')
+#     plot('res/others/90/nodes_15/node_' + str(i) + '.txt', '90')
+#     plot('res/others/90/nodes_16/node_' + str(i) + '.txt', '90')
+
+# for i in range(4):
+#     plot('res/others/91/nodes_8/node_' + str(i) + '.txt', '91')
+#     plot('res/others/91/nodes_9/node_' + str(i) + '.txt', '91')
+#     plot('res/others/91/nodes_10/node_' + str(i) + '.txt', '91')
+#     plot('res/others/91/nodes_11/node_' + str(i) + '.txt', '91')
+#     plot('res/others/91/nodes_12/node_' + str(i) + '.txt', '91')
+#     plot('res/others/91/nodes_14/node_' + str(i) + '.txt', '91')
+#     plot('res/others/91/nodes_15/node_' + str(i) + '.txt', '91')
+#     plot('res/others/91/nodes_16/node_' + str(i) + '.txt', '91')
+
+# plot('res/others/92/nodes_9/node_0.txt', '92')
+# for i in range(2):
+#     plot('res/others/92/nodes_10/node_' + str(i) + '.txt', '92')
+# for i in range(3):
+#     plot('res/others/92/nodes_11/node_' + str(i) + '.txt', '92')
+# for i in range(4):
+#     plot('res/others/92/nodes_12/node_' + str(i) + '.txt', '92')
+#     plot('res/others/92/nodes_14/node_' + str(i) + '.txt', '92')
+#     plot('res/others/92/nodes_15/node_' + str(i) + '.txt', '92')
+#     plot('res/others/92/nodes_16/node_' + str(i) + '.txt', '92')
+
+# for i in range(2):
+#     plot('res/others/46/nodes_14/node_' + str(i) + '.txt', '46')
+# for i in range(3):
+#     plot('res/others/46/nodes_15/node_' + str(i) + '.txt', '46')
+# for i in range(4):
+#     plot('res/others/46/nodes_16/node_' + str(i) + '.txt', '46')
+
+def nodes8_plot(axes, files):
+    for file in files:
+        cmds, time_data = res_parser(file)
+        index = int(global_ranks_raw_filename[file])
+        axes[index].set_title(file)
+        for i, cmd in enumerate(cmds):
+            axes[index].bar(i, time_data[i], color=cmd_color_map[cmd])
+        axes[index].set_ylim(0, 300000)
+
+files = []
+files_mixed = []
+fig, axes = plt.subplots(2, 8)
+fig.set_size_inches(80, 20)
 for i in range(4):
-    plot('res/others/90/nodes_9/node_' + str(i) + '.txt')
-    plot('res/others/90/nodes_10/node_' + str(i) + '.txt')
-    plot('res/others/90/nodes_11/node_' + str(i) + '.txt')
-    plot('res/others/90/nodes_12/node_' + str(i) + '.txt')
-    plot('res/others/90/nodes_14/node_' + str(i) + '.txt')
-    plot('res/others/90/nodes_15/node_' + str(i) + '.txt')
-    plot('res/others/90/nodes_16/node_' + str(i) + '.txt')
-
-for i in range(4):
-    plot('res/others/91/nodes_9/node_' + str(i) + '.txt', '91')
-    plot('res/others/91/nodes_10/node_' + str(i) + '.txt', '91')
-    plot('res/others/91/nodes_11/node_' + str(i) + '.txt', '91')
-    plot('res/others/91/nodes_12/node_' + str(i) + '.txt', '91')
-    plot('res/others/91/nodes_14/node_' + str(i) + '.txt', '91')
-    plot('res/others/91/nodes_15/node_' + str(i) + '.txt', '91')
-    plot('res/others/91/nodes_16/node_' + str(i) + '.txt', '91')
-
-plot('res/others/92/nodes_9/node_0.txt', '92')
+    files.append('res/others/90/nodes_8/node_' + str(i) + '.txt')
+    files.append('res/others/91/nodes_8/node_' + str(i) + '.txt')
 for i in range(2):
-    plot('res/others/92/nodes_10/node_' + str(i) + '.txt', '92')
-for i in range(3):
-    plot('res/others/92/nodes_11/node_' + str(i) + '.txt', '92')
-for i in range(4):
-    plot('res/others/92/nodes_12/node_' + str(i) + '.txt', '92')
-    plot('res/others/92/nodes_14/node_' + str(i) + '.txt', '92')
-    plot('res/others/92/nodes_15/node_' + str(i) + '.txt', '92')
-    plot('res/others/92/nodes_16/node_' + str(i) + '.txt', '92')
+    files_mixed.append('res/others/90/nodes_8_mixed/node_' + str(i) + '.txt')
+    files_mixed.append('res/others/91/nodes_8_mixed/node_' + str(i) + '.txt')
+    files_mixed.append('res/others/92/nodes_8_mixed/node_' + str(i) + '.txt')
+    files_mixed.append('res/others/46/nodes_8_mixed/node_' + str(i) + '.txt')
+nodes8_plot(axes[0], files)
+nodes8_plot(axes[1], files_mixed)
+plt.legend(handles=[mpatches.Patch(color=color, label=label) for label, color in cmd_color_map.items()], bbox_to_anchor=(1, 0.5))
+plt.tight_layout()
+plt.savefig('res/graph/node_8_cmp.png')
 
-for i in range(2):
-    plot('res/others/46/nodes_14/node_' + str(i) + '.txt', '46')
-for i in range(3):
-    plot('res/others/46/nodes_15/node_' + str(i) + '.txt', '46')
-for i in range(4):
-    plot('res/others/46/nodes_16/node_' + str(i) + '.txt', '46')
-
-global_ranks = dict(sorted(global_ranks.items(), key=lambda x: int(x[0].split('/')[0].split('_')[1])))
-node_ranks = {}
-for k, v in global_ranks.items():
-    v = int(v)
-    nodes_num_key = int(k.split('/')[0].split('_')[1])
-    node_key = int(k.split('/')[1])
-    gpu_key = int(k.split('/')[2].split('_')[1][0])
-    if node_ranks.get(nodes_num_key) == None:
-        node_ranks[nodes_num_key] = {}
-    if node_ranks[nodes_num_key].get(node_key) == None:
-        node_ranks[nodes_num_key][node_key] = {v: True}
-    else:
-        node_ranks[nodes_num_key][node_key][v] = True
-connected_num = []
-for k, v in node_ranks.items():
-    connected_num.append(0)
-    for node_k, node_v in v.items():
-        for rank_k, rank_v in node_v.items():
-            get_k = (rank_k + 1) % k
-            if node_v.get(get_k) != None:
-                connected_num[-1] += 1
-connected_percentage = []
-for i in range(len(connected_num)):
-    connected_percentage.append(connected_num[i] / (i + 8))
-    if (i + 8) == 12:
-        connected_percentage.append(0)
+global_ranks = dict(sorted(global_ranks.items(), key=lambda x: (int(x[0].split('/')[0].split('_')[1]), len(x[0].split('/')[0]), int(x[0].split('/')[1]), x[0].split('/')[2])))
 pprint.pp(global_ranks)
 
-def plot_connected_percentage(connected_percentage):
-    fig, ax = plt.subplots()
-    fig.set_size_inches(15, 10)
-    bar_container = ax.bar(range(8, 17), connected_percentage)
-    ax.set(xlabel='nodes', ylabel='times', title='connected_num')
-    ax.bar_label(bar_container)
-    plt.tight_layout()
-    plt.savefig('res/graph/connected_percentage.png')
-    plt.close(fig)
+# node_ranks = {}
+# for k, v in global_ranks.items():
+#     v = int(v)
+#     nodes_num_key = int(k.split('/')[0].split('_')[1])
+#     node_key = int(k.split('/')[1])
+#     gpu_key = int(k.split('/')[2].split('_')[1][0])
+#     if node_ranks.get(nodes_num_key) == None:
+#         node_ranks[nodes_num_key] = {}
+#     if node_ranks[nodes_num_key].get(node_key) == None:
+#         node_ranks[nodes_num_key][node_key] = {v: True}
+#     else:
+#         node_ranks[nodes_num_key][node_key][v] = True
+# connected_num = []
+# for k, v in node_ranks.items():
+#     connected_num.append(0)
+#     for node_k, node_v in v.items():
+#         for rank_k, rank_v in node_v.items():
+#             get_k = (rank_k + 1) % k
+#             if node_v.get(get_k) != None:
+#                 connected_num[-1] += 1
+# connected_percentage = []
+# for i in range(len(connected_num)):
+#     connected_percentage.append(connected_num[i] / (i + 8))
+#     if (i + 8) == 12:
+#         connected_percentage.append(0)
+
+# def plot_connected_percentage(connected_percentage):
+#     fig, ax = plt.subplots()
+#     fig.set_size_inches(15, 10)
+#     bar_container = ax.bar(range(8, 17), connected_percentage)
+#     ax.set(xlabel='nodes', ylabel='times', title='connected_num')
+#     ax.bar_label(bar_container)
+#     plt.tight_layout()
+#     plt.savefig('res/graph/connected_percentage.png')
+#     plt.close(fig)
 
 
-plot_connected_percentage(connected_percentage)
+# plot_connected_percentage(connected_percentage)
 
 # def plot_total_time():
 #     fig, ax = plt.subplots()
@@ -275,7 +306,6 @@ plot_connected_percentage(connected_percentage)
 # def multiplot(files, nodes):
 #     fig, axes = plt.subplots(1, len(files))
 #     fig.set_size_inches(10 * (len(files)), 10)
-#     cmd_color_map = {'RecvActivation': 'blue', 'SendActivation': 'cyan', 'ForwardPass': 'green', 'BackwardPass': 'lime', 'RecvGrad': 'pink', 'SendGrad': 'yellow', 'ReduceGrads': 'goldenrod', 'OptimizerStep': 'magenta'}
 #     for index, file in enumerate(files):
 #         axes[index].set_title(file)
 #         cmds, time_data = res_parser(file)
@@ -308,7 +338,6 @@ plot_connected_percentage(connected_percentage)
 # print(reverse_global_rank)
 
 # fig, axes = plt.subplots(8, len(reverse_global_rank['0']))
-# cmd_color_map = {'RecvActivation': 'blue', 'SendActivation': 'cyan', 'ForwardPass': 'green', 'BackwardPass': 'lime', 'RecvGrad': 'pink', 'SendGrad': 'yellow', 'ReduceGrads': 'goldenrod', 'OptimizerStep': 'magenta'}
 # fig.set_size_inches(10 * 8, 10 * len(reverse_global_rank['0']))
 # for i in range(8):
 #     allplot(axes[i], reverse_global_rank[str(i)], cmd_color_map)
@@ -340,7 +369,6 @@ plot_connected_percentage(connected_percentage)
 # print(reverse_global_rank)
 
 # fig, axes = plt.subplots(8)
-# cmd_color_map = {'RecvActivation': 'blue', 'SendActivation': 'cyan', 'ForwardPass': 'green', 'BackwardPass': 'lime', 'RecvGrad': 'pink', 'SendGrad': 'yellow', 'ReduceGrads': 'goldenrod', 'OptimizerStep': 'magenta'}
 # fig.set_size_inches(10 * (len(reverse_global_rank[str(i)]) + 1), 10 * 8)
 # for i in range(8):
 #     allbreifplot(axes[i], reverse_global_rank[str(i)], cmd_color_map, i)
