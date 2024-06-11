@@ -2427,6 +2427,8 @@ class PipelineEngine(DeepSpeedEngine):
                     self._exec_instr = MethodType(self._INSTRUCTION_MAP[type(cmd)], self)
                     self._INSTRUCTION_MAP[type(cmd)](self, **cmd.kwargs)
                 except Exception as e:
+                    torch.cuda.memory._dump_snapshot(f'log/dump_snapshot.pickle')
+                    torch.cuda.memory._record_memory_history(enabled=None)
                     self.log(f'failed cmd: {cmd}')
                     msg = f'{type(cmd)}: {e}'
                     if hasattr(e, 'src'):
