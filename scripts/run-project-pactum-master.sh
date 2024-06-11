@@ -15,6 +15,7 @@ echo "ARGS $RDZV_IP $ID $NUM_STAGES $GLOBAL_RANK $MODEL"
 cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	export NCCL_SOCKET_IFNAME=eno1 \
 	export USE_BARRIER=true \
+	export GLOBAL_RANK=$GLOBAL_RANK \
 	export PYTHONPATH=${CURRENT_PATH}/project-pactum:\${PYTHONPATH} && \
 	python -m project_pactum.run \
 	--rdzv_backend=etcd-v2 \
