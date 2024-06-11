@@ -1,0 +1,1 @@
+python torch/cuda/_memory_viz.py trace_plot log/dump_snapshot.pickle -o log/snapshot.html
