@@ -751,9 +751,12 @@ class EtcdRendezvous(object):
                 len(state["participants"]) < self._num_max_workers
             ), "Logic error: joinable rendezvous should always have space left"
 
-            # this_rank = len(state["participants"])
             # we assign rank with command
-            this_rank = int(os.environ['GLOBAL_RANK'])
+            this_rank = 0
+            if os.environ['GLOBAL_RANK']:
+                this_rank = int(os.environ['GLOBAL_RANK'])
+            else:
+                this_rank = len(state["participants"])
             state["participants"].append(this_rank)
 
             # When reaching min workers, or changing state to frozen, we'll set
