@@ -12,6 +12,30 @@ import datetime
 
 PAD_IDX = 0
 
+def report_memory(name, get_list=False):
+    """Simple GPU memory report."""
+
+    mega_bytes = 1024.0 * 1024.0
+    allocated = torch.cuda.memory_allocated() / mega_bytes
+    max_allocated = torch.cuda.max_memory_allocated() / mega_bytes
+    reserved = torch.cuda.memory_reserved() / mega_bytes
+    max_reserved = torch.cuda.max_memory_reserved() / mega_bytes
+
+    string = f'{datetime.datetime.now()} - ) ' + name + ' memory (MB)'
+    string += ' | allocated: {}'.format(allocated)
+    string += ' | max allocated: {}'.format(max_allocated)
+    string += ' | reserved: {}'.format(reserved)
+    string += ' | max reserved: {}'.format(max_reserved)
+    
+    print(string)
+
+    if get_list:
+        mem_to_csv = [["allocated", "max_allocated", "reserved", "max_reserved"], 
+            [f"{allocated:.2f}", f"{max_allocated:.2f}", f"{reserved:.2f}", f"{max_reserved:.2f}"]]
+        return string, mem_to_csv
+
+    return string
+
 
 def clones(module, N):
     "Produce N identical layers."
@@ -145,6 +169,7 @@ class GPT3Simple(nn.Module):
         """
         for layer in self.layers:
             x = layer(x)
+            report_memory("layer")
         return self.reduce(self.norm(x))
 
     def join_layers(self):
@@ -320,11 +345,10 @@ def train():
         redundancy_level=args.redundancy_level,
         eager_recovery=args.eager)
 
-    torch.cuda.memory._record_memory_history(enabled=True)
-
     for i in range(engine.global_steps, args.steps):
         print(f'{datetime.datetime.now()} - START TRAIN {i}')
         engine.train_batch(debug=args.debug, mem_log=args.mem_log)
+        report_memory("iteration")
         print(f'{datetime.datetime.now()} - FINISH TRAIN {i}')
     print("finish all")
 

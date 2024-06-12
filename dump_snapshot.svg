@@ -1,0 +1,1017 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" width="1200" height="438" onload="init(evt)" viewBox="0 0 1200 438" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples. -->
+<!-- NOTES:  -->
+<defs>
+	<linearGradient id="background" y1="0" y2="1" x1="0" x2="0" >
+		<stop stop-color="#eeeeee" offset="5%" />
+		<stop stop-color="#eeeeb0" offset="95%" />
+	</linearGradient>
+</defs>
+<style type="text/css">
+	text { font-family:Verdana; font-size:12px; fill:rgb(0,0,0); }
+	#search, #ignorecase { opacity:0.1; cursor:pointer; }
+	#search:hover, #search.show, #ignorecase:hover, #ignorecase.show { opacity:1; }
+	#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+	#title { text-anchor:middle; font-size:17px}
+	#unzoom { cursor:pointer; }
+	#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+	.hide { display:none; }
+	.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript">
+<![CDATA[
+	"use strict";
+	var details, searchbtn, unzoombtn, matchedtxt, svg, searching, currentSearchTerm, ignorecase, ignorecaseBtn;
+	function init(evt) {
+		details = document.getElementById("details").firstChild;
+		searchbtn = document.getElementById("search");
+		ignorecaseBtn = document.getElementById("ignorecase");
+		unzoombtn = document.getElementById("unzoom");
+		matchedtxt = document.getElementById("matched");
+		svg = document.getElementsByTagName("svg")[0];
+		searching = 0;
+		currentSearchTerm = null;
+
+		// use GET parameters to restore a flamegraphs state.
+		var params = get_params();
+		if (params.x && params.y)
+			zoom(find_group(document.querySelector('[x="' + params.x + '"][y="' + params.y + '"]')));
+                if (params.s) search(params.s);
+	}
+
+	// event listeners
+	window.addEventListener("click", function(e) {
+		var target = find_group(e.target);
+		if (target) {
+			if (target.nodeName == "a") {
+				if (e.ctrlKey === false) return;
+				e.preventDefault();
+			}
+			if (target.classList.contains("parent")) unzoom(true);
+			zoom(target);
+			if (!document.querySelector('.parent')) {
+				// we have basically done a clearzoom so clear the url
+				var params = get_params();
+				if (params.x) delete params.x;
+				if (params.y) delete params.y;
+				history.replaceState(null, null, parse_params(params));
+				unzoombtn.classList.add("hide");
+				return;
+			}
+
+			// set parameters for zoom state
+			var el = target.querySelector("rect");
+			if (el && el.attributes && el.attributes.y && el.attributes._orig_x) {
+				var params = get_params()
+				params.x = el.attributes._orig_x.value;
+				params.y = el.attributes.y.value;
+				history.replaceState(null, null, parse_params(params));
+			}
+		}
+		else if (e.target.id == "unzoom") clearzoom();
+		else if (e.target.id == "search") search_prompt();
+		else if (e.target.id == "ignorecase") toggle_ignorecase();
+	}, false)
+
+	// mouse-over for info
+	// show
+	window.addEventListener("mouseover", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = "Function: " + g_to_text(target);
+	}, false)
+
+	// clear
+	window.addEventListener("mouseout", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = ' ';
+	}, false)
+
+	// ctrl-F for search
+	// ctrl-I to toggle case-sensitive search
+	window.addEventListener("keydown",function (e) {
+		if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+			e.preventDefault();
+			search_prompt();
+		}
+		else if (e.ctrlKey && e.keyCode === 73) {
+			e.preventDefault();
+			toggle_ignorecase();
+		}
+	}, false)
+
+	// functions
+	function get_params() {
+		var params = {};
+		var paramsarr = window.location.search.substr(1).split('&');
+		for (var i = 0; i < paramsarr.length; ++i) {
+			var tmp = paramsarr[i].split("=");
+			if (!tmp[0] || !tmp[1]) continue;
+			params[tmp[0]]  = decodeURIComponent(tmp[1]);
+		}
+		return params;
+	}
+	function parse_params(params) {
+		var uri = "?";
+		for (var key in params) {
+			uri += key + '=' + encodeURIComponent(params[key]) + '&';
+		}
+		if (uri.slice(-1) == "&")
+			uri = uri.substring(0, uri.length - 1);
+		if (uri == '?')
+			uri = window.location.href.split('?')[0];
+		return uri;
+	}
+	function find_child(node, selector) {
+		var children = node.querySelectorAll(selector);
+		if (children.length) return children[0];
+	}
+	function find_group(node) {
+		var parent = node.parentElement;
+		if (!parent) return;
+		if (parent.id == "frames") return node;
+		return find_group(parent);
+	}
+	function orig_save(e, attr, val) {
+		if (e.attributes["_orig_" + attr] != undefined) return;
+		if (e.attributes[attr] == undefined) return;
+		if (val == undefined) val = e.attributes[attr].value;
+		e.setAttribute("_orig_" + attr, val);
+	}
+	function orig_load(e, attr) {
+		if (e.attributes["_orig_"+attr] == undefined) return;
+		e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+		e.removeAttribute("_orig_"+attr);
+	}
+	function g_to_text(e) {
+		var text = find_child(e, "title").firstChild.nodeValue;
+		return (text)
+	}
+	function g_to_func(e) {
+		var func = g_to_text(e);
+		// if there's any manipulation we want to do to the function
+		// name before it's searched, do it here before returning.
+		return (func);
+	}
+	function update_text(e) {
+		var r = find_child(e, "rect");
+		var t = find_child(e, "text");
+		var w = parseFloat(r.attributes.width.value) -3;
+		var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+		t.attributes.x.value = parseFloat(r.attributes.x.value) + 3;
+
+		// Smaller than this size won't fit anything
+		if (w < 2 * 12 * 0.59) {
+			t.textContent = "";
+			return;
+		}
+
+		t.textContent = txt;
+		var sl = t.getSubStringLength(0, txt.length);
+		// check if only whitespace or if we can fit the entire string into width w
+		if (/^ *$/.test(txt) || sl < w)
+			return;
+
+		// this isn't perfect, but gives a good starting point
+		// and avoids calling getSubStringLength too often
+		var start = Math.floor((w/sl) * txt.length);
+		for (var x = start; x > 0; x = x-2) {
+			if (t.getSubStringLength(0, x + 2) <= w) {
+				t.textContent = txt.substring(0, x) + "..";
+				return;
+			}
+		}
+		t.textContent = "";
+	}
+
+	// zoom
+	function zoom_reset(e) {
+		if (e.attributes != undefined) {
+			orig_load(e, "x");
+			orig_load(e, "width");
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_reset(c[i]);
+		}
+	}
+	function zoom_child(e, x, ratio) {
+		if (e.attributes != undefined) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = (parseFloat(e.attributes.x.value) - x - 10) * ratio + 10;
+				if (e.tagName == "text")
+					e.attributes.x.value = find_child(e.parentNode, "rect[x]").attributes.x.value + 3;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseFloat(e.attributes.width.value) * ratio;
+			}
+		}
+
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_child(c[i], x - 10, ratio);
+		}
+	}
+	function zoom_parent(e) {
+		if (e.attributes) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = 10;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseInt(svg.width.baseVal.value) - (10 * 2);
+			}
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_parent(c[i]);
+		}
+	}
+	function zoom(node) {
+		var attr = find_child(node, "rect").attributes;
+		var width = parseFloat(attr.width.value);
+		var xmin = parseFloat(attr.x.value);
+		var xmax = parseFloat(xmin + width);
+		var ymin = parseFloat(attr.y.value);
+		var ratio = (svg.width.baseVal.value - 2 * 10) / width;
+
+		// XXX: Workaround for JavaScript float issues (fix me)
+		var fudge = 0.0001;
+
+		unzoombtn.classList.remove("hide");
+
+		var el = document.getElementById("frames").children;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var a = find_child(e, "rect").attributes;
+			var ex = parseFloat(a.x.value);
+			var ew = parseFloat(a.width.value);
+			var upstack;
+			// Is it an ancestor
+			if (0 == 0) {
+				upstack = parseFloat(a.y.value) > ymin;
+			} else {
+				upstack = parseFloat(a.y.value) < ymin;
+			}
+			if (upstack) {
+				// Direct ancestor
+				if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+					e.classList.add("parent");
+					zoom_parent(e);
+					update_text(e);
+				}
+				// not in current path
+				else
+					e.classList.add("hide");
+			}
+			// Children maybe
+			else {
+				// no common path
+				if (ex < xmin || ex + fudge >= xmax) {
+					e.classList.add("hide");
+				}
+				else {
+					zoom_child(e, xmin, ratio);
+					update_text(e);
+				}
+			}
+		}
+		search();
+	}
+	function unzoom(dont_update_text) {
+		unzoombtn.classList.add("hide");
+		var el = document.getElementById("frames").children;
+		for(var i = 0; i < el.length; i++) {
+			el[i].classList.remove("parent");
+			el[i].classList.remove("hide");
+			zoom_reset(el[i]);
+			if(!dont_update_text) update_text(el[i]);
+		}
+		search();
+	}
+	function clearzoom() {
+		unzoom();
+
+		// remove zoom state
+		var params = get_params();
+		if (params.x) delete params.x;
+		if (params.y) delete params.y;
+		history.replaceState(null, null, parse_params(params));
+	}
+
+	// search
+	function toggle_ignorecase() {
+		ignorecase = !ignorecase;
+		if (ignorecase) {
+			ignorecaseBtn.classList.add("show");
+		} else {
+			ignorecaseBtn.classList.remove("show");
+		}
+		reset_search();
+		search();
+	}
+	function reset_search() {
+		var el = document.querySelectorAll("#frames rect");
+		for (var i = 0; i < el.length; i++) {
+			orig_load(el[i], "fill")
+		}
+		var params = get_params();
+		delete params.s;
+		history.replaceState(null, null, parse_params(params));
+	}
+	function search_prompt() {
+		if (!searching) {
+			var term = prompt("Enter a search term (regexp " +
+			    "allowed, eg: ^ext4_)"
+			    + (ignorecase ? ", ignoring case" : "")
+			    + "\nPress Ctrl-i to toggle case sensitivity", "");
+			if (term != null) search(term);
+		} else {
+			reset_search();
+			searching = 0;
+			currentSearchTerm = null;
+			searchbtn.classList.remove("show");
+			searchbtn.firstChild.nodeValue = "Search"
+			matchedtxt.classList.add("hide");
+			matchedtxt.firstChild.nodeValue = ""
+		}
+	}
+	function search(term) {
+		if (term) currentSearchTerm = term;
+
+		var re = new RegExp(currentSearchTerm, ignorecase ? 'i' : '');
+		var el = document.getElementById("frames").children;
+		var matches = new Object();
+		var maxwidth = 0;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var func = g_to_func(e);
+			var rect = find_child(e, "rect");
+			if (func == null || rect == null)
+				continue;
+
+			// Save max width. Only works as we have a root frame
+			var w = parseFloat(rect.attributes.width.value);
+			if (w > maxwidth)
+				maxwidth = w;
+
+			if (func.match(re)) {
+				// highlight
+				var x = parseFloat(rect.attributes.x.value);
+				orig_save(rect, "fill");
+				rect.attributes.fill.value = "rgb(230,0,230)";
+
+				// remember matches
+				if (matches[x] == undefined) {
+					matches[x] = w;
+				} else {
+					if (w > matches[x]) {
+						// overwrite with parent
+						matches[x] = w;
+					}
+				}
+				searching = 1;
+			}
+		}
+		if (!searching)
+			return;
+		var params = get_params();
+		params.s = currentSearchTerm;
+		history.replaceState(null, null, parse_params(params));
+
+		searchbtn.classList.add("show");
+		searchbtn.firstChild.nodeValue = "Reset Search";
+
+		// calculate percent matched, excluding vertical overlap
+		var count = 0;
+		var lastx = -1;
+		var lastw = 0;
+		var keys = Array();
+		for (k in matches) {
+			if (matches.hasOwnProperty(k))
+				keys.push(k);
+		}
+		// sort the matched frames by their x location
+		// ascending, then width descending
+		keys.sort(function(a, b){
+			return a - b;
+		});
+		// Step through frames saving only the biggest bottom-up frames
+		// thanks to the sort order. This relies on the tree property
+		// where children are always smaller than their parents.
+		var fudge = 0.0001;	// JavaScript floating point
+		for (var k in keys) {
+			var x = parseFloat(keys[k]);
+			var w = matches[keys[k]];
+			if (x >= lastx + lastw - fudge) {
+				count += w;
+				lastx = x;
+				lastw = w;
+			}
+		}
+		// display matched percent
+		matchedtxt.classList.remove("hide");
+		var pct = 100 * count / maxwidth;
+		if (pct != 100) pct = pct.toFixed(1)
+		matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+	}
+]]>
+</script>
+<rect x="0.0" y="0" width="1200.0" height="438.0" fill="url(#background)"  />
+<text id="title" x="600.00" y="24" >Flame Graph</text>
+<text id="details" x="10.00" y="421" > </text>
+<text id="unzoom" x="10.00" y="24" class="hide">Reset Zoom</text>
+<text id="search" x="1090.00" y="24" >Search</text>
+<text id="ignorecase" x="1174.00" y="24" >ic</text>
+<text id="matched" x="1090.00" y="421" > </text>
+<g id="frames">
+<g >
+<title>engine.py:2262:_allocate_buffer (8,388,608 bytes, 0.07%)</title><rect x="718.5" y="261" width="0.8" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="721.48" y="271.5" ></text>
+</g>
+<g >
+<title>gpt3.py:64:forward (117,481,472 bytes, 0.93%)</title><rect x="1178.3" y="149" width="10.9" height="15.0" fill="rgb(219,65,15)" rx="2" ry="2" />
+<text  x="1181.30" y="159.5" ></text>
+</g>
+<g >
+<title>&lt;non-python&gt; (3,095,765,024 bytes, 24.40%)</title><rect x="861.6" y="341" width="287.8" height="15.0" fill="rgb(242,172,41)" rx="2" ry="2" />
+<text  x="864.57" y="351.5" >&lt;non-python&gt;</text>
+</g>
+<g >
+<title>module.py:555:forward (8,388,608 bytes, 0.07%)</title><rect x="794.3" y="229" width="0.7" height="15.0" fill="rgb(221,76,18)" rx="2" ry="2" />
+<text  x="797.25" y="239.5" ></text>
+</g>
+<g >
+<title>dropout.py:59:forward (100,663,296 bytes, 0.79%)</title><rect x="1157.2" y="53" width="9.4" height="15.0" fill="rgb(215,50,12)" rx="2" ry="2" />
+<text  x="1160.23" y="63.5" ></text>
+</g>
+<g >
+<title>gpt3.py:33:&lt;lambda&gt; (2,214,592,512 bytes, 17.45%)</title><rect x="107.6" y="133" width="205.9" height="15.0" fill="rgb(213,37,8)" rx="2" ry="2" />
+<text  x="110.62" y="143.5" >gpt3.py:33:&lt;lambda&gt;</text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (100,663,296 bytes, 0.79%)</title><rect x="1157.2" y="69" width="9.4" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="1160.23" y="79.5" ></text>
+</g>
+<g >
+<title>gpt3.py:327:train (7,602,241,632 bytes, 59.91%)</title><rect x="87.3" y="325" width="707.0" height="15.0" fill="rgb(235,138,33)" rx="2" ry="2" />
+<text  x="90.34" y="335.5" >gpt3.py:327:train</text>
+</g>
+<g >
+<title>gpt3.py:75:attention (1,006,632,960 bytes, 7.93%)</title><rect x="447.0" y="85" width="93.6" height="15.0" fill="rgb(252,220,52)" rx="2" ry="2" />
+<text  x="449.95" y="95.5" >gpt3.py:75:..</text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (1,006,632,960 bytes, 7.93%)</title><rect x="201.2" y="69" width="93.6" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="204.22" y="79.5" >module.py:1..</text>
+</g>
+<g >
+<title>gpt3.py:108:forward (100,663,296 bytes, 0.79%)</title><rect x="549.9" y="101" width="9.4" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="552.92" y="111.5" ></text>
+</g>
+<g >
+<title>dropout.py:59:forward (16,777,216 bytes, 0.13%)</title><rect x="1178.3" y="117" width="1.6" height="15.0" fill="rgb(215,50,12)" rx="2" ry="2" />
+<text  x="1181.30" y="127.5" ></text>
+</g>
+<g >
+<title>gpt3.py:34:&lt;lambda&gt; (16,777,216 bytes, 0.13%)</title><rect x="1174.4" y="133" width="1.6" height="15.0" fill="rgb(206,7,1)" rx="2" ry="2" />
+<text  x="1177.40" y="143.5" ></text>
+</g>
+<g >
+<title>gpt3.py:327:train (8,388,608 bytes, 0.07%)</title><rect x="794.3" y="325" width="0.7" height="15.0" fill="rgb(235,138,33)" rx="2" ry="2" />
+<text  x="797.25" y="335.5" ></text>
+</g>
+<g >
+<title>engine.py:1683:_exec_forward_pass (16,777,216 bytes, 0.13%)</title><rect x="87.3" y="277" width="1.6" height="15.0" fill="rgb(248,201,48)" rx="2" ry="2" />
+<text  x="90.34" y="287.5" ></text>
+</g>
+<g >
+<title>engine.py:2102:_exec_recv_grads (8,388,608 bytes, 0.07%)</title><rect x="718.5" y="277" width="0.8" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="721.48" y="287.5" ></text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (8,388,608 bytes, 0.07%)</title><rect x="794.3" y="165" width="0.7" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="797.25" y="175.5" ></text>
+</g>
+<g >
+<title>engine.py:2255:_allocate_zeros (8,388,608 bytes, 0.07%)</title><rect x="713.8" y="229" width="0.8" height="15.0" fill="rgb(240,161,38)" rx="2" ry="2" />
+<text  x="716.80" y="239.5" ></text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (427,868,160 bytes, 3.37%)</title><rect x="1149.4" y="197" width="39.8" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="1152.43" y="207.5" >mod..</text>
+</g>
+<g >
+<title>engine.py:1387:forward (6,720,307,200 bytes, 52.96%)</title><rect x="88.9" y="261" width="624.9" height="15.0" fill="rgb(238,156,37)" rx="2" ry="2" />
+<text  x="91.90" y="271.5" >engine.py:1387:forward</text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (2,214,592,512 bytes, 17.45%)</title><rect x="107.6" y="117" width="205.9" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="110.62" y="127.5" >module.py:1194:_call_impl</text>
+</g>
+<g >
+<title>gpt3.py:49:forward (16,777,216 bytes, 0.13%)</title><rect x="1187.7" y="117" width="1.5" height="15.0" fill="rgb(249,206,49)" rx="2" ry="2" />
+<text  x="1190.66" y="127.5" ></text>
+</g>
+<g >
+<title>gpt3.py:333:&lt;module&gt; (436,256,768 bytes, 3.44%)</title><rect x="1149.4" y="341" width="40.6" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="1152.43" y="351.5" >gpt..</text>
+</g>
+<g >
+<title>engine.py:1762:_exec_backward_pass (8,388,608 bytes, 0.07%)</title><rect x="1189.2" y="277" width="0.8" height="15.0" fill="rgb(233,132,31)" rx="2" ry="2" />
+<text  x="1192.22" y="287.5" ></text>
+</g>
+<g >
+<title>active_pending_free (8,388,608 bytes, 0.07%)</title><rect x="794.3" y="357" width="0.7" height="15.0" fill="rgb(240,164,39)" rx="2" ry="2" />
+<text  x="797.25" y="367.5" ></text>
+</g>
+<g >
+<title>gpt3.py:49:forward (302,088,192 bytes, 2.38%)</title><rect x="315.9" y="117" width="28.1" height="15.0" fill="rgb(249,206,49)" rx="2" ry="2" />
+<text  x="318.90" y="127.5" >g..</text>
+</g>
+<g >
+<title>gpt3.py:104:forward (2,113,929,216 bytes, 16.66%)</title><rect x="353.3" y="101" width="196.6" height="15.0" fill="rgb(241,168,40)" rx="2" ry="2" />
+<text  x="356.35" y="111.5" >gpt3.py:104:forward</text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (117,481,472 bytes, 0.93%)</title><rect x="1178.3" y="133" width="10.9" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="1181.30" y="143.5" ></text>
+</g>
+<g >
+<title>gpt3.py:34:forward (41,943,040 bytes, 0.33%)</title><rect x="1174.4" y="181" width="3.9" height="15.0" fill="rgb(238,155,37)" rx="2" ry="2" />
+<text  x="1177.40" y="191.5" ></text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (16,785,408 bytes, 0.13%)</title><rect x="1186.1" y="101" width="1.6" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="1189.10" y="111.5" ></text>
+</g>
+<g >
+<title>module.py:555:forward (427,868,160 bytes, 3.37%)</title><rect x="1149.4" y="229" width="39.8" height="15.0" fill="rgb(221,76,18)" rx="2" ry="2" />
+<text  x="1152.43" y="239.5" >mod..</text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (503,562,240 bytes, 3.97%)</title><rect x="638.9" y="101" width="46.8" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="641.88" y="111.5" >modu..</text>
+</g>
+<g >
+<title>module.py:548:exec_func (427,868,160 bytes, 3.37%)</title><rect x="1149.4" y="213" width="39.8" height="15.0" fill="rgb(250,209,50)" rx="2" ry="2" />
+<text  x="1152.43" y="223.5" >mod..</text>
+</g>
+<g >
+<title>functional.py:1252:dropout (1,006,632,960 bytes, 7.93%)</title><rect x="447.0" y="37" width="93.6" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="449.95" y="47.5" >functional...</text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (117,481,472 bytes, 0.93%)</title><rect x="1178.3" y="165" width="10.9" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="1181.30" y="175.5" ></text>
+</g>
+<g >
+<title>dropout.py:59:forward (25,165,824 bytes, 0.20%)</title><rect x="1176.0" y="117" width="2.3" height="15.0" fill="rgb(215,50,12)" rx="2" ry="2" />
+<text  x="1178.96" y="127.5" ></text>
+</g>
+<g >
+<title>gpt3.py:34:forward (2,642,608,128 bytes, 20.82%)</title><rect x="344.0" y="181" width="245.7" height="15.0" fill="rgb(238,155,37)" rx="2" ry="2" />
+<text  x="346.99" y="191.5" >gpt3.py:34:forward</text>
+</g>
+<g >
+<title>engine.py:2262:_allocate_buffer (8,388,608 bytes, 0.07%)</title><rect x="713.8" y="245" width="0.8" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="716.80" y="255.5" ></text>
+</g>
+<g >
+<title>gpt3.py:70:attention (58,720,256 bytes, 0.46%)</title><rect x="1151.8" y="85" width="5.4" height="15.0" fill="rgb(235,139,33)" rx="2" ry="2" />
+<text  x="1154.77" y="95.5" ></text>
+</g>
+<g >
+<title>gpt3.py:35:forward (117,481,472 bytes, 0.93%)</title><rect x="1178.3" y="181" width="10.9" height="15.0" fill="rgb(232,125,29)" rx="2" ry="2" />
+<text  x="1181.30" y="191.5" ></text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (226,492,416 bytes, 1.78%)</title><rect x="1151.8" y="117" width="21.0" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="1154.77" y="127.5" ></text>
+</g>
+<g >
+<title>gpt3.py:333:&lt;module&gt; (7,602,241,632 bytes, 59.91%)</title><rect x="87.3" y="341" width="707.0" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="90.34" y="351.5" >gpt3.py:333:&lt;module&gt;</text>
+</g>
+<g >
+<title>engine.py:1689:_exec_forward_pass (6,720,307,200 bytes, 52.96%)</title><rect x="88.9" y="277" width="624.9" height="15.0" fill="rgb(210,23,5)" rx="2" ry="2" />
+<text  x="91.90" y="287.5" >engine.py:1689:_exec_forward_pass</text>
+</g>
+<g >
+<title>engine.py:2059:_exec_recv_activations (8,388,608 bytes, 0.07%)</title><rect x="713.8" y="277" width="0.8" height="15.0" fill="rgb(216,52,12)" rx="2" ry="2" />
+<text  x="716.80" y="287.5" ></text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (1,233,764,352 bytes, 9.72%)</title><rect x="599.1" y="133" width="114.7" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="602.08" y="143.5" >module.py:1194..</text>
+</g>
+<g >
+<title>gpt3.py:32:forward (100,663,296 bytes, 0.79%)</title><rect x="88.9" y="181" width="9.4" height="15.0" fill="rgb(251,214,51)" rx="2" ry="2" />
+<text  x="91.90" y="191.5" ></text>
+</g>
+<g >
+<title>gpt3.py:76:attention (25,165,824 bytes, 0.20%)</title><rect x="1166.6" y="85" width="2.3" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="1169.59" y="95.5" ></text>
+</g>
+<g >
+<title>gpt3.py:73:attention (805,306,368 bytes, 6.35%)</title><rect x="126.3" y="85" width="74.9" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="129.34" y="95.5" >gpt3.py:..</text>
+</g>
+<g >
+<title>functional.py:1252:dropout (16,777,216 bytes, 0.13%)</title><rect x="1178.3" y="101" width="1.6" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="1181.30" y="111.5" ></text>
+</g>
+<g >
+<title>functional.py:1457:relu (67,141,632 bytes, 0.53%)</title><rect x="1179.9" y="101" width="6.2" height="15.0" fill="rgb(225,92,22)" rx="2" ry="2" />
+<text  x="1182.86" y="111.5" ></text>
+</g>
+<g >
+<title>engine.py:2074:_exec_recv_activations (41,943,040 bytes, 0.33%)</title><rect x="714.6" y="277" width="3.9" height="15.0" fill="rgb(235,141,33)" rx="2" ry="2" />
+<text  x="717.58" y="287.5" ></text>
+</g>
+<g >
+<title>functional.py:1457:relu (402,849,792 bytes, 3.17%)</title><rect x="601.4" y="101" width="37.5" height="15.0" fill="rgb(225,92,22)" rx="2" ry="2" />
+<text  x="604.42" y="111.5" >fun..</text>
+</g>
+<g >
+<title>gpt3.py:108:forward (100,663,296 bytes, 0.79%)</title><rect x="304.2" y="101" width="9.3" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="307.19" y="111.5" ></text>
+</g>
+<g >
+<title>gpt3.py:122:forward (83,927,040 bytes, 0.66%)</title><rect x="1179.9" y="117" width="7.8" height="15.0" fill="rgb(241,168,40)" rx="2" ry="2" />
+<text  x="1182.86" y="127.5" ></text>
+</g>
+<g >
+<title>gpt3.py:70:attention (201,326,592 bytes, 1.59%)</title><rect x="353.3" y="85" width="18.8" height="15.0" fill="rgb(235,139,33)" rx="2" ry="2" />
+<text  x="356.35" y="95.5" ></text>
+</g>
+<g >
+<title>gpt3.py:76:attention (100,663,296 bytes, 0.79%)</title><rect x="540.6" y="85" width="9.3" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="543.56" y="95.5" ></text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (1,006,632,960 bytes, 7.93%)</title><rect x="447.0" y="69" width="93.6" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="449.95" y="79.5" >module.py:1..</text>
+</g>
+<g >
+<title>functional.py:1252:dropout (25,165,824 bytes, 0.20%)</title><rect x="599.1" y="101" width="2.3" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="602.08" y="111.5" ></text>
+</g>
+<g >
+<title>engine.py:1183:train_batch (7,602,241,632 bytes, 59.91%)</title><rect x="87.3" y="309" width="707.0" height="15.0" fill="rgb(232,126,30)" rx="2" ry="2" />
+<text  x="90.34" y="319.5" >engine.py:1183:train_batch</text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (6,720,307,200 bytes, 52.96%)</title><rect x="88.9" y="197" width="624.9" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="91.90" y="207.5" >module.py:1194:_call_impl</text>
+</g>
+<g >
+<title>functional.py:1252:dropout (100,663,296 bytes, 0.79%)</title><rect x="1157.2" y="37" width="9.4" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="1160.23" y="47.5" ></text>
+</g>
+<g >
+<title>dropout.py:59:forward (16,785,408 bytes, 0.13%)</title><rect x="1186.1" y="85" width="1.6" height="15.0" fill="rgb(215,50,12)" rx="2" ry="2" />
+<text  x="1189.10" y="95.5" ></text>
+</g>
+<g >
+<title>engine.py:1387:forward (427,868,160 bytes, 3.37%)</title><rect x="1149.4" y="261" width="39.8" height="15.0" fill="rgb(238,156,37)" rx="2" ry="2" />
+<text  x="1152.43" y="271.5" >eng..</text>
+</g>
+<g >
+<title>functional.py:1252:dropout (16,785,408 bytes, 0.13%)</title><rect x="1186.1" y="69" width="1.6" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="1189.10" y="79.5" ></text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (327,352,320 bytes, 2.58%)</title><rect x="313.5" y="133" width="30.5" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="316.55" y="143.5" >mo..</text>
+</g>
+<g >
+<title>engine.py:2255:_allocate_zeros (8,388,608 bytes, 0.07%)</title><rect x="718.5" y="245" width="0.8" height="15.0" fill="rgb(240,161,38)" rx="2" ry="2" />
+<text  x="721.48" y="255.5" ></text>
+</g>
+<g >
+<title>functional.py:1841:softmax (805,306,368 bytes, 6.35%)</title><rect x="372.1" y="69" width="74.9" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="375.07" y="79.5" >function..</text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (2,642,608,128 bytes, 20.82%)</title><rect x="344.0" y="165" width="245.7" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="346.99" y="175.5" >module.py:1194:_call_impl</text>
+</g>
+<g >
+<title>fused_adam.py:134:step (403,218,480 bytes, 3.18%)</title><rect x="719.3" y="229" width="37.5" height="15.0" fill="rgb(238,155,37)" rx="2" ry="2" />
+<text  x="722.26" y="239.5" >fus..</text>
+</g>
+<g >
+<title>functional.py:1252:dropout (25,165,824 bytes, 0.20%)</title><rect x="313.5" y="101" width="2.4" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="316.55" y="111.5" ></text>
+</g>
+<g >
+<title>dropout.py:59:forward (25,165,824 bytes, 0.20%)</title><rect x="559.3" y="117" width="2.3" height="15.0" fill="rgb(215,50,12)" rx="2" ry="2" />
+<text  x="562.28" y="127.5" ></text>
+</g>
+<g >
+<title>dropout.py:59:forward (1,006,632,960 bytes, 7.93%)</title><rect x="201.2" y="53" width="93.6" height="15.0" fill="rgb(215,50,12)" rx="2" ry="2" />
+<text  x="204.22" y="63.5" >dropout.py:..</text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (2,214,592,512 bytes, 17.45%)</title><rect x="353.3" y="117" width="206.0" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="356.35" y="127.5" >module.py:1194:_call_impl</text>
+</g>
+<g >
+<title>gpt3.py:73:attention (805,306,368 bytes, 6.35%)</title><rect x="372.1" y="85" width="74.9" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="375.07" y="95.5" >gpt3.py:..</text>
+</g>
+<g >
+<title>fused_adam.py:136:step (403,218,480 bytes, 3.18%)</title><rect x="756.8" y="229" width="37.5" height="15.0" fill="rgb(225,95,22)" rx="2" ry="2" />
+<text  x="759.76" y="239.5" >fus..</text>
+</g>
+<g >
+<title>gpt3.py:327:train (436,256,768 bytes, 3.44%)</title><rect x="1149.4" y="325" width="40.6" height="15.0" fill="rgb(235,138,33)" rx="2" ry="2" />
+<text  x="1152.43" y="335.5" >gpt..</text>
+</g>
+<g >
+<title>inactive (4,247,528,448 bytes, 33.47%)</title><rect x="795.0" y="357" width="395.0" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="798.03" y="367.5" >inactive</text>
+</g>
+<g >
+<title>module.py:548:exec_func (8,388,608 bytes, 0.07%)</title><rect x="794.3" y="213" width="0.7" height="15.0" fill="rgb(250,209,50)" rx="2" ry="2" />
+<text  x="797.25" y="223.5" ></text>
+</g>
+<g >
+<title>gpt3.py:108:forward (16,777,216 bytes, 0.13%)</title><rect x="1174.4" y="101" width="1.6" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="1177.40" y="111.5" ></text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (6,720,307,200 bytes, 52.96%)</title><rect x="88.9" y="245" width="624.9" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="91.90" y="255.5" >module.py:1194:_call_impl</text>
+</g>
+<g >
+<title>active_allocated (8,433,949,696 bytes, 66.46%)</title><rect x="10.0" y="357" width="784.3" height="15.0" fill="rgb(238,153,36)" rx="2" ry="2" />
+<text  x="13.00" y="367.5" >active_allocated</text>
+</g>
+<g >
+<title>module.py:548:exec_func (6,720,307,200 bytes, 52.96%)</title><rect x="88.9" y="213" width="624.9" height="15.0" fill="rgb(250,209,50)" rx="2" ry="2" />
+<text  x="91.90" y="223.5" >module.py:548:exec_func</text>
+</g>
+<g >
+<title>gpt3.py:64:forward (41,943,040 bytes, 0.33%)</title><rect x="1174.4" y="149" width="3.9" height="15.0" fill="rgb(219,65,15)" rx="2" ry="2" />
+<text  x="1177.40" y="159.5" ></text>
+</g>
+<g >
+<title>gpt3.py:35:forward (1,334,427,648 bytes, 10.52%)</title><rect x="589.7" y="181" width="124.1" height="15.0" fill="rgb(232,125,29)" rx="2" ry="2" />
+<text  x="592.72" y="191.5" >gpt3.py:35:forw..</text>
+</g>
+<g >
+<title>gpt3.py:33:forward (2,642,608,128 bytes, 20.82%)</title><rect x="98.3" y="181" width="245.7" height="15.0" fill="rgb(245,184,44)" rx="2" ry="2" />
+<text  x="101.26" y="191.5" >gpt3.py:33:forward</text>
+</g>
+<g >
+<title>engine.py:2428:_exec_schedule (7,602,241,632 bytes, 59.91%)</title><rect x="87.3" y="293" width="707.0" height="15.0" fill="rgb(242,174,41)" rx="2" ry="2" />
+<text  x="90.34" y="303.5" >engine.py:2428:_exec_schedule</text>
+</g>
+<g >
+<title>gpt3.py:34:&lt;lambda&gt; (2,214,592,512 bytes, 17.45%)</title><rect x="353.3" y="133" width="206.0" height="15.0" fill="rgb(206,7,1)" rx="2" ry="2" />
+<text  x="356.35" y="143.5" >gpt3.py:34:&lt;lambda&gt;</text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (1,334,427,648 bytes, 10.52%)</title><rect x="589.7" y="165" width="124.1" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="592.72" y="175.5" >module.py:1194:..</text>
+</g>
+<g >
+<title>gpt3.py:75:attention (100,663,296 bytes, 0.79%)</title><rect x="1157.2" y="85" width="9.4" height="15.0" fill="rgb(252,220,52)" rx="2" ry="2" />
+<text  x="1160.23" y="95.5" ></text>
+</g>
+<g >
+<title>&lt;gaps&gt; (452,080,608 bytes, 3.56%)</title><rect x="819.5" y="341" width="42.1" height="15.0" fill="rgb(217,55,13)" rx="2" ry="2" />
+<text  x="822.53" y="351.5" >&lt;ga..</text>
+</g>
+<g >
+<title>dropout.py:59:forward (25,165,824 bytes, 0.20%)</title><rect x="313.5" y="117" width="2.4" height="15.0" fill="rgb(215,50,12)" rx="2" ry="2" />
+<text  x="316.55" y="127.5" ></text>
+</g>
+<g >
+<title>&lt;non-python&gt; (428,384,304 bytes, 3.38%)</title><rect x="47.5" y="341" width="39.8" height="15.0" fill="rgb(242,172,41)" rx="2" ry="2" />
+<text  x="50.50" y="351.5" >&lt;no..</text>
+</g>
+<g >
+<title>dropout.py:59:forward (16,777,216 bytes, 0.13%)</title><rect x="1172.8" y="117" width="1.6" height="15.0" fill="rgb(215,50,12)" rx="2" ry="2" />
+<text  x="1175.83" y="127.5" ></text>
+</g>
+<g >
+<title>functional.py:1252:dropout (25,165,824 bytes, 0.20%)</title><rect x="559.3" y="101" width="2.3" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="562.28" y="111.5" ></text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (8,388,608 bytes, 0.07%)</title><rect x="794.3" y="245" width="0.7" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="797.25" y="255.5" ></text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (16,785,408 bytes, 0.13%)</title><rect x="1172.8" y="133" width="1.6" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="1175.83" y="143.5" ></text>
+</g>
+<g >
+<title>functional.py:1252:dropout (16,777,216 bytes, 0.13%)</title><rect x="1172.8" y="101" width="1.6" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="1175.83" y="111.5" ></text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (427,868,160 bytes, 3.37%)</title><rect x="1149.4" y="245" width="39.8" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="1152.43" y="255.5" >mod..</text>
+</g>
+<g >
+<title>gpt3.py:104:forward (184,549,376 bytes, 1.45%)</title><rect x="1151.8" y="101" width="17.1" height="15.0" fill="rgb(241,168,40)" rx="2" ry="2" />
+<text  x="1154.77" y="111.5" ></text>
+</g>
+<g >
+<title>gpt3.py:64:forward (2,642,608,128 bytes, 20.82%)</title><rect x="98.3" y="149" width="245.7" height="15.0" fill="rgb(219,65,15)" rx="2" ry="2" />
+<text  x="101.26" y="159.5" >gpt3.py:64:forward</text>
+</g>
+<g >
+<title>functional.py:1252:dropout (25,165,824 bytes, 0.20%)</title><rect x="1176.0" y="101" width="2.3" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="1178.96" y="111.5" ></text>
+</g>
+<g >
+<title>gpt3.py:33:forward (260,055,040 bytes, 2.05%)</title><rect x="1150.2" y="181" width="24.2" height="15.0" fill="rgb(245,184,44)" rx="2" ry="2" />
+<text  x="1153.21" y="191.5" >g..</text>
+</g>
+<g >
+<title>dropout.py:59:forward (1,006,632,960 bytes, 7.93%)</title><rect x="447.0" y="53" width="93.6" height="15.0" fill="rgb(215,50,12)" rx="2" ry="2" />
+<text  x="449.95" y="63.5" >dropout.py:..</text>
+</g>
+<g >
+<title>functional.py:1252:dropout (1,006,632,960 bytes, 7.93%)</title><rect x="201.2" y="37" width="93.6" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="204.22" y="47.5" >functional...</text>
+</g>
+<g >
+<title>gpt3.py:64:forward (1,334,427,648 bytes, 10.52%)</title><rect x="589.7" y="149" width="124.1" height="15.0" fill="rgb(219,65,15)" rx="2" ry="2" />
+<text  x="592.72" y="159.5" >gpt3.py:64:forw..</text>
+</g>
+<g >
+<title>stream_0 (12,689,866,752 bytes, 100.00%)</title><rect x="10.0" y="373" width="1180.0" height="15.0" fill="rgb(227,105,25)" rx="2" ry="2" />
+<text  x="13.00" y="383.5" >stream_0</text>
+</g>
+<g >
+<title>engine.py:1387:forward (8,388,608 bytes, 0.07%)</title><rect x="794.3" y="261" width="0.7" height="15.0" fill="rgb(238,156,37)" rx="2" ry="2" />
+<text  x="797.25" y="271.5" ></text>
+</g>
+<g >
+<title>gpt3.py:64:forward (260,055,040 bytes, 2.05%)</title><rect x="1150.2" y="149" width="24.2" height="15.0" fill="rgb(219,65,15)" rx="2" ry="2" />
+<text  x="1153.21" y="159.5" >g..</text>
+</g>
+<g >
+<title>engine.py:2428:_exec_schedule (436,256,768 bytes, 3.44%)</title><rect x="1149.4" y="293" width="40.6" height="15.0" fill="rgb(242,174,41)" rx="2" ry="2" />
+<text  x="1152.43" y="303.5" >eng..</text>
+</g>
+<g >
+<title>gpt3.py:76:attention (100,663,296 bytes, 0.79%)</title><rect x="294.8" y="85" width="9.4" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="297.83" y="95.5" ></text>
+</g>
+<g >
+<title>module.py:555:forward (6,720,307,200 bytes, 52.96%)</title><rect x="88.9" y="229" width="624.9" height="15.0" fill="rgb(221,76,18)" rx="2" ry="2" />
+<text  x="91.90" y="239.5" >module.py:555:forward</text>
+</g>
+<g >
+<title>functional.py:1252:dropout (503,562,240 bytes, 3.97%)</title><rect x="638.9" y="69" width="46.8" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="641.88" y="79.5" >func..</text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (25,165,824 bytes, 0.20%)</title><rect x="1176.0" y="133" width="2.3" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="1178.96" y="143.5" ></text>
+</g>
+<g >
+<title>gpt3.py:49:forward (302,088,192 bytes, 2.38%)</title><rect x="561.6" y="117" width="28.1" height="15.0" fill="rgb(249,206,49)" rx="2" ry="2" />
+<text  x="564.63" y="127.5" >g..</text>
+</g>
+<g >
+<title>engine.py:2067:recv_handler (41,943,040 bytes, 0.33%)</title><rect x="714.6" y="261" width="3.9" height="15.0" fill="rgb(209,18,4)" rx="2" ry="2" />
+<text  x="717.58" y="271.5" ></text>
+</g>
+<g >
+<title>gpt3.py:32:forward (8,388,608 bytes, 0.07%)</title><rect x="1149.4" y="181" width="0.8" height="15.0" fill="rgb(251,214,51)" rx="2" ry="2" />
+<text  x="1152.43" y="191.5" ></text>
+</g>
+<g >
+<title>gpt3.py:49:forward (302,088,192 bytes, 2.38%)</title><rect x="685.7" y="117" width="28.1" height="15.0" fill="rgb(249,206,49)" rx="2" ry="2" />
+<text  x="688.71" y="127.5" >g..</text>
+</g>
+<g >
+<title>gpt3.py:75:attention (1,006,632,960 bytes, 7.93%)</title><rect x="201.2" y="85" width="93.6" height="15.0" fill="rgb(252,220,52)" rx="2" ry="2" />
+<text  x="204.22" y="95.5" >gpt3.py:75:..</text>
+</g>
+<g >
+<title>gpt3.py:70:attention (201,326,592 bytes, 1.59%)</title><rect x="107.6" y="85" width="18.7" height="15.0" fill="rgb(235,139,33)" rx="2" ry="2" />
+<text  x="110.62" y="95.5" ></text>
+</g>
+<g >
+<title>dropout.py:59:forward (25,165,824 bytes, 0.20%)</title><rect x="599.1" y="117" width="2.3" height="15.0" fill="rgb(215,50,12)" rx="2" ry="2" />
+<text  x="602.08" y="127.5" ></text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (2,642,608,128 bytes, 20.82%)</title><rect x="98.3" y="165" width="245.7" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="101.26" y="175.5" >module.py:1194:_call_impl</text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (41,943,040 bytes, 0.33%)</title><rect x="1174.4" y="165" width="3.9" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="1177.40" y="175.5" ></text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (16,777,216 bytes, 0.13%)</title><rect x="1174.4" y="117" width="1.6" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="1177.40" y="127.5" ></text>
+</g>
+<g >
+<title>engine.py:1183:train_batch (436,256,768 bytes, 3.44%)</title><rect x="1149.4" y="309" width="40.6" height="15.0" fill="rgb(232,126,30)" rx="2" ry="2" />
+<text  x="1152.43" y="319.5" >eng..</text>
+</g>
+<g >
+<title>engine.py:1689:_exec_forward_pass (8,388,608 bytes, 0.07%)</title><rect x="794.3" y="277" width="0.7" height="15.0" fill="rgb(210,23,5)" rx="2" ry="2" />
+<text  x="797.25" y="287.5" ></text>
+</g>
+<g >
+<title>gpt3.py:122:forward (906,412,032 bytes, 7.14%)</title><rect x="601.4" y="117" width="84.3" height="15.0" fill="rgb(241,168,40)" rx="2" ry="2" />
+<text  x="604.42" y="127.5" >gpt3.py:1..</text>
+</g>
+<g >
+<title>gpt3.py:108:forward (41,943,040 bytes, 0.33%)</title><rect x="1168.9" y="101" width="3.9" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="1171.93" y="111.5" ></text>
+</g>
+<g >
+<title>gpt3.py:333:&lt;module&gt; (8,388,608 bytes, 0.07%)</title><rect x="794.3" y="341" width="0.7" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="797.25" y="351.5" ></text>
+</g>
+<g >
+<title>engine.py:2189:_exec_optimizer_step (806,436,960 bytes, 6.35%)</title><rect x="719.3" y="277" width="75.0" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="722.26" y="287.5" >engine.p..</text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (8,388,608 bytes, 0.07%)</title><rect x="794.3" y="197" width="0.7" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="797.25" y="207.5" ></text>
+</g>
+<g >
+<title>engine.py:1914:_recv_tensor_meta (8,388,608 bytes, 0.07%)</title><rect x="713.8" y="261" width="0.8" height="15.0" fill="rgb(231,123,29)" rx="2" ry="2" />
+<text  x="716.80" y="271.5" ></text>
+</g>
+<g >
+<title>gpt3.py:33:&lt;lambda&gt; (226,492,416 bytes, 1.78%)</title><rect x="1151.8" y="133" width="21.0" height="15.0" fill="rgb(213,37,8)" rx="2" ry="2" />
+<text  x="1154.77" y="143.5" ></text>
+</g>
+<g >
+<title>optimizer.py:140:wrapper (806,436,960 bytes, 6.35%)</title><rect x="719.3" y="245" width="75.0" height="15.0" fill="rgb(254,225,54)" rx="2" ry="2" />
+<text  x="722.26" y="255.5" >optimize..</text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (260,055,040 bytes, 2.05%)</title><rect x="1150.2" y="165" width="24.2" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="1153.21" y="175.5" >m..</text>
+</g>
+<g >
+<title>functional.py:1841:softmax (805,306,368 bytes, 6.35%)</title><rect x="126.3" y="69" width="74.9" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="129.34" y="79.5" >function..</text>
+</g>
+<g >
+<title>gpt3.py:104:forward (2,113,929,216 bytes, 16.66%)</title><rect x="107.6" y="101" width="196.6" height="15.0" fill="rgb(241,168,40)" rx="2" ry="2" />
+<text  x="110.62" y="111.5" >gpt3.py:104:forward</text>
+</g>
+<g >
+<title>engine.py:1689:_exec_forward_pass (427,868,160 bytes, 3.37%)</title><rect x="1149.4" y="277" width="39.8" height="15.0" fill="rgb(210,23,5)" rx="2" ry="2" />
+<text  x="1152.43" y="287.5" >eng..</text>
+</g>
+<g >
+<title>module.py:1194:_call_impl (327,352,320 bytes, 2.58%)</title><rect x="559.3" y="133" width="30.4" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="562.28" y="143.5" >mo..</text>
+</g>
+<g >
+<title>engine.py:2428:_exec_schedule (8,388,608 bytes, 0.07%)</title><rect x="794.3" y="293" width="0.7" height="15.0" fill="rgb(242,174,41)" rx="2" ry="2" />
+<text  x="797.25" y="303.5" ></text>
+</g>
+<g >
+<title>gpt3.py:64:forward (2,642,608,128 bytes, 20.82%)</title><rect x="344.0" y="149" width="245.7" height="15.0" fill="rgb(219,65,15)" rx="2" ry="2" />
+<text  x="346.99" y="159.5" >gpt3.py:64:forward</text>
+</g>
+<g >
+<title>gpt3.py:35:forward (8,388,608 bytes, 0.07%)</title><rect x="794.3" y="181" width="0.7" height="15.0" fill="rgb(232,125,29)" rx="2" ry="2" />
+<text  x="797.25" y="191.5" ></text>
+</g>
+<g >
+<title>engine.py:1551:_take_model_step (806,436,960 bytes, 6.35%)</title><rect x="719.3" y="261" width="75.0" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="722.26" y="271.5" >engine.p..</text>
+</g>
+<g >
+<title>dropout.py:59:forward (503,562,240 bytes, 3.97%)</title><rect x="638.9" y="85" width="46.8" height="15.0" fill="rgb(215,50,12)" rx="2" ry="2" />
+<text  x="641.88" y="95.5" >drop..</text>
+</g>
+<g >
+<title>engine.py:1183:train_batch (8,388,608 bytes, 0.07%)</title><rect x="794.3" y="309" width="0.7" height="15.0" fill="rgb(232,126,30)" rx="2" ry="2" />
+<text  x="797.25" y="319.5" ></text>
+</g>
+<g >
+<title>all (12,689,866,752 bytes, 100%)</title><rect x="10.0" y="389" width="1180.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="13.00" y="399.5" ></text>
+</g>
+<g >
+<title>gpt3.py:64:forward (8,388,608 bytes, 0.07%)</title><rect x="794.3" y="149" width="0.7" height="15.0" fill="rgb(219,65,15)" rx="2" ry="2" />
+<text  x="797.25" y="159.5" ></text>
+</g>
+</g>
+</svg>

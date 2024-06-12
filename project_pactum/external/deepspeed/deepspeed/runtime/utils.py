@@ -15,6 +15,7 @@ import gc
 from math import ceil
 from math import floor
 from bisect import bisect_left, bisect_right
+import datetime
 
 import torch
 from torch._six import inf
@@ -782,3 +783,27 @@ def deserialize_object(object):
         deser_object = torch.load(f)
 
     return deser_object
+
+def report_memory(name, get_list=False):
+    """Simple GPU memory report."""
+
+    mega_bytes = 1024.0 * 1024.0
+    allocated = torch.cuda.memory_allocated() / mega_bytes
+    max_allocated = torch.cuda.max_memory_allocated() / mega_bytes
+    reserved = torch.cuda.memory_reserved() / mega_bytes
+    max_reserved = torch.cuda.max_memory_reserved() / mega_bytes
+
+    string = f'{datetime.datetime.now()} - ) ' + name + ' memory (MB)'
+    string += ' | allocated: {}'.format(allocated)
+    string += ' | max allocated: {}'.format(max_allocated)
+    string += ' | reserved: {}'.format(reserved)
+    string += ' | max reserved: {}'.format(max_reserved)
+    
+    print(string)
+
+    if get_list:
+        mem_to_csv = [["allocated", "max_allocated", "reserved", "max_reserved"], 
+            [f"{allocated:.2f}", f"{max_allocated:.2f}", f"{reserved:.2f}", f"{max_reserved:.2f}"]]
+        return string, mem_to_csv
+
+    return string
