@@ -332,8 +332,8 @@ def train():
             return self._size
 
         def __getitem__(self, idx):
-            return (torch.tensor(self._inputs[idx], dtype=torch.float32),
-                    self._labels[idx].astype('float32'))
+            return (torch.tensor(self._inputs[idx], dtype=torch.float16),
+                    self._labels[idx].astype('float16'))
     dataset = DatasetSimple(args.seq, args.d_model)
 
     engine, _, _, _ = deepspeed.initialize(
