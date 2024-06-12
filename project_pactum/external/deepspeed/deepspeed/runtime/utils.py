@@ -793,7 +793,7 @@ def report_memory(name, get_list=False):
     reserved = torch.cuda.memory_reserved() / mega_bytes
     max_reserved = torch.cuda.max_memory_reserved() / mega_bytes
 
-    string = f'{datetime.datetime.now()} - ) ' + name + ' memory (MB)'
+    string = f'{datetime.datetime.now()} - ' + name + ' memory (MB)'
     string += ' | allocated: {}'.format(allocated)
     string += ' | max allocated: {}'.format(max_allocated)
     string += ' | reserved: {}'.format(reserved)
