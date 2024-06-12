@@ -2419,7 +2419,7 @@ class PipelineEngine(DeepSpeedEngine):
 
             # For each instruction in the step
             for cmd in step_cmds:
-                report_memory("cmd " + str(cmd))
+                # report_memory("cmd " + str(cmd))
                 # self.log(f'{datetime.datetime.now()} - Execute step {i} Command {cmd}')
                 try:
                     if type(cmd) not in self._INSTRUCTION_MAP:
@@ -2428,7 +2428,7 @@ class PipelineEngine(DeepSpeedEngine):
                     self._exec_instr = MethodType(self._INSTRUCTION_MAP[type(cmd)], self)
                     self._INSTRUCTION_MAP[type(cmd)](self, **cmd.kwargs)
                 except Exception as e:
-                    report_memory("cmd " + str(cmd))
+                    # report_memory("cmd " + str(cmd))
                     self.log(f'failed cmd: {cmd}')
                     msg = f'{type(cmd)}: {e}'
                     if hasattr(e, 'src'):

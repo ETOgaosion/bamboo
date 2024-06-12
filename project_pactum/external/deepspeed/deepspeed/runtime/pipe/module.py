@@ -545,7 +545,7 @@ class PipelineModule(nn.Module):
                         else:
                             ds_utils.set_random_seed(new_seed)
                     inputs = layer(inputs)
-                    ds_utils.report_memory(f'layer {self.curr_layer}')
+                    # ds_utils.report_memory(f'layer {self.curr_layer}')
                 return inputs
 
             return exec_func
