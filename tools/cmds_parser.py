@@ -40,11 +40,11 @@ layer_counter_parser                = re.compile(r'layer num: (?P<layer>\d+)')
 
 start_schedule_parser               = re.compile(r'START FIRST TRY TO SCHEDULE (?P<globalstep>\d+)')
 finish_schedule_parser               = re.compile(r'FINISH FIRST TRY TO SCHEDULE (?P<globalstep>\d+)')
-cmd_parser                          = re.compile(r'Execute step (?P<cmdstep>\d+) Command (?P<cmd>\S+)\(buffer_id=(?P<bufferid>.+), stage_id=(?P<stageid>\d+)\)')
+cmd_parser                          = re.compile(r'Execute step (?P<cmdstep>\d+) Command (?P<cmd>\w+)')
 
 global_rank_parser                  = re.compile(r'group_rank=(?P<rank>\d+)')
 
-cmd_color_map = {'RecvActivation': 'blue', 'SendActivation': 'cyan', 'ForwardPass': 'green', 'BackwardPass': 'lime', 'RecvGrad': 'pink', 'SendGrad': 'yellow', 'ReduceGrads': 'goldenrod', 'OptimizerStep': 'magenta'}
+cmd_color_map = {'RecvActivation': 'blue', 'SendActivation': 'cyan', 'ForwardPass': 'green', 'BackwardPass': 'lime', 'RecvGrad': 'pink', 'SendGrad': 'yellow', 'ReduceGrads': 'goldenrod', 'OptimizerStep': 'magenta', 'LoadMicroBatch': 'purple'}
 
 global_ranks = {}
 global_ranks_raw_filename = {}
@@ -95,15 +95,15 @@ def res_parser(file):
                     continue
                 if finish_schedule_parser.search(line):
                     if total_time_list.get(nodes_num) == None:
-                        total_time_list[nodes_num] = []
+                        total_time_list[nodes_num] = [time2int(dateparser.parse(time_parser.search(line).group('time')) - begin_time)]
                     else:
                         total_time_list[nodes_num].append(time2int(dateparser.parse(time_parser.search(line).group('time')) - begin_time))
                     if cmds_nums_list.get(nodes_num) == None:
-                        cmds_nums_list[nodes_num] = []
+                        cmds_nums_list[nodes_num] = [cmds_num]
                     else:
                         cmds_nums_list[nodes_num].append(cmds_num)
                     if steps_nums_list.get(nodes_num) == None:
-                        steps_nums_list[nodes_num] = []
+                        steps_nums_list[nodes_num] = [time2int(dateparser.parse(time_parser.search(line).group('time')) - start_time)]
                     else:
                         steps_nums_list[nodes_num].append(steps_num)
                     time_data.append(time2int(dateparser.parse(time_parser.search(line).group('time')) - start_time))
@@ -127,7 +127,7 @@ def plot(file, targetdir=""):
     for i, cmd in enumerate(cmds):
         ax.bar(i, time_data[i], color=cmd_color_map[cmd])
     ax.set(xlabel='cmd', ylabel='times', title='cmd')
-    ax.set_ylim(0, 1200000)
+    ax.set_ylim(0, 500000)
     plt.legend(handles=[mpatches.Patch(color=color, label=label) for label, color in cmd_color_map.items()], bbox_to_anchor=(1, 0.5))
     plt.tight_layout()
     plt.savefig('res/graph/' + targetdir + "/" + file.split('/')[-2] + '_' + file.split('/')[-1].split('.')[0] + '.png')
@@ -142,19 +142,10 @@ def plot(file, targetdir=""):
 # plot('res/others/46/nodes_8/node_0.txt')
 # plot('res/others/46/nodes_8/node_1.txt')
 
+plot('res/others/90/nodes_2/node_0.txt', '90')
+plot('res/others/90/nodes_2/node_1.txt', '90')
 for i in range(4):
-    plot('res/others/90/nodes_8/node_' + str(i) + '.txt', '90')
-    plot('res/others/90/nodes_16/node_' + str(i) + '.txt', '90')
-
-for i in range(4):
-    plot('res/others/91/nodes_8/node_' + str(i) + '.txt', '91')
-    plot('res/others/91/nodes_16/node_' + str(i) + '.txt', '91')
-
-for i in range(4):
-    plot('res/others/92/nodes_16/node_' + str(i) + '.txt', '92')
-
-for i in range(4):
-    plot('res/others/46/nodes_16/node_' + str(i) + '.txt', '46')
+    plot('res/others/90/nodes_4/node_' + str(i) + '.txt', '90')
 
 # def nodes8_plot(axes, files):
 #     for file in files:
@@ -215,7 +206,7 @@ for i in range(len(connected_num)):
 def plot_connected_percentage(connected_percentage):
     fig, ax = plt.subplots()
     fig.set_size_inches(15, 10)
-    bar_container = ax.bar(range(8, 17, 8), connected_percentage)
+    bar_container = ax.bar(range(2, 5, 2), connected_percentage)
     ax.set(xlabel='nodes', ylabel='times', title='connected_num')
     ax.bar_label(bar_container)
     plt.tight_layout()
@@ -228,9 +219,9 @@ plot_connected_percentage(connected_percentage)
 def plot_total_time():
     fig, ax = plt.subplots()
     fig.set_size_inches(15, 10)
-    for i in range(8, 17, 8):
+    for i in range(2, 5, 2):
         total_time.append(statistics.mean(total_time_list[i]))
-    bar_container = ax.bar(range(8, 17, 8), total_time)
+    bar_container = ax.bar(range(2, 5, 2), total_time)
     ax.set(xlabel='nodes', ylabel='times', title='total time')
     ax.bar_label(bar_container)
     plt.tight_layout()
@@ -239,12 +230,14 @@ def plot_total_time():
 
 plot_total_time()
 
+print(cmds_nums_list)
+
 def plot_cmds_nums():
     fig, ax = plt.subplots()
     fig.set_size_inches(15, 10)
-    for i in range(8, 17, 8):
+    for i in range(2, 5, 2):
         cmds_nums.append(statistics.mean(cmds_nums_list[i]))
-    bar_container = ax.bar(range(8, 17, 8), cmds_nums)
+    bar_container = ax.bar(range(2, 5, 2), cmds_nums)
     ax.set(xlabel='nodes', ylabel='cmds', title='cmds nums')
     ax.bar_label(bar_container)
     plt.tight_layout()
@@ -256,9 +249,9 @@ plot_cmds_nums()
 def plot_steps_nums():
     fig, ax = plt.subplots()
     fig.set_size_inches(15, 10)
-    for i in range(8, 17, 8):
+    for i in range(2, 5, 2):
         steps_nums.append(statistics.mean(steps_nums_list[i]))
-    bar_container = ax.bar(range(8, 17, 8), steps_nums)
+    bar_container = ax.bar(range(2, 5, 2), steps_nums)
     ax.set(xlabel='nodes', ylabel='steps', title='steps nums')
     ax.bar_label(bar_container)
     plt.tight_layout()
@@ -282,17 +275,17 @@ def multiplot(files, nodes):
         cmds, time_data = res_parser(file)
         for i, cmd in enumerate(cmds):
             axes[index].bar(i, time_data[i], color=cmd_color_map[cmd])
-        axes[index].set_ylim(0, 1200000)
+        axes[index].set_ylim(0, 500000)
     plt.legend(handles=[mpatches.Patch(color=color, label=label) for label, color in cmd_color_map.items()], bbox_to_anchor=(1, 0.5))
     plt.tight_layout()
     plt.savefig('res/graph/node_' + str(nodes) + '.png')
 
-for i in range(8):
+for i in range(2):
     reverse_global_rank[str(i)] = sorted(reverse_global_rank[str(i)], key=lambda x: int(x.split('/')[-2].split('_')[1]))
 
 print(reverse_global_rank)
 
-for i in range(8):
+for i in range(2):
     multiplot(reverse_global_rank[str(i)], i)
 
 def allplot(axes, files, cmd_color_map):
@@ -301,16 +294,16 @@ def allplot(axes, files, cmd_color_map):
         cmds, time_data = res_parser(file)
         for i, cmd in enumerate(cmds):
             axes[index].bar(i, time_data[i], color=cmd_color_map[cmd])
-        axes[index].set_ylim(0, 200000)
+        axes[index].set_ylim(0, 500000)
 
-for i in range(8):
+for i in range(2):
     reverse_global_rank[str(i)] = sorted(reverse_global_rank[str(i)], key=lambda x: int(x.split('/')[-2].split('_')[1]))
 
 print(reverse_global_rank)
 
-fig, axes = plt.subplots(min(len(reverse_global_rank), 8), len(reverse_global_rank['0']))
-fig.set_size_inches(10 * len(reverse_global_rank['0']), 10 * min(len(reverse_global_rank), 8))
-for i in range(8):
+fig, axes = plt.subplots(2, len(reverse_global_rank['0']))
+fig.set_size_inches(10 * len(reverse_global_rank['0']), 10 * 2)
+for i in range(2):
     allplot(axes[i], reverse_global_rank[str(i)], cmd_color_map)
 plt.legend(handles=[mpatches.Patch(color=color, label=label) for label, color in cmd_color_map.items()], bbox_to_anchor=(1, 0.5))
 plt.tight_layout()
@@ -334,14 +327,14 @@ def allbreifplot(axes, files, cmd_color_map, node_idx):
         for i, cmd in enumerate(new_cmds):
             axes.bar(i * (len(files) + 1) + index, new_time_data[i], color=cmd_color_map[cmd])
 
-for i in range(8):
+for i in range(2):
     reverse_global_rank[str(i)] = sorted(reverse_global_rank[str(i)], key=lambda x: int(x.split('/')[-2].split('_')[1]))
 
 print(reverse_global_rank)
 
-fig, axes = plt.subplots(8)
-fig.set_size_inches(10 * (len(reverse_global_rank[str(i)]) + 1), 10 * 8)
-for i in range(8):
+fig, axes = plt.subplots(2)
+fig.set_size_inches(10 * (len(reverse_global_rank[str(i)]) + 1), 10 * 2)
+for i in range(2):
     allbreifplot(axes[i], reverse_global_rank[str(i)], cmd_color_map, i)
 plt.legend(handles=[mpatches.Patch(color=color, label=label) for label, color in cmd_color_map.items()], bbox_to_anchor=(1, 0.5))
 plt.tight_layout()

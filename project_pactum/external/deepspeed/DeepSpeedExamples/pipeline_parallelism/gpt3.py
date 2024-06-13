@@ -254,7 +254,7 @@ def train():
         # parser.add_argument('-H', type=int, default=12)
         # parser.add_argument('--d-head', type=int, default=64)
 
-        parser.add_argument('-seq', type=int, default=256)
+        parser.add_argument('-seq', type=int, default=512)
         parser.add_argument('--parts',
                             type=str,
                             default='',

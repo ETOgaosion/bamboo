@@ -158,7 +158,8 @@ class PipelineEngine(DeepSpeedEngine):
                     f'stage_id={self.stage_id}\n'
                     f'prev_stage={self.prev_stage}\n'
                     f'next_stage={self.next_stage}\n'
-                    f'stage_ids={self.stage_ids}\n')
+                    f'stage_ids={self.stage_ids}\n'
+                    f'self.grid.data_parallel_size={self.grid.data_parallel_size}')
 
         global_decisions = self.rdzv_handler.get_global_decision()
         for info in global_decisions:
@@ -2420,7 +2421,7 @@ class PipelineEngine(DeepSpeedEngine):
             # For each instruction in the step
             for cmd in step_cmds:
                 # report_memory("cmd " + str(cmd))
-                self.log(f'{datetime.datetime.now()} - Execute step {i} Command {cmd}')
+                # self.log(f'{datetime.datetime.now()} - Execute step {i} Command {cmd}')
                 try:
                     if type(cmd) not in self._INSTRUCTION_MAP:
                         raise RuntimeError(f'{self.__class__.__name__} does not understand instruction {repr(cmd)}')
