@@ -10,6 +10,7 @@ import statsmodels.api as sm
 import numpy as np
 from itertools import chain
 import pprint
+import math
 
 # valid file
 valid_file = re.compile(r'node_\d+\.log')
@@ -132,50 +133,26 @@ def plot(file, targetdir=""):
     plt.savefig('res/graph/' + targetdir + "/" + file.split('/')[-2] + '_' + file.split('/')[-1].split('.')[0] + '.png')
     plt.close(fig)
 
-plot('res/others/90/nodes_8/node_0.txt')
-plot('res/others/90/nodes_8/node_1.txt')
-plot('res/others/91/nodes_8/node_0.txt')
-plot('res/others/91/nodes_8/node_1.txt')
-plot('res/others/92/nodes_8/node_0.txt')
-plot('res/others/92/nodes_8/node_1.txt')
-plot('res/others/46/nodes_8/node_0.txt')
-plot('res/others/46/nodes_8/node_1.txt')
+# plot('res/others/90/nodes_8/node_0.txt')
+# plot('res/others/90/nodes_8/node_1.txt')
+# plot('res/others/91/nodes_8/node_0.txt')
+# plot('res/others/91/nodes_8/node_1.txt')
+# plot('res/others/92/nodes_8/node_0.txt')
+# plot('res/others/92/nodes_8/node_1.txt')
+# plot('res/others/46/nodes_8/node_0.txt')
+# plot('res/others/46/nodes_8/node_1.txt')
 
 for i in range(4):
     plot('res/others/90/nodes_8/node_' + str(i) + '.txt', '90')
-    plot('res/others/90/nodes_9/node_' + str(i) + '.txt', '90')
-    plot('res/others/90/nodes_10/node_' + str(i) + '.txt', '90')
-    plot('res/others/90/nodes_11/node_' + str(i) + '.txt', '90')
-    plot('res/others/90/nodes_12/node_' + str(i) + '.txt', '90')
-    plot('res/others/90/nodes_14/node_' + str(i) + '.txt', '90')
-    plot('res/others/90/nodes_15/node_' + str(i) + '.txt', '90')
     plot('res/others/90/nodes_16/node_' + str(i) + '.txt', '90')
 
 for i in range(4):
     plot('res/others/91/nodes_8/node_' + str(i) + '.txt', '91')
-    plot('res/others/91/nodes_9/node_' + str(i) + '.txt', '91')
-    plot('res/others/91/nodes_10/node_' + str(i) + '.txt', '91')
-    plot('res/others/91/nodes_11/node_' + str(i) + '.txt', '91')
-    plot('res/others/91/nodes_12/node_' + str(i) + '.txt', '91')
-    plot('res/others/91/nodes_14/node_' + str(i) + '.txt', '91')
-    plot('res/others/91/nodes_15/node_' + str(i) + '.txt', '91')
     plot('res/others/91/nodes_16/node_' + str(i) + '.txt', '91')
 
-plot('res/others/92/nodes_9/node_0.txt', '92')
-for i in range(2):
-    plot('res/others/92/nodes_10/node_' + str(i) + '.txt', '92')
-for i in range(3):
-    plot('res/others/92/nodes_11/node_' + str(i) + '.txt', '92')
 for i in range(4):
-    plot('res/others/92/nodes_12/node_' + str(i) + '.txt', '92')
-    plot('res/others/92/nodes_14/node_' + str(i) + '.txt', '92')
-    plot('res/others/92/nodes_15/node_' + str(i) + '.txt', '92')
     plot('res/others/92/nodes_16/node_' + str(i) + '.txt', '92')
 
-for i in range(2):
-    plot('res/others/46/nodes_14/node_' + str(i) + '.txt', '46')
-for i in range(3):
-    plot('res/others/46/nodes_15/node_' + str(i) + '.txt', '46')
 for i in range(4):
     plot('res/others/46/nodes_16/node_' + str(i) + '.txt', '46')
 
@@ -238,7 +215,7 @@ for i in range(len(connected_num)):
 def plot_connected_percentage(connected_percentage):
     fig, ax = plt.subplots()
     fig.set_size_inches(15, 10)
-    bar_container = ax.bar(range(8, 17), connected_percentage)
+    bar_container = ax.bar(range(8, 17, 8), connected_percentage)
     ax.set(xlabel='nodes', ylabel='times', title='connected_num')
     ax.bar_label(bar_container)
     plt.tight_layout()
@@ -251,12 +228,9 @@ plot_connected_percentage(connected_percentage)
 def plot_total_time():
     fig, ax = plt.subplots()
     fig.set_size_inches(15, 10)
-    for i in range(8, 17):
-        if i == 13:
-            total_time.append(0)
-            continue
+    for i in range(8, 17, 8):
         total_time.append(statistics.mean(total_time_list[i]))
-    bar_container = ax.bar(range(8, 17), total_time)
+    bar_container = ax.bar(range(8, 17, 8), total_time)
     ax.set(xlabel='nodes', ylabel='times', title='total time')
     ax.bar_label(bar_container)
     plt.tight_layout()
@@ -268,12 +242,9 @@ plot_total_time()
 def plot_cmds_nums():
     fig, ax = plt.subplots()
     fig.set_size_inches(15, 10)
-    for i in range(8, 17):
-        if i == 13:
-            cmds_nums.append(0)
-            continue
+    for i in range(8, 17, 8):
         cmds_nums.append(statistics.mean(cmds_nums_list[i]))
-    bar_container = ax.bar(range(8, 17), cmds_nums)
+    bar_container = ax.bar(range(8, 17, 8), cmds_nums)
     ax.set(xlabel='nodes', ylabel='cmds', title='cmds nums')
     ax.bar_label(bar_container)
     plt.tight_layout()
@@ -285,12 +256,9 @@ plot_cmds_nums()
 def plot_steps_nums():
     fig, ax = plt.subplots()
     fig.set_size_inches(15, 10)
-    for i in range(8, 17):
-        if i == 13:
-            steps_nums.append(0)
-            continue
+    for i in range(8, 17, 8):
         steps_nums.append(statistics.mean(steps_nums_list[i]))
-    bar_container = ax.bar(range(8, 17), steps_nums)
+    bar_container = ax.bar(range(8, 17, 8), steps_nums)
     ax.set(xlabel='nodes', ylabel='steps', title='steps nums')
     ax.bar_label(bar_container)
     plt.tight_layout()
@@ -333,15 +301,15 @@ def allplot(axes, files, cmd_color_map):
         cmds, time_data = res_parser(file)
         for i, cmd in enumerate(cmds):
             axes[index].bar(i, time_data[i], color=cmd_color_map[cmd])
-        axes[index].set_ylim(0, 1200000)
+        axes[index].set_ylim(0, 200000)
 
 for i in range(8):
     reverse_global_rank[str(i)] = sorted(reverse_global_rank[str(i)], key=lambda x: int(x.split('/')[-2].split('_')[1]))
 
 print(reverse_global_rank)
 
-fig, axes = plt.subplots(8, len(reverse_global_rank['0']))
-fig.set_size_inches(10 * 8, 10 * len(reverse_global_rank['0']))
+fig, axes = plt.subplots(min(len(reverse_global_rank), 8), len(reverse_global_rank['0']))
+fig.set_size_inches(10 * len(reverse_global_rank['0']), 10 * min(len(reverse_global_rank), 8))
 for i in range(8):
     allplot(axes[i], reverse_global_rank[str(i)], cmd_color_map)
 plt.legend(handles=[mpatches.Patch(color=color, label=label) for label, color in cmd_color_map.items()], bbox_to_anchor=(1, 0.5))
