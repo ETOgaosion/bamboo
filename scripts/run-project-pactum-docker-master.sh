@@ -11,7 +11,7 @@ if [ $CUR_NODE -eq 0 ]; then
     if [ $REBUILD -eq 1 ]; then
         docker build -t whatcanyousee/bamboo:latest .
     fi
-    etcdctl rm --dir --recursive /torchelastic
+    # etcdctl rm --dir --recursive /torchelastic
 fi
 
 mkdir -p "res/lab/nodes_$NUM_NODES"
