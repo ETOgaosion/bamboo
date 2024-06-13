@@ -179,32 +179,32 @@ for i in range(3):
 for i in range(4):
     plot('res/others/46/nodes_16/node_' + str(i) + '.txt', '46')
 
-def nodes8_plot(axes, files):
-    for file in files:
-        cmds, time_data = res_parser(file)
-        index = int(global_ranks_raw_filename[file])
-        axes[index].set_title(file)
-        for i, cmd in enumerate(cmds):
-            axes[index].bar(i, time_data[i], color=cmd_color_map[cmd])
-        axes[index].set_ylim(0, 300000)
+# def nodes8_plot(axes, files):
+#     for file in files:
+#         cmds, time_data = res_parser(file)
+#         index = int(global_ranks_raw_filename[file])
+#         axes[index].set_title(file)
+#         for i, cmd in enumerate(cmds):
+#             axes[index].bar(i, time_data[i], color=cmd_color_map[cmd])
+#         axes[index].set_ylim(0, 300000)
 
-files = []
-files_mixed = []
-fig, axes = plt.subplots(2, 8)
-fig.set_size_inches(80, 20)
-for i in range(4):
-    files.append('res/others/90/nodes_8/node_' + str(i) + '.txt')
-    files.append('res/others/91/nodes_8/node_' + str(i) + '.txt')
-for i in range(2):
-    files_mixed.append('res/others/90/nodes_8_mixed/node_' + str(i) + '.txt')
-    files_mixed.append('res/others/91/nodes_8_mixed/node_' + str(i) + '.txt')
-    files_mixed.append('res/others/92/nodes_8_mixed/node_' + str(i) + '.txt')
-    files_mixed.append('res/others/46/nodes_8_mixed/node_' + str(i) + '.txt')
-nodes8_plot(axes[0], files)
-nodes8_plot(axes[1], files_mixed)
-plt.legend(handles=[mpatches.Patch(color=color, label=label) for label, color in cmd_color_map.items()], bbox_to_anchor=(1, 0.5))
-plt.tight_layout()
-plt.savefig('res/graph/node_8_cmp.png')
+# files = []
+# files_mixed = []
+# fig, axes = plt.subplots(2, 8)
+# fig.set_size_inches(80, 20)
+# for i in range(4):
+#     files.append('res/others/90/nodes_8/node_' + str(i) + '.txt')
+#     files.append('res/others/91/nodes_8/node_' + str(i) + '.txt')
+# for i in range(2):
+#     files_mixed.append('res/others/90/nodes_8_mixed/node_' + str(i) + '.txt')
+#     files_mixed.append('res/others/91/nodes_8_mixed/node_' + str(i) + '.txt')
+#     files_mixed.append('res/others/92/nodes_8_mixed/node_' + str(i) + '.txt')
+#     files_mixed.append('res/others/46/nodes_8_mixed/node_' + str(i) + '.txt')
+# nodes8_plot(axes[0], files)
+# nodes8_plot(axes[1], files_mixed)
+# plt.legend(handles=[mpatches.Patch(color=color, label=label) for label, color in cmd_color_map.items()], bbox_to_anchor=(1, 0.5))
+# plt.tight_layout()
+# plt.savefig('res/graph/node_8_cmp.png')
 
 global_ranks = dict(sorted(global_ranks.items(), key=lambda x: (int(x[0].split('/')[0].split('_')[1]), len(x[0].split('/')[0]), int(x[0].split('/')[1]), x[0].split('/')[2])))
 pprint.pp(global_ranks)
