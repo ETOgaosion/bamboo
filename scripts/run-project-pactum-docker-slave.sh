@@ -4,11 +4,14 @@ CUR_NODE=${1:-0}
 NUM_NODES=${2:-16}
 NUM_STAGES=${3:-16}
 GLOBAL_RANK=${4}
-SUBNBET=${4}
+REBUILD=${5}
+SUBNBET=${6}
 
 if [ $CUR_NODE -eq 0 ]; then
     echo "Running on slave node"
-    docker build -t whatcanyousee/bamboo:latest .
+    if [ $REBUILD -eq 1 ]; then
+        docker build -t whatcanyousee/bamboo:latest .
+    fi
 fi
 
 mkdir -p "res/lab/nodes_$NUM_NODES"
