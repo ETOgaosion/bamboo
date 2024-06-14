@@ -36,8 +36,6 @@ localhostclient = SSHClient(localhost, pkey=pkey, user=user, password=password)
 def clear_etcd():
     localhostclient.run_command('etcdctl rm --dir --recursive /torchelastic')
 
-clear_etcd()
-
 clients_hosts = ParallelSSHClient(hosts, pkey=pkey, user=user, password=password)
 
 def preparation():
@@ -106,6 +104,7 @@ Execution of commands
 for nodes, clients in all_clients.items():
     output = []
     for k, client in enumerate(clients):
+        clear_etcd()
         print(all_hosts[nodes][k], ' execute ', all_commands[nodes][k])
         output.append(client.run_command(all_commands[nodes][k]))
     for k, client in enumerate(clients):
