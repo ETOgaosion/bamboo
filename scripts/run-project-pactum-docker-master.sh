@@ -4,16 +4,16 @@ CUR_NODE=${1:-0}
 NUM_NODES=${2:-16}
 NUM_STAGES=${3:-16}
 GLOBAL_RANK=${4}
-REBUILD=${5}
-MICRO_BATCH_SIZE=${6:-8}
+MICRO_BATCH_SIZE=${5:-8}
+# REBUILD=${6}
 
-if [ $CUR_NODE -eq 0 ]; then
-    echo "Running on master node"
-    if [ $REBUILD -eq 1 ]; then
-        docker build -t whatcanyousee/bamboo:latest .
-    fi
-    # etcdctl rm --dir --recursive /torchelastic
-fi
+# if [ $CUR_NODE -eq 0 ]; then
+#     echo "Running on master node"
+#     if [ $REBUILD -eq 1 ]; then
+#         docker build -t whatcanyousee/bamboo:latest .
+#     fi
+#     # etcdctl rm --dir --recursive /torchelastic
+# fi
 
 mkdir -p "res/lab/nodes_$NUM_NODES"
 
