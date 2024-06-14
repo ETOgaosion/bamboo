@@ -106,7 +106,9 @@ Execution of commands
 for nodes, clients in all_clients.items():
     output = []
     for k, client in enumerate(clients):
+        print(all_hosts[nodes][k], ' execute ', all_commands[nodes][k])
         output.append(client.run_command(all_commands[nodes][k]))
     for k, client in enumerate(clients):
-        client.join(output[k])
+        client.wait_finished(output[k])
+    print('Finish ', nodes, ' nodes')
     
