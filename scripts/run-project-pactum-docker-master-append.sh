@@ -6,13 +6,13 @@ NUM_STAGES=${3:-16}
 MICRO_BATCH_SIZE=${4:-8}
 # REBUILD=${6}
 
-# if [ $CUR_NODE -eq 0 ]; then
-#     echo "Running on master node"
+if [ $CUR_NODE -eq 0 ]; then
+    echo "Running on master node"
 #     if [ $REBUILD -eq 1 ]; then
 #         docker build -t whatcanyousee/bamboo:latest .
 #     fi
-#     # etcdctl rm --dir --recursive /torchelastic
-# fi
+    etcdctl rm --dir --recursive /torchelastic
+fi
 
 mkdir -p "res/lab/nodes_append"
 
