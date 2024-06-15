@@ -925,6 +925,7 @@ class PipelineEngine(DeepSpeedEngine):
         for idx in layer_idxs:
             layer_state = state[idx][0]
             optim_state = state[idx][1]
+            print(optim_state)
 
             #print('LAYER STATE {}'.format(layer_state))
             for param_tensor in layer_state.values():
@@ -936,8 +937,9 @@ class PipelineEngine(DeepSpeedEngine):
                     optim_bucket.append(tensor_value)
 
         layer_tensor = self.flatten(layer_bucket).cuda()
-        print(optim_bucket, len(optim_bucket))
-        optim_tensor = self.flatten(optim_bucket).cuda()
+        optim_tensor = self.flatten([0]).cuda()
+        if len(optim_bucket) > 0:
+            optim_bucket = self.flatten(optim_bucket).cuda()
 
         #group = None if layer_tensor.is_cuda else self.gloo_pg
 
