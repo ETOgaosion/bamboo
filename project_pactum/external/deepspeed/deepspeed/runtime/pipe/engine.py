@@ -935,13 +935,15 @@ class PipelineEngine(DeepSpeedEngine):
                     optim_bucket.append(tensor_value)
 
         layer_tensor = self.flatten(layer_bucket).cuda()
-        optim_tensor = self.flatten(optim_bucket).cuda()
+        if len(optim_bucket):
+            optim_tensor = self.flatten(optim_bucket).cuda()
 
         #group = None if layer_tensor.is_cuda else self.gloo_pg
 
         ## Send the layers and optimizer state
         dist.send(layer_tensor, dst=dst_rank) #, group=group)
-        dist.send(optim_tensor, dst=dst_rank) #, group=group)
+        if len(optim_bucket):
+            dist.send(optim_tensor, dst=dst_rank) #, group=group)
 
     def recv_layers(self, src_rank, layer_idxs):
         """ Receive a set of layers from rank src
