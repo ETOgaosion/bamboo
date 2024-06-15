@@ -947,7 +947,7 @@ class PipelineEngine(DeepSpeedEngine):
 
         ## Send the layers and optimizer state
         dist.send(layer_tensor, dst=dst_rank) #, group=group)
-        dist.send(optim_tensor, dst=dst_rank) #, group=group)
+        # dist.send(optim_tensor, dst=dst_rank) #, group=group)
 
     def recv_layers(self, src_rank, layer_idxs):
         """ Receive a set of layers from rank src
