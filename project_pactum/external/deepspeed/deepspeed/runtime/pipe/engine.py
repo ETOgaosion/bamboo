@@ -155,6 +155,7 @@ class PipelineEngine(DeepSpeedEngine):
         logger.warning(f'CONFIG: micro_batches={self.micro_batches}\n'
                     f'micro_batch_size={self.micro_batch_size}\n'
                     f'num_stages={self.num_stages}\n'
+                    f'global_rank={self.global_rank}\n'
                     f'stage_id={self.stage_id}\n'
                     f'prev_stage={self.prev_stage}\n'
                     f'next_stage={self.next_stage}\n'
