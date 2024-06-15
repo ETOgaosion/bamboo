@@ -925,8 +925,6 @@ class PipelineEngine(DeepSpeedEngine):
         for idx in layer_idxs:
             layer_state = state[idx][0]
             optim_state = state[idx][1]
-            print(f'layer_state: {layer_state}')
-            print(f'optim_state: {optim_state}')
 
             #print('LAYER STATE {}'.format(layer_state))
             for param_tensor in layer_state.values():
@@ -988,7 +986,7 @@ class PipelineEngine(DeepSpeedEngine):
         #group = None if layer_tensor.is_cuda else self.gloo_pg
 
         dist.recv(layer_tensor, src=src_rank) #, group=group)
-        dist.recv(optim_tensor, src=src_rank) #, group=group)
+        # dist.recv(optim_tensor, src=src_rank) #, group=group)
 
         recvd_state = {}
 
