@@ -753,7 +753,7 @@ class EtcdRendezvous(object):
 
             # we assign rank with command
             this_rank = 0
-            if os.environ['GLOBAL_RANK']:
+            if os.environ.get('GLOBAL_RANK') is not None:
                 this_rank = int(os.environ['GLOBAL_RANK'])
             else:
                 this_rank = len(state["participants"])
