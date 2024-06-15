@@ -733,7 +733,7 @@ class EtcdRendezvous(object):
 
         # Use compare-and-swap to add self to rendezvous state:
         while True:
-            cas_delay()
+            time.sleep(random.uniform(0, 1))
             active_version, state = self.get_rdzv_state()
 
             if state["status"] != "joinable":
