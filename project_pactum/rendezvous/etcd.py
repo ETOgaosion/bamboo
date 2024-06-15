@@ -20,7 +20,7 @@ import re
 import traceback
 from contextlib import closing
 from colorama import Fore
-import random
+
 import os
 from datetime import datetime
 
@@ -733,7 +733,7 @@ class EtcdRendezvous(object):
 
         # Use compare-and-swap to add self to rendezvous state:
         while True:
-            time.sleep(random.uniform(0, 1))
+            cas_delay()
             active_version, state = self.get_rdzv_state()
 
             if state["status"] != "joinable":
