@@ -14,7 +14,7 @@ AWS:
 |Node Number|Data Parallel Size|Pipeline Parallel Size|MicroBatch Size|cmds|
 |:-:|:-:|:-:|:-:|:-:|
 |8|2|4|4|263|
-|10|2|5|8|137|
+|10|2|5|4|265|
 |12|4|3|4|133|
 |14|2|7|8|141|
 |16|4|4|8|71|
@@ -37,7 +37,7 @@ Local:
 |Node Number|Data Parallel Size|Pipeline Parallel Size|MicroBatch Size|cmds|
 |:-:|:-:|:-:|:-:|:-:|
 |8|2|4|4|263|
-|10|2|5|8|137|
+|10|2|5|8|265|
 |12|4|3|4|133|
 |14|2|7|8|141|
 |16|4|4|8|71|

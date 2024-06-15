@@ -11,8 +11,8 @@ required_nodes = [8, 10, 12, 14, 16]
 # required_nodes = [8, 10, 12, 14, 16, 20, 24, 28, 32]
 required_data_parallel_size = [2, 2, 4, 2, 4]
 # required_data_parallel_size = [2, 2, 4, 2, 4, 4, 8, 4, 8]
-required_micro_batch_size = [4, 8, 3, 8, 8]
-# required_micro_batch_size = [4, 8, 3, 8, 8, 16, 8, 16, 16]
+required_micro_batch_size = [4, 4, 4, 16, 8]
+# required_micro_batch_size = [4, 4, 4, 8, 8, 16, 8, 16, 16]
 hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46']
 localhost_ip = '10.20.23.90'
 project_dir = '/home/gaoziyuan/project/bamboo'
@@ -101,13 +101,21 @@ pprint.pp(cards_number)
 '''
 Execution of commands
 '''
-for nodes, clients in all_clients.items():
+def execute_command(nodes):
     output = []
     clear_etcd()
-    for k, client in enumerate(clients):
+    for k, client in enumerate(all_clients[nodes]):
         print(all_hosts[nodes][k], ' execute ', all_commands[nodes][k])
         output.append(client.run_command(all_commands[nodes][k]))
-    for k, client in enumerate(clients):
+    for k, client in enumerate(all_clients[nodes]):
         client.wait_finished(output[k])
     print('Finish ', nodes, ' nodes')
-    
+
+# execute_command(8)
+execute_command(10)
+execute_command(12)
+execute_command(14)
+# execute_command(16)
+
+# for nodes in required_nodes:
+#     execute_command(nodes)
