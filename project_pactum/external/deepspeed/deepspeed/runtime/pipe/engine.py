@@ -936,6 +936,7 @@ class PipelineEngine(DeepSpeedEngine):
                     optim_bucket.append(tensor_value)
 
         layer_tensor = self.flatten(layer_bucket).cuda()
+        print(optim_bucket, len(optim_bucket))
         optim_tensor = self.flatten(optim_bucket).cuda()
 
         #group = None if layer_tensor.is_cuda else self.gloo_pg
