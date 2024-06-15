@@ -15,19 +15,14 @@ import csv
 
 def read_trace(file):
     if file.endswith(".csv"):
-        seconds, operations, nodes, nodes_map = [], [], [], {}
+        seconds, operations, nodes = [], [], []
         with open(file, newline='') as csvfile:
             reader = csv.reader(csvfile)
             for row in reader:
                 seconds.append(row[0])
                 operations.append(row[1])
                 nodes.append(row[2])
-                nodes_map[int(row[2][4:])] = True
-        return seconds, operations, nodes, nodes_map
-    
-
-seconds, operations, nodes, nodes_map = read_trace('traces/g4dn-trace.csv')
-# seconds, operations, nodes, nodes_map = read_trace('traces/p3-trace.csv')
+        return seconds, operations, nodes
 
 def mmodify_trace(seconds, operations, nodes):
     trace = []
@@ -39,14 +34,13 @@ def mmodify_trace(seconds, operations, nodes):
             included_nodes[nodes[i]] = True
             current_node_num += 1
         elif operations[i] == 'remove':
+            if current_node_num <= 8:
+                continue
             if included_nodes.get(nodes[i]) is not None:
                 trace.append([seconds[i], operations[i], nodes[i]])
                 current_node_num -= 1
                 included_nodes.pop(nodes[i])
     return trace
-
-trace = mmodify_trace(seconds, operations, nodes)
-print(trace)
 
 def rewrite_node_number(trace):
     node_nums = 0
@@ -60,15 +54,56 @@ def rewrite_node_number(trace):
             line[2] = node_map[line[2]]
     return trace
 
-after_rewrite_trace = rewrite_node_number(trace)
-print(after_rewrite_trace)
-
 def regenerate_trace(trace, file):
     with open(file, 'w', newline='') as csvfile:
         spamwriter = csv.writer(csvfile)
         for line in trace:
             spamwriter.writerow(line)
 
+def generate_trace_16(file_raw, file_target):
+    seconds, operations, nodes = read_trace(file_raw)
+    trace = mmodify_trace(seconds, operations, nodes)
+    print(trace)
+    after_rewrite_trace = rewrite_node_number(trace)
+    print(after_rewrite_trace)
+    regenerate_trace(after_rewrite_trace, file_target)
 
-regenerate_trace(after_rewrite_trace, 'traces/g4dn-trace-16.csv')
-# regenerate_trace(after_rewrite_trace, 'traces/p3-trace-16.csv')
+
+generate_trace_16('traces/g4dn-trace.csv', 'traces/g4dn-trace-16.csv')
+generate_trace_16('traces/p3-trace.csv', 'traces/p3-trace-16.csv')
+
+
+'''
+16 nodes handler
+'''
+def plot_nodes_samples(nodes_samples):
+    fig, ax = plt.subplots()
+    ax.bar(range(len(nodes_samples)), nodes_samples)
+    fig.tight_layout()
+    fig.savefig('traces/nodes_samples.png')
+
+
+def calculate_avg_nodes(file):
+    seconds, operations, nodes_samples = [], [], []
+    if file.endswith(".csv"):
+        with open(file, newline='') as csvfile:
+            reader = csv.reader(csvfile)
+            for row in reader:
+                seconds.append(int(row[0]))
+                operations.append(row[1])
+    current_nodes = 0
+    last_time = 0
+    for i in range(1, len(seconds)):
+        if operations[i] == 'add':
+            current_nodes += 1
+        elif operations[i] == 'remove':
+            current_nodes -= 1
+        if seconds[i] - last_time >= 10000:
+            nodes_samples.append(current_nodes)
+            last_time = seconds[i]
+    plot_nodes_samples(nodes_samples)
+    return statistics.mean(nodes_samples)
+
+print(calculate_avg_nodes('traces/g4dn-trace-16.csv'))
+# calculate_avg_nodes('traces/p3-trace-16.csv')
+    

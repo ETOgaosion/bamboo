@@ -175,7 +175,9 @@ class PipelineEngine(DeepSpeedEngine):
             recv_decisions = self.get_recv_decisions(old_parts, self.module.parts, global_decisions)
             send_decisions = self.get_send_decisions(recv_decisions)
 
+            self.log(f'{datetime.datetime.now()} - Start transfer layer init {sys.getsizeof(prev_state)}')
             received_state = self.transfer_layers(recv_decisions, send_decisions, prev_state)
+            self.log(f'{datetime.datetime.now()} - End transfer layer init')
             self.module.load_layers(received_state)
             self.load_optimizer_state(received_state, prev_state)
             #self.verify_optimizer()
@@ -738,7 +740,9 @@ class PipelineEngine(DeepSpeedEngine):
         recvd_state = {}
         if transfer_needed:
             state_to_transfer = self.get_model_state(delete_state=False)
+            self.log(f'{datetime.datetime.now()} - Start transfer layer save_shadow_node_state {sys.getsizeof(state_to_transfer)}')
             recvd_state = self.transfer_layers(recv_decisions, send_decisions, state_to_transfer)
+            self.log(f'{datetime.datetime.now()} - End transfer layer save_shadow_node_state')
 
         return recvd_state
 

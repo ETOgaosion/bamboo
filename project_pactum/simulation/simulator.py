@@ -20,8 +20,8 @@ class EventKind(enum.IntEnum):
     SPOT_INSTANCE_REMOVE = 2
     SPOT_INSTANCE_GENERATE = 3
     SPOT_INSTANCE_READY = 4
-    GLOBAL_PREPARATION = 5
-    LOCAL_PREPARATION = 6
+    PREPARATION = 5
+    TRASNFER_LAYER = 6
     TRAINING_STEP_COMPLETE = 7
 
 @dataclasses.dataclass(order=True)
@@ -184,14 +184,14 @@ class Simulator:
         self.start_hour = start_hour
         # I do not understand why we need this
         self.spot_instance_creation_time = 45_000 # milliseconds
-        # self.global_preparation_delta = 30_000 # milliseconds
+        self.preparation_delta = 30_000 # milliseconds
 
         self.spot_instances = {}
         self.rendezvous_version = 0
         self.rendezvous = []
         self.num_workers_waiting = 0
-        self.num_pipelines = 0
-        self.num_stages = 0
+        self.data_parallel_size = 0
+        self.pipeline_parallel_size = 0
 
         self.num_steps_complete = 0
         self.num_fatal_failures = 0
@@ -224,10 +224,8 @@ class Simulator:
         return probability
 
     # implement by child
-    def global_preparation_delta(self):
-        return 0
     
-    def local_preparation_delta(self):
+    def transfer_layer_delta(self):
         return 0
     
     # implement by child
@@ -305,17 +303,17 @@ class Simulator:
             'name': name,
         })
 
-    def create_global_preparation_event(self, delta):
+    def create_preparation_event(self, delta):
         return self.create_event(
-            delta + self.global_preparation_delta(),
-            EventKind.GLOBAL_PREPARATION,
+            delta + self.preparation_delta,
+            EventKind.PREPARATION,
             {}
         )
     
-    def create_local_preparation_event(self, delta):
+    def create_transfer_layer_event(self, delta):
         return self.create_event(
-            delta + self.local_preparation_delta(),
-            EventKind.LOCAL_PREPARATION,
+            delta + self.transfer_layer_delta(),
+            EventKind.TRASNFER_LAYER,
             {}
         )
 
@@ -462,7 +460,7 @@ class Simulator:
             # Find which node has my redundant coordinates
             search = (coordinates[0], coordinates[1] - 1)
             if search[1] == -1:
-                search = (search[0], self.num_stages - 1)
+                search = (search[0], self.pipeline_parallel_size - 1)
             for n, i in self.spot_instances.items():
                 found = False
                 for c in i.active_coordinates:
@@ -490,9 +488,9 @@ class Simulator:
         self.status = SystemStatus.RENDEZVOUS
         self.simulate_rendezvous_restart(delta, data)
         if isGlobal:
-            self.create_global_preparation_event(delta)
+            self.create_preparation_event(delta)
         else:
-            self.create_local_preparation_event(delta)
+            self.create_transfer_layer_event(delta)
 
     def simulate_rendezvous_restart(self, delta):
         self.info(delta, f'simulate_rendezvous_restart: {delta}')
@@ -502,7 +500,7 @@ class Simulator:
             if instance.is_ready() or instance.is_running():
                 self.rendezvous.append(name)
 
-    def simulate_preparation(self, delta, data):
+    def simulate_preparation_common(self, delta):
         self.info(delta, f'simulate_preparation: {delta}')
         for i, name in enumerate(self.rendezvous):
             if name not in self.spot_instances:
@@ -510,12 +508,12 @@ class Simulator:
                     delta,
                     f'{name} terminated during redezvous, restarting'
                 )
-                self.simulate_rendezvous_restart(delta, data)
-                self.create_global_preparation_event(delta)
+                self.simulate_rendezvous_restart(delta)
+                self.create_preparation_event(delta)
                 return
             instance = self.spot_instances[name]
             instance.global_id = i
-        self.simulate_assign_coordinates(delta, data)
+        self.simulate_assign_coordinates(delta)
         self.fallback_event = None
         self.fallback_handled = False
         self.rendezvous_version += 1
@@ -523,10 +521,10 @@ class Simulator:
             delta,
             f'{len(self.rendezvous)} nodes completed rendezvous version '
             f'{self.rendezvous_version}, '
-            f'{self.num_pipelines}x{self.num_stages} configuration'
+            f'{self.data_parallel_size}x{self.pipeline_parallel_size} configuration'
         )
         self.rendezvous = []
-        if self.num_pipelines != 0:
+        if self.data_parallel_size != 0:
             self.status = SystemStatus.RUNNING
             self.simulate_step_delta()
             self.create_training_iteration_execute_event(delta,
@@ -549,6 +547,8 @@ class Simulator:
         instance.set_ready()
 
         if self.status == SystemStatus.STOPPED:
+            if len(self.spot_instances) < self.start_nodes_num:
+                return
             self.info(delta, f'{name} starting global rendezvous')
             self.simulate_rendezvous_start(delta, data, True)
         elif self.status == SystemStatus.RENDEZVOUS:
@@ -556,30 +556,30 @@ class Simulator:
         elif self.status == SystemStatus.RUNNING:
             self.num_workers_waiting += 1
 
-    def simulate_global_preparation(self, delta, data):
-        self.info(delta, f'simulate_global_preparation: {delta}')
-        self.simulate_preparation(delta, data)
+    def simulate_preparation(self, delta, data):
+        self.info(delta, f'simulate_preparation: {delta}')
+        self.simulate_preparation_common(delta, data)
 
-    def simulate_local_preparation(self, delta, data):
-        self.info(delta, f'simulate_local_preparation: {delta}')
-        self.simulate_preparation(delta, data)
+    def simulate_transfer_layer(self, delta, data):
+        self.info(delta, f'simulate_transfer_layer: {delta}')
+        self.simulate_preparation_common(delta, data)
 
-    def simulate_assign_coordinates(self, delta, data):
+    def simulate_assign_coordinates(self, delta):
         self.info(delta, f'simulate_assign_coordinates')
-        if len(self.rendezvous) < self.num_stages_target:
-            num_pipelines = 0
-            num_stages = 0
+        if len(self.rendezvous) < self.pipeline_parallel_size_target:
+            data_parallel_size = 0
+            pipeline_parallel_size = 0
         else:
-            num_stages = self.num_stages_target
-            num_pipelines = len(self.rendezvous) // num_stages
+            pipeline_parallel_size = self.pipeline_parallel_size_target
+            data_parallel_size = len(self.rendezvous) // pipeline_parallel_size
         num_workers_waiting = 0
 
-        previous_num_pipelines = self.num_pipelines
-        previous_num_stages = self.num_stages
+        previous_data_parallel_size = self.data_parallel_size
+        previous_pipeline_parallel_size = self.pipeline_parallel_size
 
         required_coordinates = []
-        for i in range(num_pipelines):
-            for j in range(num_stages):
+        for i in range(data_parallel_size):
+            for j in range(pipeline_parallel_size):
                 required_coordinates.append((i, j))
 
         for name in self.rendezvous:
@@ -595,8 +595,8 @@ class Simulator:
                 instance.set_ready()
                 num_workers_waiting += 1
 
-        self.num_pipelines = num_pipelines
-        self.num_stages = num_stages
+        self.data_parallel_size = data_parallel_size
+        self.pipeline_parallel_size = pipeline_parallel_size
         self.num_workers_waiting = num_workers_waiting
 
     def get_num_workers_overloaded(self):
@@ -617,7 +617,7 @@ class Simulator:
         if num_workers_overloaded > 0 and num_workers_waiting >= num_workers_overloaded:
             return True
 
-        num_original_workers = self.num_pipelines * self.num_stages
+        num_original_workers = self.data_parallel_size * self.pipeline_parallel_size
         num_active_workers = num_original_workers - num_workers_overloaded
 
         # If we're above a 5% chance of failure, re-configure/re-balance
@@ -627,8 +627,8 @@ class Simulator:
             return True
 
         # If we can add another pipeline, do it
-        potential_num_pipelines = (num_active_workers + num_workers_waiting) // self.num_stages_target
-        if potential_num_pipelines > self.num_pipelines:
+        potential_data_parallel_size = (num_active_workers + num_workers_waiting) // self.pipeline_parallel_size_target
+        if potential_data_parallel_size > self.data_parallel_size:
             return True
 
         return False
@@ -659,7 +659,7 @@ class Simulator:
         step_duration_seconds = step_duration / self.milliseconds_per_second
         step_duration_hours = step_duration / self.milliseconds_per_hour
         #print('Step duration (s):', step_duration_seconds)
-        samples_per_second = self.samples_per_step / step_duration_seconds
+        samples_per_second = (self.global_batch_size * self.data_parallel_size * self.pipeline_parallel_size) / step_duration_seconds
 
 
         previous_delta_hours = self.previous_iteration_execute_delta / self.milliseconds_per_hour
@@ -811,10 +811,10 @@ class Simulator:
                 self.generate_spot_instance_events(start, delta)
             elif kind == EventKind.SPOT_INSTANCE_READY:
                 self.simulate_spot_instance_ready(delta, data)
-            elif kind == EventKind.GLOBAL_PREPARATION:
-                self.simulate_global_preparation(delta, data)
-            elif kind == EventKind.LOCAL_PREPARATION:
-                self.simulate_local_preparation(delta, data)
+            elif kind == EventKind.PREPARATION:
+                self.simulate_preparation(delta, data)
+            elif kind == EventKind.TRASNFER_LAYER:
+                self.simulate_transfer_layer(delta, data)
             elif kind == EventKind.TRAINING_STEP_COMPLETE:
                 self.simulate_training_iteration_execute(delta, data)
             else:

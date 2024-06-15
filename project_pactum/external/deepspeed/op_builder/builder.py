@@ -15,6 +15,7 @@ import distutils.log
 import distutils.sysconfig
 from distutils.errors import CompileError, LinkError
 from abc import ABC, abstractmethod
+import datetime
 
 YELLOW = '\033[93m'
 END = '\033[0m'
@@ -380,6 +381,7 @@ class OpBuilder(ABC):
         os.makedirs(ext_path, exist_ok=True)
 
         start_build = time.time()
+        print(f'{datetime.datetime.now()} - Start Op builder')
         sources = [self.deepspeed_src_path(path) for path in self.sources()]
         extra_include_paths = [
             self.deepspeed_src_path(path) for path in self.include_paths()
@@ -394,6 +396,7 @@ class OpBuilder(ABC):
             verbose=verbose)
         build_duration = time.time() - start_build
         if verbose:
+            print(f'{datetime.datetime.now()} - End Op builder')
             print(f"Time to load {self.name} op: {build_duration} seconds")
         return op_module
 
