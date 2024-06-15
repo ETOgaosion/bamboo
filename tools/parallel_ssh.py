@@ -103,8 +103,8 @@ Execution of commands
 '''
 for nodes, clients in all_clients.items():
     output = []
+    clear_etcd()
     for k, client in enumerate(clients):
-        clear_etcd()
         print(all_hosts[nodes][k], ' execute ', all_commands[nodes][k])
         output.append(client.run_command(all_commands[nodes][k]))
     for k, client in enumerate(clients):
