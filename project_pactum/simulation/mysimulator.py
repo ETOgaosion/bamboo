@@ -22,6 +22,7 @@ class MySimulator(Simulator):
         self.preparation_delta = 63000
 
     def transfer_layer_delta(self):
+        return 46.8
         # return 6004.3633 * self.data_parallel_size + 75630
         return self.rdzv_model.predict(sm.add_constant(np.array([0, self.data_parallel_size]))).item(1)
 
