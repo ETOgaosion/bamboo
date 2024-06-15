@@ -4,10 +4,9 @@ CURRENT_PATH=$(pwd)
 
 NUM_NODES=${1:-16}
 NUM_STAGES=${2:-16}
-GLOBAL_RANK=${3}
-MICRO_BATCH_SIZE=${4:-8}
-RDZV_IP=${5:-localhost}
-ID=encoder${6}
+MICRO_BATCH_SIZE=${3:-8}
+RDZV_IP=${4:-localhost}
+ID=encoder${5}
 
 MODEL=${CURRENT_PATH}/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/gpt3
 
@@ -16,7 +15,6 @@ echo "ARGS $RDZV_IP $ID $NUM_STAGES $GLOBAL_RANK $MODEL"
 cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	export NCCL_SOCKET_IFNAME=eno1 \
 	export USE_BARRIER=true \
-	export GLOBAL_RANK=$GLOBAL_RANK \
 	export PYTHONPATH=${CURRENT_PATH}/project-pactum:\${PYTHONPATH} && \
 	python -m project_pactum.run \
 	--rdzv_backend=etcd-v2 \

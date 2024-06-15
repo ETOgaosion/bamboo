@@ -4,10 +4,9 @@ CURRENT_PATH=$(pwd)
 
 NUM_NODES=${1:-16}
 NUM_STAGES=${2:-16}
-GLOBAL_RANK=${3}
-MICRO_BATCH_SIZE=${4:-8}
-RDZV_IP=${5:-10.20.23.90}
-ID=encoder${6}
+MICRO_BATCH_SIZE=${3:-8}
+RDZV_IP=${4:-10.20.23.90}
+ID=encoder${5}
 
 MODEL=${CURRENT_PATH}/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/gpt3
 
