@@ -11,28 +11,37 @@ class MySimulator(Simulator):
     
         # Amazon EC2 Tesla T4
         if model == 'GPT-3':
+            # start execution when the number of arrived nodes is 8
             self.start_nodes_num = 8
+            # the number of nodes that can be added at a time, bamboo do lazy reconfigure, not reconfig every time
             self.pipeline_parallel_size_target = 2
             self.global_batch_size = 1024
-            self.on_demand_num_instances = int(math.pow(2, math.ceil(math.log2(calculate_avg_nodes(spot_instance_trace)))))
-            self.on_demand_cost = self.on_demand_num_instances * self.on_demand_cost_per_hour
-            self.on_demand_performance = (self.global_batch_size * self.on_demand_num_instances) / self.simulate_step_delta_calc(self.on_demand_num_instances)
-            self.on_demand_value = self.on_demand_performance / self.on_demand_cost
-            
-        self.preparation_delta = 63000
+        
+        # prepare for first time launch
+        self.preparation_delta = 10000
 
-    def transfer_layer_delta(self):
-        return 46.8
+        # on demand instance config, no need to change
+        self.on_demand_num_instances = int(math.pow(2, math.ceil(math.log2(calculate_avg_nodes(spot_instance_trace)))))
+        
+        self.on_demand_cost = self.on_demand_num_instances * self.on_demand_cost_per_hour
+        self.on_demand_performance = (self.global_batch_size * self.on_demand_num_instances) / self.simulate_iteration_delta_calc(self.on_demand_num_instances)
+        self.on_demand_value = self.on_demand_performance / self.on_demand_cost
+
+    def reconfigure_delta(self):
+        # reconfigure time (ms)
+        return 15000
         # return 6004.3633 * self.data_parallel_size + 75630
         return self.rdzv_model.predict(sm.add_constant(np.array([0, self.data_parallel_size]))).item(1)
 
     def fallback_slowdown(self):
+        # nodes fail and slowdown ration, seems a garbage design
         return self.pipeline_parallel_size / (self.pipeline_parallel_size - 1)
 
-    def simulate_step_delta(self):
-        self.step_delta = self.simulate_step_delta_calc(self.data_parallel_size * self.pipeline_parallel_size)
+    def simulate_iteration_delta(self):
+        # iteration time
+        self.iteration_delta = self.simulate_iteration_delta_calc(self.data_parallel_size * self.pipeline_parallel_size)
     
-    def simulate_step_delta_calc(self, nodes_num):
+    def simulate_iteration_delta_calc(self, nodes_num):
         data = {
             8: 19.1,
             10: 27.3,

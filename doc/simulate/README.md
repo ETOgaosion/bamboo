@@ -18,54 +18,44 @@ pip install -r requirements-bamboosimulate.txt
 class MySimulator(Simulator):
     def __init__(self, seed=None, start_hour=None,
                  model='GPT-2', spot_instance_trace=None, generate_addition_probabilities=False, removal_probability=None, generate_graphs=False):
-        super().__init__(seed, start_hour, model, spot_instance_trace, generate_addition_probabilities, removal_probability, generate_graphs)   # 调用父类
-        self.preparation_model, self.fall_back_model, self.pipeline_delta_model = res_parser_init()    # 初始化结果处理函数
     
-        # Amazon EC2 Tesla T4
-        if model == 'GPT-2':
-            self.samples_per_step = 96  # global batch size
-            self.steps_per_run = 188_828    # [only used in simulator without trace]
-            self.spot_instance_desired_capacity = 48    # [only used in simulator without trace]
-            self.simulate_step_delta_cache = [8100]     # related with your data calculation methods, can remove
-            self.num_stages_target = 2  # data parallel stages
-            self.on_demand_num_instances = 32   # 按需instance数量，取spot instance trace最大值
-            self.on_demand_cost = self.on_demand_num_instances * self.on_demand_cost_per_hour   # 按需花费，无需改变
-            self.on_demand_performance = self.samples_per_step / (self.simulate_step_delta_calc(self.on_demand_num_instances // self.num_stages_target) / 1000) # 根据按需每个iteration时间设置分母
-            self.on_demand_value = self.on_demand_performance / self.on_demand_cost     # 按需价值，论文新定义
+        if model == 'GPT-3':
+            # start execution when the number of arrived nodes is 8
+            self.start_nodes_num = 8
+            # the number of nodes that can be added at a time, bamboo do lazy reconfigure, not reconfig every time
+            self.pipeline_parallel_size_target = 2
+            self.global_batch_size = 1024
+        
+        # prepare for first time launch
+        self.preparation_delta = 10000
     
 
-    # [neccessary] 所有节点第一次集体启动的时间（从rdzv开始放走所有节点到所有节点开始iterations运行）
-    def global_preparation_delta(self):
-        # return 6004.3633 * self.num_pipelines + 75630
-        # 可使用if else
-        return self.preparation_model.predict(sm.add_constant(np.array([0, self.num_pipelines]))).item(1)
-    
-    # [neccessary] 加了reconfigure的时间，reconfigure开始到进行下一个iteration运行的时间
-    def local_preparation_delta(self):
-        # return 6004.3633 * self.num_pipelines + 75630
-        # 可使用if else
-        return self.rdzv_model.predict(sm.add_constant(np.array([0, self.num_pipelines]))).item(1)
-    
-    # [neccessary] 当有节点失败被移除后减速比，即delta将乘此函数结果，如果模型不同，可重写原函数
+    def reconfigure_delta(self):
+        # reconfigure time (ms)
+        return 15000
+        # return 6004.3633 * self.data_parallel_size + 75630
+        return self.rdzv_model.predict(sm.add_constant(np.array([0, self.data_parallel_size]))).item(1)
+
     def fallback_slowdown(self):
-        # return 2.4297 / (self.num_pipelines * self.num_stages) + 1
-        # 可使用if else
-        return self.fall_back_model.predict(np.ones(1)/np.array([self.num_pipelines * self.num_stages])).item(0) + 1
+        # nodes fail and slowdown ration, seems a garbage design
+        return self.pipeline_parallel_size / (self.pipeline_parallel_size - 1)
 
-    # [neccessary] 单步执行的时间，即一个iteration运行的时间，可根据当前节点数量/pipeline数量灵活调整
-    def simulate_step_delta(self):
-        # 可使用if else
-        self.step_delta = self.simulate_step_delta_calc(self.num_pipelines)
+    def simulate_iteration_delta(self):
+        # iteration time
+        self.iteration_delta = self.simulate_iteration_delta_calc(self.data_parallel_size * self.pipeline_parallel_size)
     
-    # 示例辅助函数
-    def simulate_step_delta_calc(self, num_pipelines):
-        if num_pipelines > len(self.simulate_step_delta_cache):
-            for i in range(len(self.simulate_step_delta_cache), num_pipelines):
-                self.simulate_step_delta_cache.append(
-                    # self.simulate_step_delta_cache[-1] / (0.6891 / (i + 1) + 1)
-                    self.simulate_step_delta_cache[-1] / (self.pipeline_delta_model.predict((np.ones(1)/np.array([i + 1]))).item(0) + 1)
-                )
-        return self.simulate_step_delta_cache[num_pipelines - 1]
+    def simulate_iteration_delta_calc(self, nodes_num):
+        data = {
+            8: 19.1,
+            10: 27.3,
+            12: 17.6,
+            14: 22.3,
+            16: 14.7
+        }
+        if data.get(nodes_num) is not None:
+            return data[nodes_num]
+        else:
+            return data[int(math.pow(2, math.ceil(math.log2(nodes_num))))]
 ```
 
 其他父类函数（比如状态转移函数）也可以自由覆盖，对于simulator各个状态的转换逻辑可按照论文设计重新编写，可在子类中自定义任意变量和辅助函数

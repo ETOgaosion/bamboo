@@ -51,7 +51,7 @@ class Result:
     lifetime_stdev: float
     num_preemptions: int
     num_fatal_failures: int
-    num_steps_complete: int
+    num_iterations_complete: int
     average_instances: float
     average_performance: float
     average_cost: float
@@ -193,7 +193,7 @@ class Simulator:
         self.data_parallel_size = 0
         self.pipeline_parallel_size = 0
 
-        self.num_steps_complete = 0
+        self.num_iterations_complete = 0
         self.num_fatal_failures = 0
         self.num_spot_instance_removals = 0
 
@@ -225,7 +225,7 @@ class Simulator:
 
     # implement by child
     
-    def transfer_layer_delta(self):
+    def reconfigure_delta(self):
         return 0
     
     # implement by child
@@ -233,7 +233,7 @@ class Simulator:
         return 0
 
     # implement by child
-    def simulate_step_delta(self):
+    def simulate_iteration_delta(self):
         pass
 
     def info(self, delta, message):
@@ -310,16 +310,16 @@ class Simulator:
             {}
         )
     
-    def create_transfer_layer_event(self, delta):
+    def create_reconfigure_event(self, delta):
         return self.create_event(
-            delta + self.transfer_layer_delta(),
+            delta + self.reconfigure_delta(),
             EventKind.TRASNFER_LAYER,
             {}
         )
 
     def create_training_iteration_execute_event(self, delta, rendezvous_version):
         return self.create_event(
-            delta + self.step_delta,
+            delta + self.iteration_delta,
             EventKind.TRAINING_STEP_COMPLETE,
             {'rendezvous_version': rendezvous_version}
         )
@@ -438,7 +438,7 @@ class Simulator:
             f'{name} caused a fatal failure, starting global rendezvous'
         )
         self.num_fatal_failures += 1
-        self.simulate_rendezvous_start(delta, data, True)
+        self.simulate_rendezvous_start(delta, True)
 
     def simulate_spot_instance_remove(self, delta, data):
         self.info(delta, f'{data["name"]} simulate_spot_instance_remove: {delta}')
@@ -476,21 +476,21 @@ class Simulator:
                 if found:
                     break
         
-        # Re-simulate the step delta now that we lost a node
+        # Re-simulate the iteration delta now that we lost a node
         if self.status == SystemStatus.RUNNING:
             if self.fallback_event is None:
-                self.fallback_event = (self.num_steps_complete, delta)
+                self.fallback_event = (self.num_iterations_complete, delta)
                 self.fallback_handled = False
-                self.step_delta = int(self.step_delta * self.fallback_slowdown()) # Fucking strange
+                self.iteration_delta = int(self.iteration_delta * self.fallback_slowdown()) # Fucking strange
 
-    def simulate_rendezvous_start(self, delta, data, isGlobal):
+    def simulate_rendezvous_start(self, delta, isGlobal):
         self.info(delta, f'simulate_rendezvous_start: {delta}')
         self.status = SystemStatus.RENDEZVOUS
-        self.simulate_rendezvous_restart(delta, data)
+        self.simulate_rendezvous_restart(delta)
         if isGlobal:
             self.create_preparation_event(delta)
         else:
-            self.create_transfer_layer_event(delta)
+            self.create_reconfigure_event(delta)
 
     def simulate_rendezvous_restart(self, delta):
         self.info(delta, f'simulate_rendezvous_restart: {delta}')
@@ -526,7 +526,7 @@ class Simulator:
         self.rendezvous = []
         if self.data_parallel_size != 0:
             self.status = SystemStatus.RUNNING
-            self.simulate_step_delta()
+            self.simulate_iteration_delta()
             self.create_training_iteration_execute_event(delta,
                                                      self.rendezvous_version)
             if self.start_delta is None:
@@ -550,19 +550,19 @@ class Simulator:
             if len(self.spot_instances) < self.start_nodes_num:
                 return
             self.info(delta, f'{name} starting global rendezvous')
-            self.simulate_rendezvous_start(delta, data, True)
+            self.simulate_rendezvous_start(delta, True)
         elif self.status == SystemStatus.RENDEZVOUS:
             self.rendezvous.append(name)
         elif self.status == SystemStatus.RUNNING:
             self.num_workers_waiting += 1
 
-    def simulate_preparation(self, delta, data):
+    def simulate_preparation(self, delta):
         self.info(delta, f'simulate_preparation: {delta}')
-        self.simulate_preparation_common(delta, data)
+        self.simulate_preparation_common(delta)
 
-    def simulate_transfer_layer(self, delta, data):
-        self.info(delta, f'simulate_transfer_layer: {delta}')
-        self.simulate_preparation_common(delta, data)
+    def simulate_reconfigure(self, delta):
+        self.info(delta, f'simulate_reconfigure: {delta}')
+        self.simulate_preparation_common(delta)
 
     def simulate_assign_coordinates(self, delta):
         self.info(delta, f'simulate_assign_coordinates')
@@ -640,8 +640,8 @@ class Simulator:
 
         # Handle fallback events
         if self.fallback_event is not None:
-            event_num_steps_complete, event_delta = self.fallback_event
-            if not self.fallback_handled and event_num_steps_complete == self.num_steps_complete:
+            event_num_iterations_complete, event_delta = self.fallback_event
+            if not self.fallback_handled and event_num_iterations_complete == self.num_iterations_complete:
                 # The duration we need to add to handle the fallback
                 d = int((delta - event_delta) * (self.fallback_slowdown() - 1.0))
                 self.create_training_iteration_execute_event_absolute(
@@ -651,15 +651,15 @@ class Simulator:
                 self.fallback_handled = True
                 return
 
-        self.num_steps_complete += 1
+        self.num_iterations_complete += 1
 
         # Calculate performance
-        step_duration = delta - self.previous_iteration_execute_delta # milliseconds
-        #print('Step duration:', step_duration)
-        step_duration_seconds = step_duration / self.milliseconds_per_second
-        step_duration_hours = step_duration / self.milliseconds_per_hour
-        #print('Step duration (s):', step_duration_seconds)
-        samples_per_second = (self.global_batch_size * self.data_parallel_size * self.pipeline_parallel_size) / step_duration_seconds
+        iteration_duration = delta - self.previous_iteration_execute_delta # milliseconds
+        #print('Step duration:', iteration_duration)
+        iteration_duration_seconds = iteration_duration / self.milliseconds_per_second
+        iteration_duration_hours = iteration_duration / self.milliseconds_per_hour
+        #print('Step duration (s):', iteration_duration_seconds)
+        samples_per_second = (self.global_batch_size * self.data_parallel_size * self.pipeline_parallel_size) / iteration_duration_seconds
 
 
         previous_delta_hours = self.previous_iteration_execute_delta / self.milliseconds_per_hour
@@ -675,7 +675,7 @@ class Simulator:
         total_cost = 0.0
         #print('Previous delta hours:', previous_delta_hours)
         #print('Delta hours:', delta_hours)
-        #print('Duration (s):', step_duration_hours)
+        #print('Duration (s):', iteration_duration_hours)
         #print(self.cost_xs, self.cost_ys)
         #print('Finding the cost...', current_cost_per_hour)
         i = -1
@@ -699,7 +699,7 @@ class Simulator:
                 break
             i -= 2
 
-        average_cost_per_hour = total_cost / step_duration_hours
+        average_cost_per_hour = total_cost / iteration_duration_hours
         
         self.value_xs.append(previous_delta_hours)
         self.value_ys.append(samples_per_second / average_cost_per_hour)
@@ -714,14 +714,14 @@ class Simulator:
 
         self.previous_iteration_execute_delta = delta
 
-        if self.num_steps_complete % 100 == 0:
-            self.info(delta, f'{self.num_steps_complete} steps complete')
+        if self.num_iterations_complete % 10000 == 0:
+            self.info(delta, f'{self.num_iterations_complete} iterations complete')
         if self.simulate_should_reconfigure():
             self.info(
                 delta,
-                f'reconfiguration after step {self.num_steps_complete}'
+                f'reconfiguration after iteration {self.num_iterations_complete}'
             )
-            self.simulate_rendezvous_start(delta, data, False)
+            self.simulate_rendezvous_start(delta, False)
         else:
             self.create_training_iteration_execute_event(
                 delta,
@@ -812,16 +812,16 @@ class Simulator:
             elif kind == EventKind.SPOT_INSTANCE_READY:
                 self.simulate_spot_instance_ready(delta, data)
             elif kind == EventKind.PREPARATION:
-                self.simulate_preparation(delta, data)
+                self.simulate_preparation(delta)
             elif kind == EventKind.TRASNFER_LAYER:
-                self.simulate_transfer_layer(delta, data)
+                self.simulate_reconfigure(delta)
             elif kind == EventKind.TRAINING_STEP_COMPLETE:
                 self.simulate_training_iteration_execute(delta, data)
             else:
                 raise ValueError(f'Unknown kind: {kind}')
 
             # We're done our training
-            if duration is None and (hasattr(self, "steps_per_run") and self.num_steps_complete == self.steps_per_run):
+            if duration is None and (hasattr(self, "iterations_per_run") and self.num_iterations_complete == self.iterations_per_run):
                 break
 
             # We still need to process more events for this delta
@@ -889,7 +889,7 @@ class Simulator:
             lifetime_stdev = statistics.stdev(self.spot_instance_lifetimes) / self.milliseconds_per_hour,
             num_preemptions = self.num_spot_instance_removals,
             num_fatal_failures = self.num_fatal_failures,
-            num_steps_complete = self.num_steps_complete,
+            num_iterations_complete = self.num_iterations_complete,
             average_instances = self.calculate_average(instances_xs, instances_ys, duration_hours),
             average_performance = self.calculate_average(self.performance_xs, self.performance_ys, performance_value_duration_hours),
             average_cost = self.calculate_average(self.cost_xs, self.cost_ys, duration_hours),
@@ -1047,7 +1047,7 @@ class Simulator:
         # print('  - Stdev:', result.lifetime_stdev, 'hours')
         # print('Number of preemptions:', result.num_preemptions)
         # print('Number of fatal failures:', result.num_fatal_failures)
-        # print('Number of steps complete:', result.num_steps_complete)
+        # print('Number of iterations complete:', result.num_iterations_complete)
 
         self.info(delta, f'Ending after {duration_hours} hours')
 
