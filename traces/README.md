@@ -2,4 +2,4 @@
 
 16 nodes sample:
 
-![g4dn](g4dn-trace-16.csv)
+![g4dn](nodes_samples.png)
