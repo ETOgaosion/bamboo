@@ -1,8 +1,9 @@
 
 from project_pactum.simulation.simulator import Simulator
 from test.bambootest.lab_res_parser import *
-from tools.trace16_constructor import calculate_avg_nodes
 import math
+import csv
+import statistics
 
 class MySimulator(Simulator):
     def __init__(self, seed=None, start_hour=None,
@@ -21,6 +22,26 @@ class MySimulator(Simulator):
         self.preparation_delta = 10000
 
         # on demand instance config, no need to change
+        def calculate_avg_nodes(file):
+            seconds, operations, nodes_samples = [], [], []
+            if file.endswith(".csv"):
+                with open(file, newline='') as csvfile:
+                    reader = csv.reader(csvfile)
+                    for row in reader:
+                        seconds.append(int(row[0]))
+                        operations.append(row[1])
+            current_nodes = 0
+            last_time = 0
+            for i in range(1, len(seconds)):
+                if operations[i] == 'add':
+                    current_nodes += 1
+                elif operations[i] == 'remove':
+                    current_nodes -= 1
+                if seconds[i] - last_time >= 10000:
+                    nodes_samples.append(current_nodes)
+                    last_time = seconds[i]
+            return statistics.mean(nodes_samples)
+    
         self.on_demand_num_instances = int(math.pow(2, math.ceil(math.log2(calculate_avg_nodes(spot_instance_trace)))))
         
         self.on_demand_cost = self.on_demand_num_instances * self.on_demand_cost_per_hour
@@ -29,9 +50,8 @@ class MySimulator(Simulator):
 
     def reconfigure_delta(self):
         # reconfigure time (ms)
-        return 15000
-        # return 6004.3633 * self.data_parallel_size + 75630
-        return self.rdzv_model.predict(sm.add_constant(np.array([0, self.data_parallel_size]))).item(1)
+        # layer time model: (layers / 12) * 150s
+        return self.preparation_delta + 300000 / (self.get_real_division(self.pipeline_parallel_size * self.data_parallel_size)[1])
 
     def fallback_slowdown(self):
         # nodes fail and slowdown ration, seems a garbage design
@@ -53,3 +73,13 @@ class MySimulator(Simulator):
             return data[nodes_num]
         else:
             return data[int(math.pow(2, math.ceil(math.log2(nodes_num))))]
+        
+    def get_real_division(self, nodes_num):
+        data = {
+            8: 2,
+            10: 2,
+            12: 4,
+            14: 2,
+            16: 4
+        }
+        return data[nodes_num], nodes_num // data[nodes_num]
