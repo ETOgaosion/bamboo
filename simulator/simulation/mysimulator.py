@@ -23,13 +23,14 @@ class MySimulator(Simulator):
 
         # on demand instance config, no need to change
         def calculate_avg_nodes(file):
-            seconds, operations, nodes_samples = [], [], []
+            seconds, operations, nodes, nodes_samples = [], [], [], []
             if file.endswith(".csv"):
                 with open(file, newline='') as csvfile:
                     reader = csv.reader(csvfile)
                     for row in reader:
                         seconds.append(int(row[0]))
                         operations.append(row[1])
+                        nodes.append(row[2])
             current_nodes = 0
             last_time = 0
             for i in range(1, len(seconds)):
@@ -37,9 +38,8 @@ class MySimulator(Simulator):
                     current_nodes += 1
                 elif operations[i] == 'remove':
                     current_nodes -= 1
-                if seconds[i] - last_time >= 10000:
-                    nodes_samples.append(current_nodes)
-                    last_time = seconds[i]
+                if seconds[i] != last_time:
+                    nodes_samples.extend([current_nodes] * ((seconds[i] - last_time) // 10000))
             return statistics.mean(nodes_samples)
     
         self.on_demand_num_instances = int(math.pow(2, math.ceil(math.log2(calculate_avg_nodes(spot_instance_trace)))))

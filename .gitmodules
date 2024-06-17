@@ -4,3 +4,6 @@
 [submodule "test/bambootest"]
 	path = test/bambootest
 	url = git@github.com:ETOgaosion/bamboo-test.git
+[submodule "simulator"]
+	path = simulator
+	url = git@github.com:ETOgaosion/BambooSimulator.git
