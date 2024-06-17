@@ -65,7 +65,7 @@ class MySimulator(Simulator):
 使用实例：在项目根目录下运行：
 
 ```sh
-python -m project_pactum.simulation --generate-graphs --spot-instance-trace 'traces/p3-trace.csv' --model 'GPT-2' --fig-directory 'res/simulator'
+python -m simulation --generate-graphs --spot-instance-trace 'traces/p3-trace-16.csv' --model 'GPT-3' --fig-directory 'res/simulator'
 ```
 
 选项说明：
@@ -83,7 +83,7 @@ python -m project_pactum.simulation --generate-graphs --spot-instance-trace 'tra
 
 ## Simulator设计细节
 
-![simulatorarch](simulatorarch.png)
+![simulatorarch](docs/photos/simulatorarch.png)
 
 流程如下：
 
