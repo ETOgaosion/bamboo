@@ -21,7 +21,7 @@ class EventKind(enum.IntEnum):
     SPOT_INSTANCE_GENERATE = 3
     SPOT_INSTANCE_READY = 4
     PREPARATION = 5
-    TRASNFER_LAYER = 6
+    RECONFIGURE = 6
     TRAINING_STEP_COMPLETE = 7
 
 @dataclasses.dataclass(order=True)
@@ -313,7 +313,7 @@ class Simulator:
     def create_reconfigure_event(self, delta):
         return self.create_event(
             delta + self.reconfigure_delta(),
-            EventKind.TRASNFER_LAYER,
+            EventKind.RECONFIGURE,
             {}
         )
 
@@ -813,7 +813,7 @@ class Simulator:
                 self.simulate_spot_instance_ready(delta, data)
             elif kind == EventKind.PREPARATION:
                 self.simulate_preparation(delta)
-            elif kind == EventKind.TRASNFER_LAYER:
+            elif kind == EventKind.RECONFIGURE:
                 self.simulate_reconfigure(delta)
             elif kind == EventKind.TRAINING_STEP_COMPLETE:
                 self.simulate_training_iteration_execute(delta, data)
