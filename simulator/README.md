@@ -9,7 +9,7 @@ pip install -r requirements-bamboosimulate.txt
 
 ## 实现Simulator子类
 
-在[project_pactum/simulation/mysimulator.py](project_pactum/simulation/mysimulator.py)中需要实现`class MySimulator(Simulator)`子类
+在[simulation/mysimulator.py](simulation/mysimulator.py)中需要实现`class MySimulator(Simulator)`子类
 
 - [only used in simulator without trace]无需理睬
 - [neccessary]必须实现
