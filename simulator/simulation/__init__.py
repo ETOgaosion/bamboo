@@ -1,1 +1,1 @@
-from project_pactum.simulation.api import main
+from simulation.api import main

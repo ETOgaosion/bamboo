@@ -79,7 +79,7 @@ def generate_trace_16(file_raw, file_target):
 def plot_nodes_samples(nodes_samples, prefix):
     fig, ax = plt.subplots()
     ax.plot(range(len(nodes_samples)), nodes_samples)
-    ax.set_ylim(0, 16)
+    ax.set_ylim(0, 17)
     fig.tight_layout()
     fig.savefig(f'simulator/traces/{prefix}_nodes_samples.png')
 
@@ -95,16 +95,16 @@ def calculate_avg_nodes(file):
                 nodes.append(row[2])
     current_nodes = 0
     last_time = 0
-    for i in range(1, len(seconds)):
+    for i in range(0, len(seconds)):
         if operations[i] == 'add':
             current_nodes += 1
         elif operations[i] == 'remove':
             current_nodes -= 1
         if seconds[i] != last_time:
             nodes_samples.extend([current_nodes] * ((seconds[i] - last_time) // 10000))
-    plot_nodes_samples(nodes_samples, file.split('/')[1].split('-')[0])
+    plot_nodes_samples(nodes_samples, file.split('/')[-1].split('-')[0])
     return statistics.mean(nodes_samples)
 
 print(calculate_avg_nodes('simulator/traces/g4dn-trace-16.csv'))
-# calculate_avg_nodes('simulator/traces/p3-trace-16.csv')
+print(calculate_avg_nodes('simulator/traces/p3-trace-16.csv'))
     

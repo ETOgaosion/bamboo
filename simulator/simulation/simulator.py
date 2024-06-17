@@ -11,7 +11,7 @@ import typing
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-from project_pactum.simulation.utils import *
+from simulation.utils import *
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,5 @@
 
-from project_pactum.simulation.simulator import Simulator
-from test.bambootest.lab_res_parser import *
+from simulation.simulator import Simulator
 import math
 import csv
 import statistics

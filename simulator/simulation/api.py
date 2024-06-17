@@ -1,9 +1,9 @@
 import argparse
 import logging
 
-from project_pactum.simulation.mysimulator import MySimulator
+from simulation.mysimulator import MySimulator
 
-logger = logging.getLogger('project_pactum.simulation')
+logger = logging.getLogger('simulation')
 
 fig_directory = 'res/simulator'
 
@@ -55,9 +55,6 @@ def generate_table(model='GPT-2', spot_instance_trace='trace/p3-trace.csv', dura
         )
 
 def main(args):
-    from project_pactum.core.base import setup_logging
-    setup_logging()
-
     options = parse(args)
     print(options)
 
