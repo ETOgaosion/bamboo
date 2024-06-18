@@ -254,7 +254,8 @@ def train():
         # parser.add_argument('-H', type=int, default=12)
         # parser.add_argument('--d-head', type=int, default=64)
 
-        parser.add_argument('-seq', type=int, default=512)
+        parser.add_argument('--seq', type=int, default=512)
+        parser.add_argument('--stages', type=int, default=16)
         parser.add_argument('--parts',
                             type=str,
                             default='',
@@ -308,6 +309,12 @@ def train():
         if args.parts:
             parts = [int(p) for p in args.parts.split(',')]
             assert sum(parts) == args.N
+            parts[-1] += 2
+            parts = [0] + [sum(parts[:i]) + p for i, p in enumerate(parts)]
+        elif args.stages > 0:
+            parts = [args.N // args.stages] * args.stages
+            for i in range(args.N % args.stages):
+                parts[i] += 1
             parts[-1] += 2
             parts = [0] + [sum(parts[:i]) + p for i, p in enumerate(parts)]
         return parts

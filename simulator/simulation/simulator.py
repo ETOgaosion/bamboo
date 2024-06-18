@@ -111,6 +111,9 @@ class Simulator:
             self.r = random.Random()
         self.generate_addition_probabilities = generate_addition_probabilities
         self.removal_probability = removal_probability
+        self.start_nodes_num = 8
+        self.pipeline_parallel_size_target = 2
+        self.prev_pipeline = self.start_nodes_num // self.pipeline_parallel_size_target
 
         self.hour = datetime.timedelta(hours=1)
         self.second = datetime.timedelta(seconds=1)
@@ -235,6 +238,13 @@ class Simulator:
     # implement by child
     def simulate_iteration_delta(self):
         pass
+    
+    def active_spot_instances(self):
+        num_active_instances = 0
+        for name, instance in self.spot_instances.items():
+            if instance.is_running() or instance.is_ready():
+                num_active_instances += 1
+        return num_active_instances
 
     def info(self, delta, message):
         print(f'[{delta/1000.0:.3f}] {message}')
@@ -478,10 +488,9 @@ class Simulator:
         
         # Re-simulate the iteration delta now that we lost a node
         if self.status == SystemStatus.RUNNING:
-            if self.fallback_event is None:
-                self.fallback_event = (self.num_iterations_complete, delta)
-                self.fallback_handled = False
-                self.iteration_delta = int(self.iteration_delta * self.fallback_slowdown()) # Fucking strange
+            self.fallback_event = (self.num_iterations_complete, delta)
+            self.fallback_handled = False
+            self.iteration_delta = int(self.iteration_delta * self.fallback_slowdown()) # Fucking strange
 
     def simulate_rendezvous_start(self, delta, isGlobal):
         self.info(delta, f'simulate_rendezvous_start: {delta}')
@@ -526,6 +535,7 @@ class Simulator:
         self.rendezvous = []
         if self.data_parallel_size != 0:
             self.status = SystemStatus.RUNNING
+            self.prev_pipeline = self.active_spot_instances() // self.pipeline_parallel_size_target
             self.simulate_iteration_delta()
             self.create_training_iteration_execute_event(delta,
                                                      self.rendezvous_version)
@@ -623,8 +633,8 @@ class Simulator:
         # If we're above a 5% chance of failure, re-configure/re-balance
         # I cannot remove an overloaded node, or the node that now has no
         # redundancy
-        if num_workers_overloaded > 0 and (2 * num_workers_overloaded / num_active_workers) > 0.05:
-            return True
+        # if num_workers_overloaded > 0 and (2 * num_workers_overloaded / num_active_workers) > 0.05:
+        #     return True
 
         # If we can add another pipeline, do it
         potential_data_parallel_size = (num_active_workers + num_workers_waiting) // self.pipeline_parallel_size_target

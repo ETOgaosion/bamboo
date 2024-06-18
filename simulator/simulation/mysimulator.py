@@ -11,10 +11,7 @@ class MySimulator(Simulator):
     
         # Amazon EC2 Tesla T4
         if model == 'GPT-3':
-            # start execution when the number of arrived nodes is 8
-            self.start_nodes_num = 8
             # the number of nodes that can be added at a time, bamboo do lazy reconfigure, not reconfig every time
-            self.pipeline_parallel_size_target = 2
             self.global_batch_size = 1024
         
         # prepare for first time launch
@@ -54,7 +51,10 @@ class MySimulator(Simulator):
 
     def fallback_slowdown(self):
         # nodes fail and slowdown ration, seems a garbage design
-        return self.pipeline_parallel_size / (self.pipeline_parallel_size - 1)
+        pipelines = self.active_spot_instances() // self.pipeline_parallel_size_target
+        res = self.prev_pipeline / pipelines
+        self.prev_pipeline = pipelines
+        return res
 
     def simulate_iteration_delta(self):
         # iteration time

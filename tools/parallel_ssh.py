@@ -133,9 +133,9 @@ def execute_command(nodes):
 
 # execute_command(8)
 # execute_command(10)
-execute_command(12)
+# execute_command(12)
 # execute_command(14)
 # execute_command(16)
 
-# for nodes in required_nodes:
-#     execute_command(nodes)
+for nodes in required_nodes:
+    execute_command(nodes)
