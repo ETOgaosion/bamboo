@@ -28,11 +28,11 @@ cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	--default-num-stages=${NUM_STAGES} \
 	${MODEL}.py \
 	-s 20 \
-	--seq ${SEQ_LEN} \
+	--seq=${SEQ_LEN} \
 	--stages=${NUM_STAGES} \
 	--backend=nccl \
 	--redundancy_level=1 \
-	${@:5} \
+	${@:7} \
 	--deepspeed \
 	--deepspeed_config ${MODEL}_${MICRO_BATCH_SIZE}.json"""
 
