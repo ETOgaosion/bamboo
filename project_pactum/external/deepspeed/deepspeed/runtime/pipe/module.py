@@ -138,6 +138,9 @@ class PipelineModule(nn.Module):
         """
 
         super().__init__()
+        
+        for name, param in layers.named_parameters():
+            print(f'name: {name}, param.size: {param.size()}')
 
         if num_stages is None and topology is None:
             raise RuntimeError('must provide num_stages or topology')
