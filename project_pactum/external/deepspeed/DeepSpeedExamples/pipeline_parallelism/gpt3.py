@@ -311,7 +311,7 @@ def train():
             assert sum(parts) == args.N
             parts[-1] += 2
             parts = [0] + [sum(parts[:i]) + p for i, p in enumerate(parts)]
-        elif args.stages > 0:
+        elif args.nodes > 0:
             parts = [args.N // args.nodes] * args.nodes
             for i in range(args.N % args.nodes):
                 parts[i] += 1
