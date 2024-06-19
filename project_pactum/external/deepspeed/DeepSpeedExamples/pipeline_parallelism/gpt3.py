@@ -306,6 +306,7 @@ def train():
 
     def gen_parts(args):
         parts = []
+        return parts
         if args.parts:
             parts = [int(p) for p in args.parts.split(',')]
             assert sum(parts) == args.N
