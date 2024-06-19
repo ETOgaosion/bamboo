@@ -319,6 +319,7 @@ def train():
             parts = [0] + [sum(parts[:i]) + p for i, p in enumerate(parts)]
         return parts
     parts = gen_parts(args)
+    print(f'parts: {parts}')
 
     layers = make_model(args.N, args.d_model, args.d_ff, args.H).join_layers()
     model = PipelineModule(layers=layers,
