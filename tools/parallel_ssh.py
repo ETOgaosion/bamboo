@@ -6,12 +6,14 @@ import math
 Hint: Modify these Configurations only
 All functions are extendable
 '''
-gpus_per_nodes = 4
-required_nodes = [8, 10, 12, 14, 16]
-# required_nodes = [8, 10, 12, 14, 16, 20, 24, 28, 32]
-required_data_parallel_size = [2, 2, 4, 2, 4]
-# required_data_parallel_size = [2, 2, 4, 2, 4, 4, 8, 4, 8]
-required_micro_batch_size = [4, 4, 4, 8, 8]
+gpus_per_nodes = 8
+required_nodes = [4, 8, 10, 12, 14, 16]
+# required_nodes = [4, 8, 10, 12, 14, 16, 20, 24, 28, 32]
+required_data_parallel_size = [1, 2, 2, 4, 2, 4]
+# required_data_parallel_size = [1, 2, 2, 4, 2, 4, 4, 8, 4, 8]
+required_micro_batch_size = [1, 2, 2, 2, 4, 4]
+# required_micro_batch_size = [1, 2, 2, 2, 4, 4, 8, 4, 8, 8]
+# required_micro_batch_size = [4, 4, 4, 8, 8]
 # required_micro_batch_size = [4, 4, 4, 8, 8, 16, 8, 16, 16]
 hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46']
 localhost_ip = '10.20.23.90'
@@ -87,6 +89,18 @@ for k, nodes in enumerate(required_nodes):
         cards_number[nodes] = [3] * 4
         continue
     
+    if nodes == 4:
+        for i in range(required_hosts_left):
+            all_hosts[nodes].append(hosts[required_hosts - 1])
+            all_clients[nodes].append(clients[hosts[required_hosts - 1]][i])
+            all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-master.sh ' + 
+                                        str(i) + ' ' +                                           # cur gpu
+                                        str(nodes) + ' ' +                                       # num nodes
+                                        str(nodes // required_data_parallel_size[k]) + ' ' +     # num stages
+                                        str(required_hosts_int * gpus_per_nodes + i) + ' ' +     # global rank
+                                        str(required_micro_batch_size[k]))                       # micro batch size
+        continue
+        
     for i in range(required_hosts_int):
         all_hosts[nodes].extend([hosts[i]] * gpus_per_nodes)
         all_clients[nodes].extend(clients[hosts[i]])
@@ -131,7 +145,8 @@ def execute_command(nodes):
         client.wait_finished(output[k])
     print('Finish ', nodes, ' nodes')
 
-execute_command(8)
+# execute_command(8)
+# execute_command(4)
 # execute_command(10)
 # execute_command(12)
 # execute_command(14)

@@ -24,7 +24,41 @@ def read_trace(file):
                 nodes.append(row[2])
         return seconds, operations, nodes
 
-def mmodify_trace(seconds, operations, nodes):
+def reconfigure_case(file):
+    print(file)
+    seconds, operations, nodes = read_trace(file)
+    aggregate = []
+    last_second = seconds[0]
+    num_nodes = 0
+    for i in range(len(seconds)):
+        if seconds[i] == last_second:
+            num_nodes += 1
+        else:
+            aggregate.append([last_second, operations[i - 1], num_nodes])
+            num_nodes = 1
+            last_second = seconds[i]
+    # pprint.pp(aggregate)
+    cases = []
+    diff_cases = {}
+    num_nodes = aggregate[0][2]
+    for i in range(1, len(aggregate)):
+        before = num_nodes
+        if aggregate[i][1] == 'add':
+            num_nodes += aggregate[i][2]
+        else:
+            num_nodes -= aggregate[i][2]
+        cases.append({'second': aggregate[i][0], 'before': before, 'after': num_nodes})
+        diff_cases['before:' + str(before) + ' -> after:' + str(num_nodes)] = True
+        # print(cases[-1])
+    pprint.pp(list(diff_cases.keys()))
+    return cases
+
+reconfigure_case('simulator/traces/g4dn-trace-16.csv')
+reconfigure_case('simulator/traces/g4dn-trace.csv')
+reconfigure_case('simulator/traces/p3-trace-16.csv')
+reconfigure_case('simulator/traces/p3-trace.csv')
+
+def modify_trace(seconds, operations, nodes):
     trace = []
     current_node_num = 0
     included_nodes = {}
@@ -62,7 +96,7 @@ def regenerate_trace(trace, file):
 
 def generate_trace_16(file_raw, file_target):
     seconds, operations, nodes = read_trace(file_raw)
-    trace = mmodify_trace(seconds, operations, nodes)
+    trace = modify_trace(seconds, operations, nodes)
     print(trace)
     after_rewrite_trace = rewrite_node_number(trace)
     print(after_rewrite_trace)
@@ -105,6 +139,6 @@ def calculate_avg_nodes(file):
     plot_nodes_samples(nodes_samples, file.split('/')[-1].split('-')[0])
     return statistics.mean(nodes_samples)
 
-print(calculate_avg_nodes('simulator/traces/g4dn-trace-16.csv'))
-print(calculate_avg_nodes('simulator/traces/p3-trace-16.csv'))
+# print(calculate_avg_nodes('simulator/traces/g4dn-trace-16.csv'))
+# print(calculate_avg_nodes('simulator/traces/p3-trace-16.csv'))
     
