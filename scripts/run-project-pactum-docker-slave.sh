@@ -6,6 +6,7 @@ NUM_STAGES=${3:-16}
 GLOBAL_RANK=${4}
 MICRO_BATCH_SIZE=${5:-8}
 SEQ_LEN=${6:-512}
+LAYERS=${7:-24}
 # REBUILD=${6}
 
 # if [ $CUR_NODE -eq 0 ]; then
@@ -18,7 +19,7 @@ SEQ_LEN=${6:-512}
 mkdir -p "res/lab/nodes_$NUM_NODES"
 
 cmd="""docker run --net "host" --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
-    /bin/bash -c './scripts/run-project-pactum-slave.sh $NUM_NODES $NUM_STAGES $GLOBAL_RANK $MICRO_BATCH_SIZE $SEQ_LEN' > res/lab/nodes_$NUM_NODES/node_$CUR_NODE.txt 2>&1"""
+    /bin/bash -c './scripts/run-project-pactum-slave.sh $NUM_NODES $NUM_STAGES $GLOBAL_RANK $MICRO_BATCH_SIZE $SEQ_LEN $LAYERS' > res/lab/nodes_$NUM_NODES/node_$CUR_NODE.txt 2>&1"""
 
 # cmd="""docker run --rm -it --net "host" --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
 #     /bin/bash -c './scripts/run-project-pactum-slave.sh $NUM_NODES $NUM_STAGES'"""

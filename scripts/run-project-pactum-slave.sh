@@ -7,8 +7,9 @@ NUM_STAGES=${2:-16}
 GLOBAL_RANK=${3}
 MICRO_BATCH_SIZE=${4:-8}
 SEQ_LEN=${5:-512}
-RDZV_IP=${6:-10.20.23.90}
-ID=encoder${7}
+LAYERS=${6:-24}
+RDZV_IP=${7:-10.20.23.90}
+ID=encoder${8}
 
 MODEL=${CURRENT_PATH}/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/gpt3
 
@@ -30,10 +31,11 @@ cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	--default-num-stages=${NUM_STAGES} \
 	${MODEL}.py \
 	-s 4 \
+	-N ${LAYERS} \
 	--nodes=${NUM_NODES} \
 	--backend=nccl \
 	--redundancy_level=1 \
-	${@:8} \
+	${@:9} \
 	--deepspeed \
 	--deepspeed_config ${MODEL}_${MICRO_BATCH_SIZE}.json"""
 

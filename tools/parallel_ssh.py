@@ -7,15 +7,20 @@ Hint: Modify these Configurations only
 All functions are extendable
 '''
 gpus_per_nodes = 8
-required_nodes = [4, 8, 10, 12, 14, 16]
+required_nodes = [4, 8, 12, 16, 20, 24]
 # required_nodes = [4, 8, 10, 12, 14, 16, 20, 24, 28, 32]
-required_data_parallel_size = [1, 2, 2, 4, 2, 4]
+required_pipeline_parallel_size = 4
+required_data_parallel_size = []
+for i in required_nodes:
+    required_data_parallel_size.append(i // required_pipeline_parallel_size)
+# required_data_parallel_size = [1, 2, 2, 4, 2, 4]
 # required_data_parallel_size = [1, 2, 2, 4, 2, 4, 4, 8, 4, 8]
-required_micro_batch_size = [1, 2, 2, 2, 4, 4]
+required_micro_batch_size = [1, 2, 2, 2, 4, 1]
 # required_micro_batch_size = [1, 2, 2, 2, 4, 4, 8, 4, 8, 8]
 # required_micro_batch_size = [4, 4, 4, 8, 8]
 # required_micro_batch_size = [4, 4, 4, 8, 8, 16, 8, 16, 16]
-hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46']
+hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46', '10.20.23.42', '10.20.23.47']
+# hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46']
 localhost_ip = '10.20.23.90'
 project_dir = '/home/gaoziyuan/project/bamboo'
 user = 'gaoziyuan'
@@ -146,11 +151,12 @@ def execute_command(nodes):
     print('Finish ', nodes, ' nodes')
 
 # execute_command(8)
-# execute_command(4)
 # execute_command(10)
 # execute_command(12)
 # execute_command(14)
 # execute_command(16)
+# execute_command(20)
+execute_command(24)
 
 # for nodes in required_nodes:
 #     execute_command(nodes)
