@@ -30,7 +30,7 @@ cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	--default-num-stages=${NUM_STAGES} \
 	${MODEL}.py \
 	-s 4 \
-	--seq=${SEQ_LEN} \
+	--nodes=${NUM_NODES} \
 	--stages=${NUM_STAGES} \
 	--backend=nccl \
 	--redundancy_level=1 \
