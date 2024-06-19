@@ -29,7 +29,6 @@ cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	${MODEL}.py \
 	-s 20 \
 	--nodes=${NUM_NODES} \
-	--stages=${NUM_STAGES} \
 	--backend=nccl \
 	--redundancy_level=1 \
 	${@:7} \
