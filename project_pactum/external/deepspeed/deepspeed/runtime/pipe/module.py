@@ -138,9 +138,6 @@ class PipelineModule(nn.Module):
         """
 
         super().__init__()
-        
-        for name, param in layers.named_parameters():
-            print(f'name: {name}, param.size: {param.size()}')
 
         if num_stages is None and topology is None:
             raise RuntimeError('must provide num_stages or topology')
@@ -218,6 +215,9 @@ class PipelineModule(nn.Module):
 
         self.activation_checkpoint_interval = activation_checkpoint_interval
         self.activation_checkpoint_func = activation_checkpoint_func
+        
+        for name, param in self.named_parameters():
+            print(f'name: {name}, param.size: {param.size()}')
         print('finish pipeline module init')
 
     def get_named_param(self, stage_id):
