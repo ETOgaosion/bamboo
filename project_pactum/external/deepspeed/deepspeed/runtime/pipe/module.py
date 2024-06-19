@@ -611,6 +611,8 @@ class PipelineModule(nn.Module):
             raise NotImplementedError(f'Partitioning method {method} not implemented.')
         else:
             raise NotImplementedError(f'Partitioning method {method} not implemented.')
+        
+        print(f'self.parts: {self.parts}')
 
         # Print some information on the partitioning.
         if self.global_rank == 0:
