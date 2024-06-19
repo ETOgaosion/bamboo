@@ -2,11 +2,11 @@
 
 CURRENT_PATH=$(pwd)
 
-NUM_NODES=${1:-16}
-NUM_STAGES=${2:-16}
-GLOBAL_RANK=${3}
-MICRO_BATCH_SIZE=${4:-8}
-SEQ_LEN=${5:-512}
+GLOBAL_RANK=${1}
+MICRO_BATCH_SIZE=${2:-2}
+NUM_NODES=${3:-8}
+NUM_STAGES=${4:-8}
+SEQ_LEN=${5:-2048}
 RDZV_IP=${6:-localhost}
 ID=encoder${7}
 

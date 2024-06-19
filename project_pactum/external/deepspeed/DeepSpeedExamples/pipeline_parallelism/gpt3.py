@@ -233,11 +233,25 @@ def train():
         parser.add_argument('--seed', type=int, default=1138, help='PRNG seed')
 
         # Model config args
+        # GPT-3 6.7B
+        # parser.add_argument('-N', type=int, default=32)
+        # parser.add_argument('--d-model', '-dm', type=int, default=4096)
+        # parser.add_argument('--d-ff', '-dff', type=int, default=16384)
+        # parser.add_argument('-H', type=int, default=32)
+        # parser.add_argument('--d-head', type=int, default=128)
+        
+        # GPT-3 2.7B
+        # parser.add_argument('-N', type=int, default=32)
+        # parser.add_argument('--d-model', '-dm', type=int, default=2560)
+        # parser.add_argument('--d-ff', '-dff', type=int, default=10240)
+        # parser.add_argument('-H', type=int, default=32)
+        # parser.add_argument('--d-head', type=int, default=80)
+        
         # GPT-3 XL
         # parser.add_argument('-N', type=int, default=24)
         # parser.add_argument('--d-model', '-dm', type=int, default=2048)
         # parser.add_argument('--d-ff', '-dff', type=int, default=8192)
-        # parser.add_argument('-H', type=int, default=32)
+        # parser.add_argument('-H', type=int, default=24)
         # parser.add_argument('--d-head', type=int, default=128)
         
         # GPT-3 Medium
@@ -254,7 +268,7 @@ def train():
         # parser.add_argument('-H', type=int, default=12)
         # parser.add_argument('--d-head', type=int, default=64)
 
-        parser.add_argument('--seq', type=int, default=512)
+        parser.add_argument('--seq', type=int, default=2048)
         parser.add_argument('--nodes', type=int, default=16)
         parser.add_argument('--parts',
                             type=str,
