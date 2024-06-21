@@ -8,7 +8,7 @@ GLOBAL_RANK=${3}
 MICRO_BATCH_SIZE=${4:-8}
 SEQ_LEN=${5:-512}
 LAYERS=${6:-24}
-RDZV_IP=${7:-172.31.11.113}
+RDZV_IP=${7:-3.137.163.172}
 ID=encoder${8}
 
 MODEL=${CURRENT_PATH}/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/gpt3
@@ -17,6 +17,7 @@ echo "ARGS $RDZV_IP $ID $NUM_STAGES $GLOBAL_RANK $MODEL"
 
 cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	export NCCL_SOCKET_IFNAME=ens3 \
+	export NCCL_DEBUG=INFO \
 	export USE_BARRIER=true \
 	export PYTHONPATH=${CURRENT_PATH}/project-pactum:\${PYTHONPATH} \
 	export GLOBAL_RANK=$GLOBAL_RANK && \
