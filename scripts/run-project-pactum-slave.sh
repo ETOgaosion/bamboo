@@ -16,7 +16,7 @@ MODEL=${CURRENT_PATH}/project_pactum/external/deepspeed/DeepSpeedExamples/pipeli
 echo "ARGS $RDZV_IP $ID $NUM_STAGES $GLOBAL_RANK $MODEL"
 
 cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-	export NCCL_SOCKET_IFNAME=eno1 \
+	export NCCL_SOCKET_IFNAME=ens3 \
 	export USE_BARRIER=true \
 	export PYTHONPATH=${CURRENT_PATH}/project-pactum:\${PYTHONPATH} \
 	export GLOBAL_RANK=$GLOBAL_RANK && \
