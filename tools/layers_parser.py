@@ -74,11 +74,11 @@ for gpu in range(4):
 def generate_dict():
     json_dict['world_size'] = 16
     json_dict['layers'] = []
-    for i in range(json_dict['world_size']):
+    for i in range(8):
         subdict = {}
         subdict['sizes'] = []
         subdict['names'] = []
-        for j in range(24 // json_dict['world_size']):
+        for j in range(3):
             subdict['sizes'].extend(layer_sizes[i * j + j])
             subdict['names'].extend(layer_names[i * j + j])
         subdict['ranks'] = [i, 8 + i]
