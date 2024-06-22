@@ -1,5 +1,5 @@
 
-from simulation.simulator import Simulator
+from simulation_varu.simulator import Simulator
 import math
 import csv
 import statistics
@@ -50,16 +50,9 @@ class MySimulator(Simulator):
         # layer time model: (layers / 12) * 150s
         return 32904.7
 
-    def fallback_slowdown(self):
-        # nodes fail and slowdown ration, seems a garbage design
-        pipelines = self.active_spot_instances() // self.pipeline_parallel_size_target
-        res = self.prev_pipeline / pipelines
-        self.prev_pipeline = pipelines
-        return res
-
     def simulate_iteration_delta(self):
         # iteration time
-        self.iteration_delta = self.simulate_iteration_delta_calc(self.data_parallel_size * self.pipeline_parallel_size)
+        self.iteration_delta = self.simulate_iteration_delta_calc(self.active_spot_instances())
     
     def simulate_iteration_delta_calc(self, nodes_num):
         data = {
@@ -73,13 +66,3 @@ class MySimulator(Simulator):
             return data[nodes_num]
         else:
             return data[int(math.pow(2, math.ceil(math.log2(nodes_num))))]
-        
-    def get_real_division(self, nodes_num):
-        data = {
-            8: 2,
-            10: 2,
-            12: 4,
-            14: 2,
-            16: 4
-        }
-        return data[nodes_num], nodes_num // data[nodes_num]

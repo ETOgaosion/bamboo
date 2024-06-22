@@ -440,6 +440,8 @@ class Simulator:
         self.info(delta, f'{data["name"]} simulate_spot_instance_add: {delta}')
         name = data['name']
         self.spot_instances[name] = SpotInstance(name, delta)
+        if delta == 0:
+            self.last_spot_instance_num += 1
         self.create_spot_instance_ready_event(
             delta + self.spot_instance_creation_time,
             name,
@@ -464,37 +466,7 @@ class Simulator:
         self.spot_instance_removal_times.append(delta)
         del self.spot_instances[name]
 
-        if instance.is_running():
-            # This is a fatal failure
-            if len(instance.active_coordinates) > 1:
-                self.simulate_fatal_failure(delta, name, data)
-                return
-
-            coordinates = instance.active_coordinates[0]
-            # Find which node has my redundant coordinates
-            search = (coordinates[0], coordinates[1] - 1)
-            if search[1] == -1:
-                search = (search[0], self.pipeline_parallel_size - 1)
-            for n, i in self.spot_instances.items():
-                found = False
-                for c in i.active_coordinates:
-                    if c == search:
-                        # This node recovered previously, so it doesn't have
-                        # the redundant coordinates
-                        if len(i.active_coordinates) > 1:
-                            self.simulate_fatal_failure(delta, name)
-                            return
-                        i.active_coordinates.append(coordinates)
-                        found = True
-                        break
-                if found:
-                    break
-        
-        # Re-simulate the iteration delta now that we lost a node
-        if self.status == SystemStatus.RUNNING:
-            self.fallback_event = (self.num_iterations_complete, delta)
-            self.fallback_handled = False
-            self.iteration_delta = int(self.iteration_delta * self.fallback_slowdown()) # Fucking strange
+        self.simulate_rendezvous_start(delta, False)
 
     def simulate_rendezvous_start(self, delta, isGlobal):
         self.info(delta, f'simulate_rendezvous_start: {delta}')
@@ -503,7 +475,7 @@ class Simulator:
         if isGlobal:
             self.create_preparation_event(delta)
         else:
-            self.create_reconfigure_event(delta)
+            self.create_reconfigure_event(delta + (1/3) * self.simulate_iteration_delta())
 
     def simulate_rendezvous_restart(self, delta):
         self.info(delta, f'simulate_rendezvous_restart: {delta}')
