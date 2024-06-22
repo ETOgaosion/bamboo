@@ -16,7 +16,7 @@ class MySimulator(Simulator):
         
         # prepare for first time launch
         self.preparation_delta = 10000
-        self.check_pt_steps = 5
+        self.check_pt_steps = 10000
 
         # on demand instance config, no need to change
         def calculate_avg_nodes(file):

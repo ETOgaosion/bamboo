@@ -112,7 +112,7 @@ class Simulator:
         self.generate_addition_probabilities = generate_addition_probabilities
         self.removal_probability = removal_probability
         self.start_nodes_num = 8
-        self.pipeline_parallel_size_target = 2
+        self.pipeline_parallel_size_target = 1
         self.prev_pipeline = self.start_nodes_num // self.pipeline_parallel_size_target
         self.last_spot_instance_num = 0
 
@@ -475,7 +475,8 @@ class Simulator:
         if isGlobal:
             self.create_preparation_event(delta)
         else:
-            self.create_reconfigure_event(delta + (1/3) * self.simulate_iteration_delta())
+            self.last_spot_instance_num = self.active_spot_instances()
+            self.create_reconfigure_event(delta)
 
     def simulate_rendezvous_restart(self, delta):
         self.info(delta, f'simulate_rendezvous_restart: {delta}')
@@ -486,7 +487,7 @@ class Simulator:
                 self.rendezvous.append(name)
 
     def simulate_preparation_common(self, delta):
-        self.info(delta, f'simulate_preparation: {delta}')
+        self.info(delta, f'simulate_preparation: {delta} {self.rendezvous}')
         for i, name in enumerate(self.rendezvous):
             if name not in self.spot_instances:
                 self.info(
@@ -502,7 +503,7 @@ class Simulator:
         self.fallback_event = None
         self.fallback_handled = False
         self.rendezvous_version += 1
-        self.info(
+        print(
             delta,
             f'{len(self.rendezvous)} nodes completed rendezvous version '
             f'{self.rendezvous_version}, '
@@ -546,11 +547,12 @@ class Simulator:
         self.simulate_preparation_common(delta)
 
     def simulate_reconfigure(self, delta):
-        self.info(delta, f'simulate_reconfigure: {delta}')
-        self.simulate_preparation_common(delta)
+        if len(self.rendezvous) > 0:
+            self.info(delta, f'simulate_reconfigure: {delta}')
+            self.simulate_preparation_common(delta)
 
     def simulate_assign_coordinates(self, delta):
-        self.info(delta, f'simulate_assign_coordinates')
+        self.info(delta, f'simulate_assign_coordinates {self.rendezvous}')
         if len(self.rendezvous) < self.pipeline_parallel_size_target:
             data_parallel_size = 0
             pipeline_parallel_size = 0
@@ -596,6 +598,7 @@ class Simulator:
 
     def simulate_should_reconfigure(self):
         if self.last_spot_instance_num != self.active_spot_instances():
+            self.cur_iteration = 1
             return True
 
         if self.cur_iteration == self.check_pt_steps:
@@ -607,22 +610,12 @@ class Simulator:
         return False
 
     def simulate_training_iteration_execute(self, delta, data):
+        # print(f'simulate training iteration execution')
         rendezvous_version = data['rendezvous_version']
         if rendezvous_version != self.rendezvous_version:
             return
 
         # Handle fallback events
-        if self.fallback_event is not None:
-            event_num_iterations_complete, event_delta = self.fallback_event
-            if not self.fallback_handled and event_num_iterations_complete == self.num_iterations_complete:
-                # The duration we need to add to handle the fallback
-                d = int((delta - event_delta) * (self.fallback_slowdown() - 1.0))
-                self.create_training_iteration_execute_event_absolute(
-                    d + delta,
-                    rendezvous_version
-                )
-                self.fallback_handled = True
-                return
 
         self.num_iterations_complete += 1
 

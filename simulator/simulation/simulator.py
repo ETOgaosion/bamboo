@@ -499,7 +499,8 @@ class Simulator:
         if isGlobal:
             self.create_preparation_event(delta)
         else:
-            self.create_reconfigure_event(delta)
+            self.simulate_iteration_delta()
+            self.create_reconfigure_event(delta + (1/3) * self.iteration_delta)
 
     def simulate_rendezvous_restart(self, delta):
         self.info(delta, f'simulate_rendezvous_restart: {delta}')
