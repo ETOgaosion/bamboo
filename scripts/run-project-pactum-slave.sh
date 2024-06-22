@@ -17,7 +17,6 @@ echo "ARGS $RDZV_IP $ID $NUM_STAGES $GLOBAL_RANK $MODEL"
 
 cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	export NCCL_SOCKET_IFNAME=ens5 \
-	export NCCL_DEBUG=INFO \
 	export USE_BARRIER=true \
 	export PYTHONPATH=${CURRENT_PATH}/project-pactum:\${PYTHONPATH} \
 	export GLOBAL_RANK=$GLOBAL_RANK && \
