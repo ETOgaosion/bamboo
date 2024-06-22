@@ -6,7 +6,7 @@ NUM_NODES=${1:-16}
 NUM_STAGES=${2:-16}
 MICRO_BATCH_SIZE=${3:-8}
 SEQ_LEN=${4:-512}
-RDZV_IP=${5:-10.20.23.90}
+RDZV_IP=${5:-172.31.8.235}
 ID=encoder${6}
 
 MODEL=${CURRENT_PATH}/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/gpt3
