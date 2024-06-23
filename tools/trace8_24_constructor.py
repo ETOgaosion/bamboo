@@ -63,7 +63,7 @@ def modify_trace(seconds, operations, nodes):
     current_node_num = 0
     included_nodes = {}
     for i in range(len(seconds)):
-        if operations[i] == 'add' and current_node_num < 16:
+        if operations[i] == 'add' and current_node_num < 24:
             trace.append([seconds[i], operations[i], nodes[i]])
             included_nodes[nodes[i]] = True
             current_node_num += 1
@@ -94,7 +94,7 @@ def regenerate_trace(trace, file):
         for line in trace:
             spamwriter.writerow(line)
 
-def generate_trace_16(file_raw, file_target):
+def generate_trace_8_24(file_raw, file_target):
     seconds, operations, nodes = read_trace(file_raw)
     trace = modify_trace(seconds, operations, nodes)
     print(trace)
@@ -104,15 +104,22 @@ def generate_trace_16(file_raw, file_target):
 
 
 # generate_trace_16('simulator/traces/g4dn-trace.csv', 'simulator/traces/g4dn-trace-16.csv')
-# generate_trace_16('simulator/traces/p3-trace.csv', 'simulator/traces/p3-trace-16.csv')
+generate_trace_8_24('simulator/traces/p3-trace.csv', 'simulator/traces/p3-trace-8-24.csv')
 
 
 '''
 16 nodes handler
 '''
-def plot_nodes_samples(nodes_samples, prefix):
+def plot_nodes_samples(seconds, nodes_samples, prefix):
     fig, ax = plt.subplots()
-    ax.plot(range(len(nodes_samples)), nodes_samples)
+    new_seconds, new_nodes = [], []
+    for idx, second in enumerate(seconds):
+        new_seconds.append(second)
+        new_nodes.append(nodes_samples[idx])
+        if idx < len(seconds) - 1:
+            new_seconds.append(seconds[idx + 1])
+            new_nodes.append(nodes_samples[idx])
+    ax.plot(new_seconds, new_nodes)
     ax.set_ylim(0, max(nodes_samples) + 1)
     fig.tight_layout()
     fig.savefig(f'simulator/traces/{prefix}_nodes_samples.png')
@@ -128,19 +135,24 @@ def calculate_stats_nodes(file):
                 operations.append(row[1])
                 nodes.append(row[2])
     current_nodes = 0
-    last_time = 0
+    seconds_norepeat = []
     for i in range(0, len(seconds)):
+        if len(seconds_norepeat) > 0 and seconds_norepeat[-1] != seconds[i]:
+            nodes_samples.append(current_nodes)
+            seconds_norepeat.append(seconds[i])
         if operations[i] == 'add':
             current_nodes += 1
         elif operations[i] == 'remove':
             current_nodes -= 1
-        if seconds[i] != last_time:
-            nodes_samples.extend([current_nodes] * ((seconds[i] - last_time) // 10000))
-    plot_nodes_samples(nodes_samples, file.split('/')[-1].split('-')[0])
+        if len(seconds_norepeat) == 0:
+            seconds_norepeat.append(seconds[i])
+    nodes_samples.append(current_nodes)
+    print(dict(zip(seconds_norepeat, nodes_samples)))
+    plot_nodes_samples(seconds_norepeat, nodes_samples, file.split('/')[-1].split('-')[0])
     return max(nodes_samples), min(nodes_samples), statistics.mean(nodes_samples)
 
-print(calculate_stats_nodes('simulator/traces/g4dn-trace.csv'))
-print(calculate_stats_nodes('simulator/traces/p3-trace.csv'))
+# print(calculate_stats_nodes('simulator/traces/g4dn-trace.csv'))
+print(calculate_stats_nodes('simulator/traces/p3-trace-8-24.csv'))
 
 # print(calculate_stats_nodes('simulator/traces/g4dn-trace-16.csv'))
 # print(calculate_stats_nodes('simulator/traces/p3-trace-16.csv'))

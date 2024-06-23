@@ -21,7 +21,7 @@ for i in required_nodes:
 # required_data_parallel_size = [1, 2, 2, 4, 2, 4, 4, 8, 4, 8]
 # required_micro_batch_size = [1, 2, 2, 2, 4, 1]
 # required_micro_batch_size = [2, 2, 4, 4, 4]
-required_micro_batch_size = [2, 2, 4]
+required_micro_batch_size = [1, 1, 2]
 sequence_len = 1024
 
 hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46', '10.20.23.42', '10.20.23.47']
@@ -183,14 +183,14 @@ def execute_command(nodes):
         client.wait_finished(output[k])
     print('Finish ', nodes, ' nodes')
 
-# execute_command(8)
+execute_command(8)
 # execute_command(10)
 # execute_command(12)
 # execute_command(14)
 # execute_command(16)
 # execute_command(20)
-# execute_command(16)
-execute_command(24)
+execute_command(16)
+# execute_command(24)
 # execute_command(32)
 
 # for nodes in required_nodes:

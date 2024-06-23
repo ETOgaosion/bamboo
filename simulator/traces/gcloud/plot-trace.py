@@ -6,7 +6,6 @@ from matplotlib.ticker import StrMethodFormatter
 
 size = 'xx-large'
 params = {
-    'font.family': 'Inter',
     'legend.fontsize': size,
     'axes.labelsize': size,
     'axes.titlesize': size,
