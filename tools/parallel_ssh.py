@@ -1,6 +1,8 @@
 from pssh.clients import ParallelSSHClient, SSHClient
 import pprint
 import math
+import signal
+import sys
 
 '''
 Hint: Modify these Configurations only
@@ -69,6 +71,12 @@ def kill_all():
         print(line)
     
 # kill_all()
+
+def signal_handler(sig, frame):
+    kill_all()
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
 
 clients = {}
 for host in hosts:

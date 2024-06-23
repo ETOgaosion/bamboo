@@ -16,7 +16,7 @@ MODEL=${CURRENT_PATH}/project_pactum/external/deepspeed/DeepSpeedExamples/pipeli
 echo "ARGS $RDZV_IP $ID $NUM_STAGES $GLOBAL_RANK $MODEL"
 
 cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-	export NCCL_SOCKET_IFNAME=ens5 \
+	export NCCL_SOCKET_IFNAME=eno1 \
 	export LD_LIBRARY_PATH=/opt/nccl/build/lib:/usr/local/cuda/lib64:/opt/amazon/efa/lib:/opt/amazon/openmpi/lib:/opt/aws-ofi-nccl/lib:$LD_LIBRARY_PATH \
 	export FI_EFA_USE_DEVICE_RDMA=1 \
 	export USE_BARRIER=true \
