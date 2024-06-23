@@ -50,6 +50,9 @@ def clear_etcd():
     localhostclient.wait_finished(output)
 
 clients_hosts = ParallelSSHClient(hosts, pkey=pkey, user=user, password=password)
+seperate_clients_hosts = []
+for host in hosts:
+    seperate_clients_hosts.append(ParallelSSHClient([host], pkey=pkey, user=user, password=password))
 
 def preparation():
     output_git_pull = clients_hosts.run_command('cd ' + project_dir + ' && git pull origin main')
@@ -60,15 +63,17 @@ def preparation():
 # preparation()
 
 def kill_all():
-    output = clients_hosts.run_command('pkill -f "project_pactum"', sudo=True)
-    for host_out in output:
-        host_out.stdin.write('gzy2024\n')
-        host_out.stdin.flush()
-    clients_hosts.join(output)
-    for line in host_out.stdout:
-        print(line)
-    for line in host_out.stderr:
-        print(line)
+    for host in seperate_clients_hosts:
+        print(host)
+        output = host.run_command('ps aux | grep project_pactum | grep -v grep | awk "{print \$2}" | sudo xargs kill -9 ', sudo=True)
+        for host_out in output:
+            host_out.stdin.write('gzy2024\n')
+            host_out.stdin.flush()
+        host.join(output)
+        for line in host_out.stdout:
+            print(line)
+        for line in host_out.stderr:
+            print(line)
     
 # kill_all()
 
@@ -160,9 +165,9 @@ for k, nodes in enumerate(required_nodes):
     if required_hosts_left != 0:
         cards_number[nodes].append(required_hosts_left)
 
-pprint.pp(all_hosts)
-pprint.pp(all_commands)
-pprint.pp(cards_number)
+# pprint.pp(all_hosts)
+# pprint.pp(all_commands)
+# pprint.pp(cards_number)
 
 
 '''
@@ -190,3 +195,5 @@ execute_command(24)
 
 # for nodes in required_nodes:
 #     execute_command(nodes)
+
+kill_all()
