@@ -6,10 +6,10 @@ import math
 Hint: Modify these Configurations only
 All functions are extendable
 '''
-gpus_per_nodes = 8
+gpus_per_nodes = 4
 # required_nodes = [4, 8, 12, 16, 20, 24]
 # required_nodes = [16, 20, 24, 28, 32]
-required_nodes = [16, 24, 32]
+required_nodes = [8, 16, 24]
 # required_pipeline_parallel_size = 4
 required_pipeline_parallel_size = 8
 required_data_parallel_size = []
@@ -19,9 +19,11 @@ for i in required_nodes:
 # required_data_parallel_size = [1, 2, 2, 4, 2, 4, 4, 8, 4, 8]
 # required_micro_batch_size = [1, 2, 2, 2, 4, 1]
 # required_micro_batch_size = [2, 2, 4, 4, 4]
-required_micro_batch_size = [1, 1, 2]
-# hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46', '10.20.23.42', '10.20.23.47']
-hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46']
+required_micro_batch_size = [2, 2, 4]
+sequence_len = 1024
+
+hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46', '10.20.23.42', '10.20.23.47']
+# hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46']
 localhost_ip = '10.20.23.90'
 project_dir = '/home/gaoziyuan/project/bamboo'
 user = 'gaoziyuan'
@@ -55,6 +57,19 @@ def preparation():
 
 # preparation()
 
+def kill_all():
+    output = clients_hosts.run_command('pkill -f "project_pactum"', sudo=True)
+    for host_out in output:
+        host_out.stdin.write('gzy2024\n')
+        host_out.stdin.flush()
+    clients_hosts.join(output)
+    for line in host_out.stdout:
+        print(line)
+    for line in host_out.stderr:
+        print(line)
+    
+# kill_all()
+
 clients = {}
 for host in hosts:
     clients[host] = [SSHClient(host, pkey=pkey, user=user, password=password)] * gpus_per_nodes
@@ -86,12 +101,13 @@ for k, nodes in enumerate(required_nodes):
                 role = 'slave'
                 if i == 0:
                     role = 'master'
-                all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-' + role + '.sh ' +
+                all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-' + role + '-pssh.sh ' +
                                             str(j) + ' ' +                                           # cur gpu
                                             str(nodes) + ' ' +                                       # num nodes
                                             str(nodes // required_data_parallel_size[k]) + ' ' +     # num stages
                                             str(i * 3 + j) + ' ' +                      # global rank
-                                            str(required_micro_batch_size[k]))                       # micro batch size
+                                            str(required_micro_batch_size[k]) + ' ' +                # micro batch size
+                                            str(sequence_len))                                       # sequence len
         cards_number[nodes] = [3] * 4
         continue
     
@@ -99,12 +115,13 @@ for k, nodes in enumerate(required_nodes):
         for i in range(required_hosts_left):
             all_hosts[nodes].append(hosts[required_hosts - 1])
             all_clients[nodes].append(clients[hosts[required_hosts - 1]][i])
-            all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-master.sh ' + 
+            all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-master-pssh.sh ' + 
                                         str(i) + ' ' +                                           # cur gpu
                                         str(nodes) + ' ' +                                       # num nodes
                                         str(nodes // required_data_parallel_size[k]) + ' ' +     # num stages
                                         str(required_hosts_int * gpus_per_nodes + i) + ' ' +     # global rank
-                                        str(required_micro_batch_size[k]))                       # micro batch size
+                                        str(required_micro_batch_size[k]) + ' ' +                # micro batch size
+                                        str(sequence_len))                                       # sequence len
         continue
         
     for i in range(required_hosts_int):
@@ -114,21 +131,23 @@ for k, nodes in enumerate(required_nodes):
             role = 'slave'
             if i == 0:
                 role = 'master'
-            all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-' + role + '.sh ' + 
+            all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-' + role + '-pssh.sh ' + 
                                        str(j) + ' ' +                                           # cur gpu
                                        str(nodes) + ' ' +                                       # num nodes
                                        str(nodes // required_data_parallel_size[k]) + ' ' +     # num stages
                                        str(i * gpus_per_nodes + j) + ' ' +                      # global rank
-                                       str(required_micro_batch_size[k]))                       # micro batch size
+                                       str(required_micro_batch_size[k]) + ' ' +                # micro batch size
+                                       str(sequence_len))                                       # sequence len
     for i in range(required_hosts_left):
         all_hosts[nodes].append(hosts[required_hosts - 1])
         all_clients[nodes].append(clients[hosts[required_hosts - 1]][i])
-        all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-slave.sh ' + 
+        all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-slave-pssh.sh ' + 
                                     str(i) + ' ' +                                           # cur gpu
                                     str(nodes) + ' ' +                                       # num nodes
                                     str(nodes // required_data_parallel_size[k]) + ' ' +     # num stages
                                     str(required_hosts_int * gpus_per_nodes + i) + ' ' +     # global rank
-                                    str(required_micro_batch_size[k]))                       # micro batch size
+                                    str(required_micro_batch_size[k]) + ' ' +                # micro batch size
+                                    str(sequence_len))                                       # sequence len
     cards_number[nodes] = [gpus_per_nodes] * required_hosts_int
     if required_hosts_left != 0:
         cards_number[nodes].append(required_hosts_left)
@@ -157,9 +176,9 @@ def execute_command(nodes):
 # execute_command(14)
 # execute_command(16)
 # execute_command(20)
-execute_command(16)
+# execute_command(16)
 execute_command(24)
-execute_command(32)
+# execute_command(32)
 
 # for nodes in required_nodes:
 #     execute_command(nodes)
