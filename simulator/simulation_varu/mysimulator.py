@@ -6,8 +6,8 @@ import statistics
 
 class MySimulator(Simulator):
     def __init__(self, seed=None, start_hour=None,
-                 model='GPT-3', spot_instance_trace='traces/p3-trace-16.csv', generate_addition_probabilities=False, removal_probability=None, generate_graphs=False):
-        super().__init__(seed, start_hour, model, spot_instance_trace, generate_addition_probabilities, removal_probability, generate_graphs)
+                 model='GPT-3', model_size='350M', spot_instance_trace='traces/p3-trace-16.csv', generate_addition_probabilities=False, removal_probability=None, generate_graphs=False):
+        super().__init__(seed, start_hour, model, model_size, spot_instance_trace, generate_addition_probabilities, removal_probability, generate_graphs)
     
         # Amazon EC2 Tesla T4
         if model == 'GPT-3':
@@ -29,14 +29,18 @@ class MySimulator(Simulator):
                         operations.append(row[1])
                         nodes.append(row[2])
             current_nodes = 0
-            last_time = 0
-            for i in range(1, len(seconds)):
+            seconds_norepeat = []
+            for i in range(0, len(seconds)):
+                if len(seconds_norepeat) > 0 and seconds_norepeat[-1] != seconds[i]:
+                    nodes_samples.append(current_nodes)
+                    seconds_norepeat.append(seconds[i])
                 if operations[i] == 'add':
                     current_nodes += 1
                 elif operations[i] == 'remove':
                     current_nodes -= 1
-                if seconds[i] != last_time:
-                    nodes_samples.extend([current_nodes] * ((seconds[i] - last_time) // 10000))
+                if len(seconds_norepeat) == 0:
+                    seconds_norepeat.append(seconds[i])
+            nodes_samples.append(current_nodes)
             return statistics.mean(nodes_samples)
     
         self.on_demand_num_instances = int(math.pow(2, math.ceil(math.log2(calculate_avg_nodes(spot_instance_trace)))))

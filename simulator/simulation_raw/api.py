@@ -4,7 +4,7 @@ import multiprocessing
 import statistics
 import operator
 
-from project_pactum.simulation_raw.simulator import Simulator
+from simulation_raw.simulator import Simulator
 
 logger = logging.getLogger('project_pactum.simulation')
 
@@ -146,9 +146,6 @@ def generate_table():
         )
 
 def main(args):
-    from project_pactum.core.base import setup_logging
-    setup_logging()
-
     options = parse(args)
 
     assert not (options.generate_graphs and options.generate_table)

@@ -1,7 +1,7 @@
 import argparse
 import logging
 
-from simulation_varu.mysimulator import MySimulator
+from simulation_nore.mysimulator import MySimulator
 
 logger = logging.getLogger('simulation')
 

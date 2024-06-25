@@ -126,9 +126,6 @@ class Simulator:
         self.millisecond = datetime.timedelta(milliseconds=1)
         self.milliseconds_per_second = self.second / self.millisecond
         self.milliseconds_per_hour = self.hour / self.millisecond
-        
-        self.check_pt_steps = 5
-        self.cur_iteration = 1
 
         self.spot_instance_name_format = 'node{id}'
         self.spot_instance_next_id = 1
@@ -603,14 +600,7 @@ class Simulator:
 
     def simulate_should_reconfigure(self):
         if self.last_spot_instance_num != self.active_spot_instances():
-            self.cur_iteration = 1
             return True
-
-        if self.cur_iteration == self.check_pt_steps:
-            self.cur_iteration = 1
-            return True
-        else:
-            self.cur_iteration += 1
 
         return False
 
@@ -901,14 +891,6 @@ class Simulator:
                 on_demand=self.on_demand_performance,
                 out=f'{fig_directory}/performance{pdf_suffix}',
             )
-            
-            suffix = self.spot_instance_trace_file.split('/')[1].split('-')[0] + '_' + self.model_size
-            print(suffix)
-            pickle.dump(result, open(f'data/varu/result_{suffix}.pkl', 'wb'))
-            pickle.dump(instances_xs, open(f'data/varu/instances_xs_{suffix}.pkl', 'wb'))
-            pickle.dump(instances_ys, open(f'data/varu/instances_ys_{suffix}.pkl', 'wb'))
-            pickle.dump(self.performance_xs, open(f'data/varu/performance_xs_{suffix}.pkl', 'wb'))
-            pickle.dump(self.performance_ys, open(f'data/varu/performance_ys_{suffix}.pkl', 'wb'))
 
             print('Model:', self.model)
             print('  Performance:', 'D', self.on_demand_performance, 'B', result.average_performance)
@@ -983,6 +965,15 @@ class Simulator:
                 result.average_performance,
                 on_demand=self.on_demand_performance
             )
+            
+            
+            suffix = self.spot_instance_trace_file.split('/')[1].split('-')[0] + '_' + self.model_size
+            print(suffix)
+            pickle.dump(result, open(f'data/oobleck/result_{suffix}.pkl', 'wb'))
+            pickle.dump(instances_xs, open(f'data/oobleck/instances_xs_{suffix}.pkl', 'wb'))
+            pickle.dump(instances_ys, open(f'data/oobleck/instances_ys_{suffix}.pkl', 'wb'))
+            pickle.dump(self.performance_xs, open(f'data/oobleck/performance_xs_{suffix}.pkl', 'wb'))
+            pickle.dump(self.performance_ys, open(f'data/oobleck/performance_ys_{suffix}.pkl', 'wb'))
             
             # Cost graph
             graph_together(

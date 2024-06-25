@@ -1,5 +1,5 @@
 
-from simulation.simulator import Simulator
+from simulation_nore.simulator import Simulator
 import math
 import csv
 import statistics
@@ -12,10 +12,14 @@ class MySimulator(Simulator):
         # Amazon EC2 Tesla T4
         if model == 'GPT-3':
             # the number of nodes that can be added at a time, bamboo do lazy reconfigure, not reconfig every time
-            self.global_batch_size = 1024
+            if model_size == '350M':
+                self.global_batch_size = 1024
+            else:
+                self.global_batch_size = 2048
         
         # prepare for first time launch
         self.preparation_delta = 10000
+        self.check_pt_steps = 10000
 
         # on demand instance config, no need to change
         def calculate_avg_nodes(file):
@@ -42,7 +46,7 @@ class MySimulator(Simulator):
             nodes_samples.append(current_nodes)
             return statistics.mean(nodes_samples)
     
-        self.on_demand_num_instances = (calculate_avg_nodes(spot_instance_trace) // 4) * 4
+        self.on_demand_num_instances = math.ceil(calculate_avg_nodes(spot_instance_trace))
         
         self.on_demand_cost = self.on_demand_num_instances * self.on_demand_cost_per_hour
         self.on_demand_performance = (self.global_batch_size * self.on_demand_num_instances) / self.simulate_iteration_delta_calc(self.on_demand_num_instances)
@@ -51,7 +55,7 @@ class MySimulator(Simulator):
     def reconfigure_delta(self):
         # reconfigure time (ms)
         # layer time model: (layers / 12) * 150s
-        return self.preparation_delta + 3389 * self.pipeline_parallel_size_target
+        return 32904.7
 
     def simulate_iteration_delta(self):
         # iteration time
@@ -59,10 +63,13 @@ class MySimulator(Simulator):
     
     def simulate_iteration_delta_calc(self, nodes_num):
         data = {
-            8: 99700,
-            12: 78500,
-            16: 54370,
-            20: 40190,
-            24: 29080
+            8: 19.1,
+            10: 27.3,
+            12: 17.6,
+            14: 22.3,
+            16: 14.7
         }
-        return data[(nodes_num // 4) * 4]
+        if data.get(nodes_num) is not None:
+            return data[nodes_num]
+        else:
+            return data[int(math.pow(2, math.ceil(math.log2(nodes_num))))]
