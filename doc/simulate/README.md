@@ -17,7 +17,7 @@ pip install -r requirements-bamboosimulate.txt
 ```py
 class MySimulator(Simulator):
     def __init__(self, seed=None, start_hour=None,
-                 model='GPT-2', spot_instance_trace=None, generate_addition_probabilities=False, removal_probability=None, generate_graphs=False):
+                 model='GPT-3', spot_instance_trace=None, generate_addition_probabilities=False, removal_probability=None, generate_graphs=False):
     
         if model == 'GPT-3':
             # start execution when the number of arrived nodes is 8
