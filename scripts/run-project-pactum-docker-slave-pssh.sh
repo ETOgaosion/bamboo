@@ -19,7 +19,7 @@ LAYERS=${7:-24}
 mkdir -p "res/lab/nodes_${NUM_NODES}_${NUM_STAGES}"
 
 cmd="""docker run --rm --net "host" --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
-    /bin/bash -c './scripts/run-project-pactum-slave.sh $NUM_NODES $NUM_STAGES $GLOBAL_RANK $MICRO_BATCH_SIZE $SEQ_LEN $LAYERS' > res/lab/nodes_${NUM_NODES}_${NUM_STAGES}/node_$CUR_NODE.txt 2>&1"""
+    /bin/bash -c './scripts/run-project-pactum-slave.sh $NUM_NODES $NUM_STAGES $GLOBAL_RANK $MICRO_BATCH_SIZE $SEQ_LEN $LAYERS' > res/lab/nodes_${NUM_NODES}_${NUM_STAGES}_${MICRO_BATCH_SIZE}/node_$CUR_NODE.txt 2>&1"""
 
 # cmd="""docker run --rm -it --net "host" --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
 #     /bin/bash -c './scripts/run-project-pactum-slave.sh $NUM_NODES $NUM_STAGES'"""

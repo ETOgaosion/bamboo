@@ -14,7 +14,7 @@ gpus_per_nodes = 4
 # required_nodes = [8, 16, 24]
 required_nodes = [8]
 # required_pipeline_parallel_size = 4
-required_pipeline_parallel_size = 8
+required_pipeline_parallel_size = 4
 required_data_parallel_size = []
 for i in required_nodes:
     required_data_parallel_size.append(i // required_pipeline_parallel_size)
@@ -184,7 +184,8 @@ def execute_command(nodes):
         client.wait_finished(output[k])
     print('Finish ', nodes, ' nodes')
 
-# execute_command(8)
+kill_all()
+execute_command(8)
 # execute_command(10)
 # execute_command(12)
 # execute_command(14)

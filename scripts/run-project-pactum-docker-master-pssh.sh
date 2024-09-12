@@ -9,18 +9,18 @@ SEQ_LEN=${6:-2048}
 LAYERS=${7:-24}
 # REBUILD=${6}
 
-# if [ $CUR_NODE -eq 0 ]; then
+if [ $CUR_NODE -eq 0 ]; then
 #     echo "Running on master node"
 #     if [ $REBUILD -eq 1 ]; then
 #         docker build -t whatcanyousee/bamboo:latest .
 #     fi
-#     # etcdctl rm --dir --recursive /torchelastic
-# fi
+    etcdctl rm --dir --recursive /torchelastic
+fi
 
 mkdir -p "res/lab/nodes_${NUM_NODES}_${NUM_STAGES}"
 
 cmd="""docker run --rm --net "host" --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
-    /bin/bash -c './scripts/run-project-pactum-master.sh $NUM_NODES $NUM_STAGES $GLOBAL_RANK $MICRO_BATCH_SIZE $SEQ_LEN $LAYERS' > res/lab/nodes_${NUM_NODES}_${NUM_STAGES}/node_$CUR_NODE.txt 2>&1"""
+    /bin/bash -c './scripts/run-project-pactum-master.sh $NUM_NODES $NUM_STAGES $GLOBAL_RANK $MICRO_BATCH_SIZE $SEQ_LEN $LAYERS' > res/lab/nodes_${NUM_NODES}_${NUM_STAGES}_${MICRO_BATCH_SIZE}/node_$CUR_NODE.txt 2>&1"""
 
 # cmd="""docker run --rm -it --net "host" --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
 #     /bin/bash -c './scripts/run-project-pactum-master.sh $NUM_NODES $NUM_STAGES'"""

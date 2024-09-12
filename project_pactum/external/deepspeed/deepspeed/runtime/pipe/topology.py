@@ -382,11 +382,11 @@ class PipelineParallelGrid:
     def init_fallback_group(self, redundancy_level):
         assert redundancy_level == 1
         self.dp_fallback_groups = {}
-        print(f'self.dp_groups: {self.dp_groups}')
+        # print(f'self.dp_groups: {self.dp_groups}')
         for stage, ranks in enumerate(self.dp_groups):
-            print(f'stage: {stage}, ranks: {ranks}')
+            # print(f'stage: {stage}, ranks: {ranks}')
             for pipeline, rank in enumerate(ranks):
-                print(f'pipeline: {pipeline}, rank: {rank}')
+                # print(f'pipeline: {pipeline}, rank: {rank}')
                 group = None
                 f_ranks = None
                 coord = self._topo.get_coord(rank)
@@ -394,7 +394,7 @@ class PipelineParallelGrid:
                 f_coord = coord._replace(pipe=new_coord)
                 f_rank = self._topo.get_rank(**f_coord._asdict())
                 f_ranks = [r if r != rank else f_rank for r in ranks]
-                print(f'coord: {coord}, new_coord: {new_coord}, f_coord: {f_coord}, f_rank: {f_rank}, f_ranks: {f_ranks}')
+                # print(f'coord: {coord}, new_coord: {new_coord}, f_coord: {f_coord}, f_rank: {f_rank}, f_ranks: {f_ranks}')
                 group = dist.new_group(f_ranks)
                 if self.global_rank == f_rank:
                     self.dp_proc_groups[stage] = group
