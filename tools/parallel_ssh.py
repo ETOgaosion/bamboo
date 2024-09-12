@@ -15,7 +15,7 @@ gpus_per_nodes = 4
 # required_nodes = [8, 16, 24]
 required_nodes = [8]
 # required_pipeline_parallel_size = 4
-required_pipeline_parallel_size = 4
+required_pipeline_parallel_size = 8
 required_data_parallel_size = []
 for i in required_nodes:
     required_data_parallel_size.append(i // required_pipeline_parallel_size)
