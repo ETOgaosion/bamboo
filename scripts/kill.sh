@@ -9,6 +9,6 @@ else
     # 循环终止每个PID对应的进程
     for pid in $pids; do
         echo "kill process PID: $pid"
-        kill -9 "$pid"
+        sudo kill -9 "$pid"
     done
 fi
