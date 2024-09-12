@@ -7,6 +7,7 @@ NUM_STAGES=${2:-8}
 GLOBAL_RANK=${3}
 MICRO_BATCH_SIZE=${4:-2}
 SEQ_LEN=${5:-2048}
+NUM_NODES_MIN=${1:-$NUM_NODES}
 LAYERS=${6:-24}
 RDZV_IP=${7:-localhost}
 ID=encoder${8}
@@ -23,7 +24,7 @@ cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	--rdzv_backend=etcd-v2 \
 	--rdzv_endpoint=$RDZV_IP:2379 \
 	--rdzv_id=$ID \
-	--nnodes=2:$NUM_NODES \
+	--nnodes=$NUM_NODES:$NUM_NODES \
 	--nproc_per_node=1 \
 	--project-pactum \
 	--max-pipe-parallel-size=24 \

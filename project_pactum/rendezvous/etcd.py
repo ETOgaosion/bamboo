@@ -796,7 +796,6 @@ class EtcdRendezvous(object):
 
             elif state["status"] == "joinable" and state["version"] == expected_version:
                 # Continue waiting for any interesting events.
-                time.sleep(2)
                 active_version, state = self.try_wait_for_state_change(
                     etcd_index=active_version.etcd_index + 1
                 )
