@@ -105,7 +105,6 @@ class MultiHeadedAttention(nn.Module):
         "Take in model size and number of heads."
         super(MultiHeadedAttention, self).__init__()
         # We assume d_v always equals d_k
-        assert d_model % h == 0
         self.d_k = d_model // h
         self.h = h
         self.linears = clones(nn.Linear(d_model, d_model), 4)
