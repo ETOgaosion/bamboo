@@ -105,6 +105,7 @@ class MultiHeadedAttention(nn.Module):
         "Take in model size and number of heads."
         super(MultiHeadedAttention, self).__init__()
         # We assume d_v always equals d_k
+        assert d_model % h == 0
         self.d_k = d_model // h
         self.h = h
         self.linears = clones(nn.Linear(d_model, d_model), 4)
@@ -250,7 +251,7 @@ def train():
         parser.add_argument('-N', type=int, default=24)
         parser.add_argument('--d-model', '-dm', type=int, default=2048)
         parser.add_argument('--d-ff', '-dff', type=int, default=8192)
-        parser.add_argument('-H', type=int, default=24)
+        parser.add_argument('-H', type=int, default=16)
         parser.add_argument('--d-head', type=int, default=128)
         
         # GPT-3 Medium
