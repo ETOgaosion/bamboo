@@ -14,7 +14,7 @@ gpus_per_nodes = 4
 # required_nodes = [8, 16, 24]
 required_nodes = [8]
 # required_pipeline_parallel_size = 4
-required_pipeline_parallel_size = 4
+required_pipeline_parallel_size = 8
 required_data_parallel_size = []
 for i in required_nodes:
     required_data_parallel_size.append(i // required_pipeline_parallel_size)
@@ -23,7 +23,7 @@ for i in required_nodes:
 # required_micro_batch_size = [1, 2, 2, 2, 4, 1]
 # required_micro_batch_size = [2, 2, 4, 4, 4]
 required_micro_batch_size = [1]
-sequence_len = 1024
+sequence_len = 2048
 
 hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46', '10.20.23.42', '10.20.23.47']
 # hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46']
@@ -182,9 +182,13 @@ def execute_command(nodes):
         output.append(client.run_command(all_commands[nodes][k]))
     for k, client in enumerate(all_clients[nodes]):
         client.wait_finished(output[k])
+    for out in output:
+        for line in out.stdout:
+            print(line)
+        for line in out.stderr:
+            print(line)
     print('Finish ', nodes, ' nodes')
 
-kill_all()
 execute_command(8)
 # execute_command(10)
 # execute_command(12)
