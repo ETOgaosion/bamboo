@@ -14,7 +14,7 @@ gpus_per_nodes = 4
 # required_nodes = [8, 16, 24]
 required_nodes = [8]
 # required_pipeline_parallel_size = 4
-required_pipeline_parallel_size = 8
+required_pipeline_parallel_size = 4
 required_data_parallel_size = []
 for i in required_nodes:
     required_data_parallel_size.append(i // required_pipeline_parallel_size)
@@ -23,7 +23,7 @@ for i in required_nodes:
 # required_micro_batch_size = [1, 2, 2, 2, 4, 1]
 # required_micro_batch_size = [2, 2, 4, 4, 4]
 required_micro_batch_size = [1]
-sequence_len = 2048
+sequence_len = 1024
 
 hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46', '10.20.23.42', '10.20.23.47']
 # hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46']
@@ -49,6 +49,10 @@ localhostclient = SSHClient(localhost, pkey=pkey, user=user, password=password)
 def clear_etcd():
     output = localhostclient.run_command('etcdctl rm --dir --recursive /torchelastic')
     localhostclient.wait_finished(output)
+    for line in output.stdout:
+        print(line)
+    for line in output.stderr:
+        print(line)
 
 clients_hosts = ParallelSSHClient(hosts, pkey=pkey, user=user, password=password)
 seperate_clients_hosts = []
