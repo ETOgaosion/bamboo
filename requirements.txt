@@ -43,7 +43,7 @@ six==1.16.0
 ssh-python==1.0.0
 ssh2-python==1.0.0
 statsmodels==0.14.1
-tensorboardX==1.8
+tensorboardX
 torch==1.13.1+cu116
 torchaudio==0.13.1+cu116
 torchvision==0.14.1+cu116

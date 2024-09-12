@@ -11,7 +11,8 @@ All functions are extendable
 gpus_per_nodes = 4
 # required_nodes = [4, 8, 12, 16, 20, 24]
 # required_nodes = [16, 20, 24, 28, 32]
-required_nodes = [8, 16, 24]
+# required_nodes = [8, 16, 24]
+required_nodes = [8]
 # required_pipeline_parallel_size = 4
 required_pipeline_parallel_size = 8
 required_data_parallel_size = []
@@ -21,7 +22,7 @@ for i in required_nodes:
 # required_data_parallel_size = [1, 2, 2, 4, 2, 4, 4, 8, 4, 8]
 # required_micro_batch_size = [1, 2, 2, 2, 4, 1]
 # required_micro_batch_size = [2, 2, 4, 4, 4]
-required_micro_batch_size = [1, 1, 2]
+required_micro_batch_size = [1]
 sequence_len = 1024
 
 hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46', '10.20.23.42', '10.20.23.47']
@@ -56,7 +57,7 @@ for host in hosts:
 
 def preparation():
     output_git_pull = clients_hosts.run_command('cd ' + project_dir + ' && git pull origin main')
-    output_docker = clients_hosts.run_command('cd ' + project_dir + ' && docker build -t torchelastic .')
+    output_docker = clients_hosts.run_command('cd ' + project_dir + ' && docker build -t whatcanyousee/bamboo .')
     clients_hosts.join(output_git_pull)
     clients_hosts.join(output_docker)
 
@@ -165,9 +166,9 @@ for k, nodes in enumerate(required_nodes):
     if required_hosts_left != 0:
         cards_number[nodes].append(required_hosts_left)
 
-# pprint.pp(all_hosts)
-# pprint.pp(all_commands)
-# pprint.pp(cards_number)
+pprint.pp(all_hosts)
+pprint.pp(all_commands)
+pprint.pp(cards_number)
 
 
 '''
@@ -183,17 +184,17 @@ def execute_command(nodes):
         client.wait_finished(output[k])
     print('Finish ', nodes, ' nodes')
 
-execute_command(8)
+# execute_command(8)
 # execute_command(10)
 # execute_command(12)
 # execute_command(14)
 # execute_command(16)
 # execute_command(20)
-execute_command(16)
+# execute_command(16)
 # execute_command(24)
 # execute_command(32)
 
 # for nodes in required_nodes:
 #     execute_command(nodes)
 
-kill_all()
+# kill_all()
