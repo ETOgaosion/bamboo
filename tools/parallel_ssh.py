@@ -184,8 +184,6 @@ def execute_command(nodes):
     clear_etcd()
     print('execute ', all_hosts[nodes], all_commands[nodes])
     for k, client in enumerate(all_clients[nodes]):
-        if k == 0:
-            time.sleep(2)
         output.append(client.run_command(all_commands[nodes][k]))
     for k, client in enumerate(all_clients[nodes]):
         client.wait_finished(output[k])
