@@ -216,9 +216,9 @@ class PipelineModule(nn.Module):
         self.activation_checkpoint_interval = activation_checkpoint_interval
         self.activation_checkpoint_func = activation_checkpoint_func
         
-        # for name, param in self.named_parameters():
-        #     print(f'name: {name}, param.size: {param.size()}')
-        # print('finish pipeline module init')
+        for name, param in self.named_parameters():
+            print(f'name: {name}, param.size: {param.size()}')
+        print('finish pipeline module init')
 
     def get_named_param(self, stage_id):
         for name, param in self.named_parameters():

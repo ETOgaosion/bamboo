@@ -30,7 +30,7 @@ cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	--max-pipe-parallel-size=24 \
 	--default-num-stages=${NUM_STAGES} \
 	${MODEL}.py \
-	-s 4 \
+	-s 3 \
 	--seq=$SEQ_LEN \
 	-N ${LAYERS} \
 	--nodes=${NUM_NODES} \

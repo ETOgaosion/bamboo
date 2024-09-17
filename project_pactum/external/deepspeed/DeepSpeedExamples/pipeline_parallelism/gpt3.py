@@ -206,7 +206,7 @@ def train():
         parser.add_argument('-s',
                             '--steps',
                             type=int,
-                            default=10,
+                            default=3,
                             help='quit after this many steps')
         parser.add_argument('--curr-step', '-cs',
                             type=int,
