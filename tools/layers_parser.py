@@ -72,16 +72,16 @@ for gpu in range(4):
     res_parser('res/others/90/nodes_8/node_' + str(gpu) + '.txt')
 
 def generate_dict():
-    json_dict['world_size'] = 8
+    json_dict['world_size'] = 4
     json_dict['layers'] = []
-    for i in range(8):
+    for i in range(2):
         subdict = {}
         subdict['sizes'] = []
         subdict['names'] = []
         for j in range(3):
             subdict['sizes'].extend(layer_sizes[i * j + j])
             subdict['names'].extend(layer_names[i * j + j])
-        subdict['ranks'] = [i, 8 + i]
+        subdict['ranks'] = [i, 2 + i]
         json_dict['layers'].append(subdict)
 
 def generate_json(file):

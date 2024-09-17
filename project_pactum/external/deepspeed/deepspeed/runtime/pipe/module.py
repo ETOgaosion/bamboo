@@ -219,7 +219,6 @@ class PipelineModule(nn.Module):
         for name, param in self.named_parameters():
             print(f'name: {name}, param.size: {param.size()}')
         print('finish pipeline module init')
-        exit()
 
     def get_named_param(self, stage_id):
         for name, param in self.named_parameters():
