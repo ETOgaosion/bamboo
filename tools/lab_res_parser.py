@@ -289,11 +289,24 @@ def handle_data(pre_handled_data, append_points, fail_point):
 #     data, fail_point = handle_data(mid_data, append_points, fail_point)
 #     print(data[-1]['delta_batch_time'])
 
-for i in range(8, 17):
-    if i == 13:
-        continue
-    file = 'res/lab/nodes_decrease_' + str(i) + '/node_0.txt'
+# for i in range(8, 17):
+#     if i == 13:
+#         continue
+#     file = 'res/lab/nodes_decrease_' + str(i) + '/node_0.txt'
+#     raw_data, append_points, fail_point = res_parser(file)
+#     mid_data, data, maxi = pre_handle_data(raw_data)
+#     data, fail_point = handle_data(mid_data, append_points, fail_point)
+#     print(data[0]['delta_batch_time'], data[1]['delta_batch_time'])
+
+
+required_nodes = [8, 10, 12, 14, 16, 18, 20, 22]
+required_pipeline_parallel_size = [4, 5, 4, 7, 4, 6, 4, 11]
+required_micro_batch_size = [2, 2, 2, 2, 2, 2, 2, 2]
+
+for i, node in enumerate(required_nodes):
+    pp_size = required_pipeline_parallel_size[i]
+    mbs = required_micro_batch_size[i]
+    file = f'res/lab/nodes_{node}_{pp_size}_{mbs}/node_0.txt'
     raw_data, append_points, fail_point = res_parser(file)
     mid_data, data, maxi = pre_handle_data(raw_data)
-    data, fail_point = handle_data(mid_data, append_points, fail_point)
-    print(data[0]['delta_batch_time'], data[1]['delta_batch_time'])
+    print(mid_data['delta_batch_times'][1])

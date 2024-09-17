@@ -23,5 +23,13 @@
         }
     },
     "steps_per_print": 1,
-    "wall_clock_breakdown": false
+    "wall_clock_breakdown": false,
+    "activation_checkpointing": {
+        "partition_activations": true,
+        "cpu_checkpointing": true,
+        "contiguous_memory_optimization": true,
+        "number_checkpoints": 1000,
+        "synchronize_checkpoint_boundary": false,
+        "profile": false
+        }
 }

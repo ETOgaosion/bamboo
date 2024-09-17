@@ -72,7 +72,7 @@ for gpu in range(4):
     res_parser('res/others/90/nodes_8/node_' + str(gpu) + '.txt')
 
 def generate_dict():
-    json_dict['world_size'] = 16
+    json_dict['world_size'] = 8
     json_dict['layers'] = []
     for i in range(8):
         subdict = {}
