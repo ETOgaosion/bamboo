@@ -299,9 +299,9 @@ def handle_data(pre_handled_data, append_points, fail_point):
 #     print(data[0]['delta_batch_time'], data[1]['delta_batch_time'])
 
 
-required_nodes = [8, 10, 12, 14, 16, 18, 20, 22]
-required_pipeline_parallel_size = [4, 5, 4, 7, 4, 6, 4, 11]
-required_micro_batch_size = [2, 2, 2, 2, 2, 2, 2, 2]
+required_nodes = [8, 10, 12, 14, 16, 18, 20]
+required_pipeline_parallel_size = [4, 5, 4, 2, 4, 3, 5]
+required_micro_batch_size = [2, 2, 2, 1, 2, 2, 2]
 
 for i, node in enumerate(required_nodes):
     pp_size = required_pipeline_parallel_size[i]

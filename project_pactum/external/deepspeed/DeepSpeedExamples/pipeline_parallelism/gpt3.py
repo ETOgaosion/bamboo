@@ -357,8 +357,10 @@ def train():
         def __getitem__(self, idx):
             return (torch.tensor(self._inputs[idx], dtype=torch.float16),
                     self._labels[idx].astype('float16'))
+    print(f'build dataset')
     dataset = DatasetSimple(args.seq, args.d_model)
 
+    print(f'initialize deepspeed')
     engine, _, _, _ = deepspeed.initialize(
         args=args,
         model=model,
