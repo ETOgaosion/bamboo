@@ -36,7 +36,7 @@ cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	--nodes=${NUM_NODES} \
 	--backend=nccl \
 	--redundancy_level=1 \
-	--eager_recovery \
+	--eager \
 	${@:9} \
 	--deepspeed \
 	--deepspeed_config ${MODEL}_${MICRO_BATCH_SIZE}.json"""
