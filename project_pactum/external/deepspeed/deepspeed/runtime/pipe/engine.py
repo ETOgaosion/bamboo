@@ -2443,7 +2443,6 @@ class PipelineEngine(DeepSpeedEngine):
                     if int(self.global_store.get(str(rank))) == 1:
                         failed_data_parallel_id = self.grid._topo.get_coord(rank).data
                         e = AllReduceException(failed_data_parallel_id, f'RANK {rank} FROM PIPELINE {failed_data_parallel_id} IN ALL-REDUCE GROUP FAILED. USING FALLBACK')
-                        msg = f'{type(cmd)}: {e}'
                         e = type(e)(e.src, msg)
                         exception_status = (i, e)
                         return exception_status
