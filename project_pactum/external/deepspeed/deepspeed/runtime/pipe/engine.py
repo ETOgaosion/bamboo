@@ -1694,6 +1694,8 @@ class PipelineEngine(DeepSpeedEngine):
                 t.clone() for t in self.pipe_buffers[input_key][buffer_id])
         else:
             inputs = self.pipe_buffers[input_key][buffer_id].clone()
+        
+        inputs.to(torch.float16)
 
         # Zero out the gradients each time we use the tensor because only the data in
         # tensor changes across batches
