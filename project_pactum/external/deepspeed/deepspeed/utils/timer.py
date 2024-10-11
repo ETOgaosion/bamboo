@@ -4,6 +4,7 @@ Copyright 2019 The Microsoft DeepSpeed Team
 
 import time
 import torch
+import logging
 from deepspeed.utils.logging import log_dist
 
 from deepspeed.utils import logger
@@ -94,7 +95,7 @@ class SynchronizedWallClockTimer:
                     reset=reset) * 1000.0 / normalizer
                 string += ' | {}: {:.2f}'.format(name, elapsed_time)
 
-        log_dist(string, ranks=ranks or [0])
+        log_dist(string, ranks=ranks or [0], level=logging.WARNING)
 
 
 class ThroughputTimer():
