@@ -299,7 +299,8 @@ class PipelineEngine(DeepSpeedEngine):
         if self.r_stage_ids:
             # TODO(pengzhan): There should be a loop for each r_stage. To
             # simplify implementation, assume there is only one r_stage.
-            schedule_cls = schedule.LazyRecoverySchedule
+            schedule_cls = schedule.EagerRecoverySchedule if self.eager_recovery else \
+                           schedule.LazyRecoverySchedule
             self._generate_sched = lambda \
                 schedule_cls=schedule_cls, \
                 stage_id=self.next_stage, \
@@ -1703,13 +1704,20 @@ class PipelineEngine(DeepSpeedEngine):
         outputs = super().forward(inputs, stage_id=stage_id)
 
         if stage_id != self.num_stages - 1:
-            self.pipe_buffers[f'output_{stage_id}'][buffer_id] = outputs
+            if self.eager_recovery and stage_id in self.r_stage_ids:
+                outputs.to('cpu', non_blocking=True)
+            else:
+                self.pipe_buffers[f'output_{stage_id}'][buffer_id] = outputs
 
         # Optionally compute loss on the last device
         if stage_id == self.num_stages - 1:
+            labels = self.pipe_buffers['label'][buffer_id]
             if self._compute_loss and self.loss_model is not None:
-                labels = self.pipe_buffers['label'][buffer_id]
-                self.loss = self.loss_model(outputs, labels)
+                tmp_loss = self.loss_model(outputs, labels)
+                if self.eager_recovery and stage_id in self.r_stage_ids:
+                    self.loss = tmp_loss.to('cpu', non_blocking=True)
+                else:
+                    self.loss = tmp_loss
             else:
                 # Some models just return loss from forward()
                 self.loss = outputs
@@ -2440,7 +2448,7 @@ class PipelineEngine(DeepSpeedEngine):
 
             # For each instruction in the step
             for cmd in step_cmds:
-                # report_memory("cmd " + str(cmd))
+                report_memory("cmd " + str(cmd))
                 try:
                     if type(cmd) not in self._INSTRUCTION_MAP:
                         raise RuntimeError(f'{self.__class__.__name__} does not understand instruction {repr(cmd)}')
