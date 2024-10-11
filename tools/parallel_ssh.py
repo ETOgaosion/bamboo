@@ -189,7 +189,7 @@ def execute_command(nodes):
     print('Finish ', nodes, ' nodes')
 
 # execute_command(2)
-# execute_command(8)
+execute_command(8)
 # execute_command(10)
 # execute_command(12)
 # execute_command(14)
@@ -200,7 +200,7 @@ def execute_command(nodes):
 # execute_command(24)
 # execute_command(32)
 
-for nodes in required_nodes:
-    execute_command(nodes)
+# for nodes in required_nodes:
+#     execute_command(nodes)
 
 # kill_all()

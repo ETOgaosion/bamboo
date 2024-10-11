@@ -1,14 +1,36 @@
 processing: res/lab/nodes_8_4_2/node_0.txt
-56146.703
+55616.781
 processing: res/lab/nodes_10_5_2/node_0.txt
-60472.556
+64780.10999999999
 processing: res/lab/nodes_12_4_2/node_0.txt
-37728.402
+44221.52
 processing: res/lab/nodes_14_2_1/node_0.txt
-39422.771
+38856.904
 processing: res/lab/nodes_16_4_2/node_0.txt
-28313.458000000002
+28898.618
 processing: res/lab/nodes_18_3_2/node_0.txt
-22941.228
+23705.016
 processing: res/lab/nodes_20_5_2/node_0.txt
-25042.849000000002
+25159.93
+processing: res/lab_noredundancy/nodes_8_4_2/node_0.txt
+55422.221
+processing: res/lab_noredundancy/nodes_10_5_2/node_0.txt
+48700.115
+processing: res/lab_noredundancy/nodes_12_4_2/node_0.txt
+36312.159999999996
+processing: res/lab_noredundancy/nodes_14_2_1/node_0.txt
+35785.888999999996
+processing: res/lab_noredundancy/nodes_16_4_2/node_0.txt
+31737.644
+processing: res/lab_noredundancy/nodes_18_3_2/node_0.txt
+22530.103
+processing: res/lab_noredundancy/nodes_20_5_2/node_0.txt
+26001.262
+0.9965017752465752
+0.7517757379541344
+0.821142285475488
+0.9209660399088923
+1.098240891657864
+0.9504361017938144
+1.0334393617152353
+avg: 0.9389288848217148
