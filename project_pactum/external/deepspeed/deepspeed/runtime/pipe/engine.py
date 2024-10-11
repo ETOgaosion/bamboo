@@ -323,8 +323,8 @@ class PipelineEngine(DeepSpeedEngine):
             self.timers('backward_allreduce_microstep').stop()
             self.timers('backward_allreduce').start()
             self.timers('backward_allreduce').stop()
-            self.timers('step_microstep').start()
-            self.timers('step_microstep').stop()
+            self.timers('optimizer_step_microstep').start()
+            self.timers('optimizer_step_microstep').stop()
 
     def _inc(self, stage_id):
         return (stage_id + 1) % self.num_stages
@@ -1444,14 +1444,14 @@ class PipelineEngine(DeepSpeedEngine):
         #         if global_step % self.steps_per_print() == 0:
         #             self.summary_writer.flush()
 
-        # if self.wall_clock_breakdown(
-        # ) and global_step % self.steps_per_print() == 0:
-        #     self.timers.log([
-        #         'pipe_send_output',
-        #         'pipe_send_grad',
-        #         'pipe_recv_input',
-        #         'pipe_recv_grad'
-        #     ])
+        if self.wall_clock_breakdown(
+        ) and global_step % self.steps_per_print() == 0:
+            self.timers.log([
+                'pipe_send_output',
+                'pipe_send_grad',
+                'pipe_recv_input',
+                'pipe_recv_grad'
+            ])
 
         self._clean_pipe_buffers()
 
@@ -2192,8 +2192,8 @@ class PipelineEngine(DeepSpeedEngine):
 
     def _exec_optimizer_step(self, lr_kwargs=None):
         if self.wall_clock_breakdown():
-            self.timers('step_microstep').start()
-            self.timers('step').start()
+            self.timers('optimizer_step_microstep').start()
+            self.timers('optimizer_step').start()
         self.mem_status('BEFORE STEP', reset_max=True)
 
         self._force_grad_boundary = True
@@ -2215,8 +2215,8 @@ class PipelineEngine(DeepSpeedEngine):
                     self.summary_writer.add_scalar(event[0], event[1], event[2])
 
         if self.wall_clock_breakdown():
-            self.timers('step_microstep').stop()
-            self.timers('step').stop()
+            self.timers('optimizer_step_microstep').stop()
+            self.timers('optimizer_step').stop()
             if self.global_steps % self.steps_per_print() == 0:
                 self.timers.log([
                     'batch_input',
@@ -2225,7 +2225,7 @@ class PipelineEngine(DeepSpeedEngine):
                     'backward_inner_microstep',
                     'backward_allreduce_microstep',
                     'backward_tied_allreduce_microstep',
-                    'step_microstep'
+                    'optimizer_step_microstep'
                 ])
             if self.global_steps % self.steps_per_print() == 0:
                 self.timers.log([
@@ -2233,7 +2233,7 @@ class PipelineEngine(DeepSpeedEngine):
                     'backward',
                     'backward_inner',
                     'backward_allreduce',
-                    'step'
+                    'optimizer_step'
                 ])
 
     def _zero_grads(self, inputs):
