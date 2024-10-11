@@ -63,8 +63,8 @@ class LayerNorm(nn.Module):
     "Construct a layernorm module (See citation for details)."
     def __init__(self, features, eps=1e-6):
         super(LayerNorm, self).__init__()
-        self.a_2 = nn.Parameter(torch.ones(features), dtype=torch.float16, device=torch.cuda.current_device())
-        self.b_2 = nn.Parameter(torch.zeros(features), dtype=torch.float16, device=torch.cuda.current_device())
+        self.a_2 = nn.Parameter(torch.ones(features, dtype=torch.float16, device=torch.cuda.current_device()))
+        self.b_2 = nn.Parameter(torch.zeros(features, dtype=torch.float16, device=torch.cuda.current_device()))
         self.eps = eps
 
     def forward(self, x):
