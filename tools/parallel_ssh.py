@@ -14,7 +14,7 @@ gpus_per_nodes = 4
 # required_nodes = [16, 20, 24, 28, 32]
 required_nodes = [8, 10, 12, 14, 16, 18, 20]
 # required_pipeline_parallel_size = 4
-required_pipeline_parallel_size = [8, 5, 4, 7, 4, 3, 5]
+required_pipeline_parallel_size = [4, 5, 4, 7, 4, 6, 4]
 required_data_parallel_size = []
 for i, node_i in enumerate(required_nodes):
     required_data_parallel_size.append(node_i // required_pipeline_parallel_size[i])
@@ -115,7 +115,7 @@ for k, nodes in enumerate(required_nodes):
         for i in range(required_hosts_left):
             all_hosts[nodes].append(hosts[required_hosts - 1])
             all_clients[nodes].append(clients[hosts[required_hosts - 1]][i])
-            all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-master-pssh.sh ' + 
+            all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-master-pssh-no-redundancy.sh ' + 
                                         str(i) + ' ' +                                           # cur gpu
                                         str(nodes) + ' ' +                                       # num nodes
                                         str(required_pipeline_parallel_size[k]) + ' ' +     # num stages
@@ -131,7 +131,7 @@ for k, nodes in enumerate(required_nodes):
             role = 'slave'
             if i == 0:
                 role = 'master'
-            all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-' + role + '-pssh.sh ' + 
+            all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-' + role + '-pssh-no-redundancy.sh ' + 
                                        str(j) + ' ' +                                           # cur gpu
                                        str(nodes) + ' ' +                                       # num nodes
                                        str(required_pipeline_parallel_size[k]) + ' ' +     # num stages
@@ -145,7 +145,7 @@ for k, nodes in enumerate(required_nodes):
             if i == 1:
                 i += 1
                 all_clients[nodes].append(clients[hosts[required_hosts - 1]][i])
-                all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-slave-pssh.sh ' + 
+                all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-slave-pssh-no-redundancy.sh ' + 
                                             str(i) + ' ' +                                           # cur gpu
                                             str(nodes) + ' ' +                                       # num nodes
                                             str(required_pipeline_parallel_size[k]) + ' ' +     # num stages
@@ -154,7 +154,7 @@ for k, nodes in enumerate(required_nodes):
                                             str(sequence_len))                                       # sequence len
                 break
         all_clients[nodes].append(clients[hosts[required_hosts - 1]][i])
-        all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-slave-pssh.sh ' + 
+        all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-slave-pssh-no-redundancy.sh ' + 
                                     str(i) + ' ' +                                           # cur gpu
                                     str(nodes) + ' ' +                                       # num nodes
                                     str(required_pipeline_parallel_size[k]) + ' ' +     # num stages
@@ -189,18 +189,18 @@ def execute_command(nodes):
     print('Finish ', nodes, ' nodes')
 
 # execute_command(2)
-# execute_command(8)
+execute_command(8)
 # execute_command(10)
 # execute_command(12)
 # execute_command(14)
-execute_command(16)
+# execute_command(16)
 # execute_command(18)
 # execute_command(20)
 # execute_command(22)
 # execute_command(24)
 # execute_command(32)
 
-# for nodes in required_nodes[1:]:
+# for nodes in required_nodes:
 #     execute_command(nodes)
 
 # kill_all()

@@ -299,9 +299,9 @@ def handle_data(pre_handled_data, append_points, fail_point):
 #     print(data[0]['delta_batch_time'], data[1]['delta_batch_time'])
 
 
-required_nodes = [8, 10, 12, 14, 16, 18, 20]
-required_pipeline_parallel_size = [4, 5, 4, 2, 4, 3, 5]
-required_micro_batch_size = [2, 2, 2, 1, 2, 2, 2]
+required_nodes = [12, 14, 16, 18, 20]
+required_pipeline_parallel_size = [4, 7, 4, 6, 4]
+required_micro_batch_size = [1, 1, 1, 1, 1]
 
 iter_time_list = []
 redundant_iter_time_list = []
@@ -313,8 +313,8 @@ for i, node in enumerate(required_nodes):
     file = f'res/lab/nodes_{node}_{pp_size}_{mbs}/node_0.txt'
     raw_data, append_points, fail_point = res_parser(file)
     mid_data, data, maxi = pre_handle_data(raw_data)
-    # iteration_time = statistics.mean([mid_data['delta_batch_times'][1], mid_data['delta_batch_times'][2]])
-    iteration_time = mid_data['delta_batch_times'][2]
+    iteration_time = statistics.mean([mid_data['delta_batch_times'][1], mid_data['delta_batch_times'][2]])
+    # iteration_time = mid_data['delta_batch_times'][2]
     print(iteration_time)
     iter_time_list.append(iteration_time)
 
@@ -324,8 +324,8 @@ for i, node in enumerate(required_nodes):
     file = f'res/lab_noredundancy/nodes_{node}_{pp_size}_{mbs}/node_0.txt'
     raw_data, append_points, fail_point = res_parser(file)
     mid_data, data, maxi = pre_handle_data(raw_data)
-    # iteration_time = statistics.mean([mid_data['delta_batch_times'][1], mid_data['delta_batch_times'][2]])
-    iteration_time = mid_data['delta_batch_times'][2]
+    iteration_time = statistics.mean([mid_data['delta_batch_times'][1], mid_data['delta_batch_times'][2]])
+    # iteration_time = mid_data['delta_batch_times'][2]
     print(iteration_time)
     redundant_iter_time_list.append(iteration_time)
 

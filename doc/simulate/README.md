@@ -27,7 +27,7 @@ class MySimulator(Simulator):
             self.global_batch_size = 1024
         
         # prepare for first time launch
-        self.preparation_delta = 10000
+        self.preparation_delta = 0
     
 
     def reconfigure_delta(self):
