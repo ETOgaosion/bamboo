@@ -63,8 +63,8 @@ class LayerNorm(nn.Module):
     "Construct a layernorm module (See citation for details)."
     def __init__(self, features, eps=1e-6):
         super(LayerNorm, self).__init__()
-        self.a_2 = nn.Parameter(torch.ones(features))
-        self.b_2 = nn.Parameter(torch.zeros(features))
+        self.a_2 = nn.Parameter(torch.ones(features), dtype=torch.float16, device=torch.cuda.current_device())
+        self.b_2 = nn.Parameter(torch.zeros(features), dtype=torch.float16, device=torch.cuda.current_device())
         self.eps = eps
 
     def forward(self, x):
@@ -108,7 +108,7 @@ class MultiHeadedAttention(nn.Module):
         assert d_model % h == 0
         self.d_k = d_model // h
         self.h = h
-        self.linears = clones(nn.Linear(d_model, d_model), 4)
+        self.linears = clones(nn.Linear(d_model, d_model, device=torch.cuda.current_device(), dtype=torch.float16), 4)
         self.attn = None
         self.dropout = nn.Dropout(p=dropout)
 
@@ -138,8 +138,8 @@ class PositionwiseFeedForward(nn.Module):
     "Implements FFN equation."
     def __init__(self, d_model, d_ff, dropout=0.1):
         super().__init__()
-        self.w_1 = nn.Linear(d_model, d_ff)
-        self.w_2 = nn.Linear(d_ff, d_model)
+        self.w_1 = nn.Linear(d_model, d_ff, device=torch.cuda.current_device(), dtype=torch.float16)
+        self.w_2 = nn.Linear(d_ff, d_model, device=torch.cuda.current_device(), dtype=torch.float16)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
