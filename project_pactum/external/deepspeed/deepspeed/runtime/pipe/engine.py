@@ -199,6 +199,8 @@ class PipelineEngine(DeepSpeedEngine):
         self.eager_recovery = eager_recovery
 
         self.init_redundancy()
+        
+        self.module.print_layers()
 
         self.data_iterator = None
         self.batch_fn = None
