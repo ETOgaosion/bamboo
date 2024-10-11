@@ -299,8 +299,7 @@ class PipelineEngine(DeepSpeedEngine):
         if self.r_stage_ids:
             # TODO(pengzhan): There should be a loop for each r_stage. To
             # simplify implementation, assume there is only one r_stage.
-            schedule_cls = schedule.EagerRecoverySchedule if self.eager_recovery else \
-                           schedule.LazyRecoverySchedule
+            schedule_cls = schedule.LazyRecoverySchedule
             self._generate_sched = lambda \
                 schedule_cls=schedule_cls, \
                 stage_id=self.next_stage, \
