@@ -818,9 +818,9 @@ class PipelineEngine(DeepSpeedEngine):
                 self.r_stage_ids = []
 
                 # Setup pipe buffer for next stage.
-                if not self.eager_recovery:
-                    self.pipe_buffers[f'input_{self.next_stage}'] = []
-                    self.pipe_buffers[f'output_{self.next_stage}'] = []
+                # if not self.eager_recovery:
+                self.pipe_buffers[f'input_{self.next_stage}'] = []
+                self.pipe_buffers[f'output_{self.next_stage}'] = []
 
                 # Update global decision
                 self.coordinates.append([self.grid.get_data_parallel_id(), self.next_stage])
@@ -1285,9 +1285,9 @@ class PipelineEngine(DeepSpeedEngine):
                 self.r_stage_ids = []
 
                 # Setup pipe buffer for next stage.
-                if not self.eager_recovery:
-                    self.pipe_buffers[f'input_{self.next_stage}'] = []
-                    self.pipe_buffers[f'output_{self.next_stage}'] = []
+                # if not self.eager_recovery:
+                self.pipe_buffers[f'input_{self.next_stage}'] = []
+                self.pipe_buffers[f'output_{self.next_stage}'] = []
 
                 # Update neighboring stage information
                 self.next_stage = self._inc(self.next_stage)
@@ -1772,11 +1772,12 @@ class PipelineEngine(DeepSpeedEngine):
         # will save the output on cpu memory. For eager, we have already used
         # this activation, as redundant forward always happens before
         # backward pass, so we can directly discard it.
-        if not self.eager_recovery and self._inc(stage_id) in self.r_stage_ids:
-            self.pipe_buffers[f'output_{stage_id}'][buffer_id] = \
-                outputs.clone().detach().to('cpu', non_blocking=True)
-        else:
-            self.pipe_buffers[f'output_{stage_id}'][buffer_id] = None
+        # if not self.eager_recovery and self._inc(stage_id) in self.r_stage_ids:
+        #     self.pipe_buffers[f'output_{stage_id}'][buffer_id] = \
+        #         outputs.clone().detach().to('cpu', non_blocking=True)
+        # else:
+        #     self.pipe_buffers[f'output_{stage_id}'][buffer_id] = None
+        self.pipe_buffers[f'output_{stage_id}'][buffer_id] = None
 
         if self.wall_clock_breakdown():
             self.timers('backward_inner').stop()
@@ -2150,20 +2151,26 @@ class PipelineEngine(DeepSpeedEngine):
                 raise Exception(
                     f'Group of {src_rank} to {dst_rank} does not exist')
 
-            if not self.eager_recovery:
-                for _, param in self.module.get_named_param(stage_id):
-                    dist.send(param.detach().clone().to('cpu'),
-                              dst_rank, group=group)
-                for _, state in super().get_named_state(stage_id):
-                    dist.send(state.detach().clone().to('cpu'),
-                              dst_rank, group=group)
-            else:
-                for _, param in self.module.get_named_param(stage_id):
-                    dist.broadcast(
-                        param.detach(), self.global_rank, group=group)
-                for _, state in super().get_named_state(stage_id):
-                    dist.broadcast(
-                        state.detach(), self.global_rank, group=group)
+            for _, param in self.module.get_named_param(stage_id):
+                dist.send(param.detach().clone().to('cpu'),
+                            dst_rank, group=group)
+            for _, state in super().get_named_state(stage_id):
+                dist.send(state.detach().clone().to('cpu'),
+                            dst_rank, group=group)
+            # if not self.eager_recovery:
+            #     for _, param in self.module.get_named_param(stage_id):
+            #         dist.send(param.detach().clone().to('cpu'),
+            #                   dst_rank, group=group)
+            #     for _, state in super().get_named_state(stage_id):
+            #         dist.send(state.detach().clone().to('cpu'),
+            #                   dst_rank, group=group)
+            # else:
+            #     for _, param in self.module.get_named_param(stage_id):
+            #         dist.broadcast(
+            #             param.detach(), self.global_rank, group=group)
+            #     for _, state in super().get_named_state(stage_id):
+            #         dist.broadcast(
+            #             state.detach(), self.global_rank, group=group)
 
     def _exec_recv_weights(self, stage_id):
         # TODO(pengzhan): Implement recv weights without p2p group
