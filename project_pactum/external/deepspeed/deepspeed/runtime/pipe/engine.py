@@ -2440,10 +2440,8 @@ class PipelineEngine(DeepSpeedEngine):
                         return exception_status
 
             # For each instruction in the step
-            print(f'len(step_cmds): {len(step_cmds)}')
             for cmd in step_cmds:
                 report_memory("cmd " + str(cmd))
-                self.log(f'{datetime.datetime.now()} - Execute step {i} Command {cmd}')
                 try:
                     if type(cmd) not in self._INSTRUCTION_MAP:
                         raise RuntimeError(f'{self.__class__.__name__} does not understand instruction {repr(cmd)}')
