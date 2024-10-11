@@ -23,7 +23,7 @@
         }
     },
     "steps_per_print": 1,
-    "wall_clock_breakdown": false,
+    "wall_clock_breakdown": true,
     "activation_checkpointing": {
         "partition_activations": true,
         "cpu_checkpointing": true,
