@@ -339,6 +339,8 @@ class PipelineEngine(DeepSpeedEngine):
             self.redundancy_level, self.stage_id, self.num_stages)
         self.r_user_stage_ids = redundancy.get_redundant_user_stage_ids(
             self.redundancy_level, self.stage_id, self.num_stages)
+        
+        print(f'CONFIG: r_stage_ids={self.r_stage_ids} r_user_stage_ids={self.r_user_stage_ids}')
 
         # parameter buffer and optimizer state buffer
         self.param_buffers: Dict[int, Dict[str, nn.Tensor]] = \
