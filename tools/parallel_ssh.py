@@ -23,7 +23,7 @@ for i, node_i in enumerate(required_nodes):
 # required_micro_batch_size = [1, 2, 2, 2, 4, 1]
 # required_micro_batch_size = [2, 2, 4, 4, 4]
 required_micro_batch_size = [1, 2, 2, 1, 2, 2, 1, 4, 1]
-sequence_len = 1024
+sequence_len = 512
 
 hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46', '10.20.23.42', '10.20.23.47']
 # hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46']
