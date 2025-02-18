@@ -9,7 +9,7 @@ import sys
 Hint: Modify these Configurations only
 All functions are extendable
 '''
-gpus_per_nodes = 4
+gpus_per_nodes = 8
 # required_nodes = [4, 8, 12, 16, 20, 24]
 # required_nodes = [16, 20, 24, 28, 32]
 required_nodes = [8, 10, 12, 14, 16, 18, 20]
@@ -28,10 +28,10 @@ sequence_len = 1024
 hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46', '10.20.23.42', '10.20.23.47']
 # hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46']
 localhost_ip = '10.20.23.90'
-project_dir = '/home/gaoziyuan/project/bamboo'
-user = 'gaoziyuan'
-password = 'gzy2024'
-pkey = '/home/gaoziyuan/.ssh/id_rsa'
+project_dir = '/home/ubuntu/project/bamboo'
+user = 'ubuntu'
+password = ''
+pkey = '/home/ubuntu/.ssh/id_rsa'
 
 
 '''
@@ -115,7 +115,7 @@ for k, nodes in enumerate(required_nodes):
         for i in range(required_hosts_left):
             all_hosts[nodes].append(hosts[required_hosts - 1])
             all_clients[nodes].append(clients[hosts[required_hosts - 1]][i])
-            all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-master-pssh-no-redundancy.sh ' + 
+            all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-master-pssh-aws.sh ' + 
                                         str(i) + ' ' +                                           # cur gpu
                                         str(nodes) + ' ' +                                       # num nodes
                                         str(required_pipeline_parallel_size[k]) + ' ' +     # num stages
@@ -131,7 +131,7 @@ for k, nodes in enumerate(required_nodes):
             role = 'slave'
             if i == 0:
                 role = 'master'
-            all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-' + role + '-pssh-no-redundancy.sh ' + 
+            all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-' + role + '-pssh-aws.sh ' + 
                                        str(j) + ' ' +                                           # cur gpu
                                        str(nodes) + ' ' +                                       # num nodes
                                        str(required_pipeline_parallel_size[k]) + ' ' +     # num stages
@@ -141,7 +141,7 @@ for k, nodes in enumerate(required_nodes):
     for i in range(required_hosts_left):
         all_hosts[nodes].append(hosts[required_hosts - 1])
         all_clients[nodes].append(clients[hosts[required_hosts - 1]][i])
-        all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-slave-pssh-no-redundancy.sh ' + 
+        all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-slave-pssh-aws.sh ' + 
                                     str(i) + ' ' +                                           # cur gpu
                                     str(nodes) + ' ' +                                       # num nodes
                                     str(required_pipeline_parallel_size[k]) + ' ' +     # num stages
