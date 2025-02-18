@@ -12,7 +12,8 @@ All functions are extendable
 gpus_per_nodes = 8
 # required_nodes = [4, 8, 12, 16, 20, 24]
 # required_nodes = [16, 20, 24, 28, 32]
-required_nodes = [8, 10, 12, 14, 16, 18, 20]
+# required_nodes = [8, 10, 12, 14, 16, 18, 20]
+required_nodes = [8]
 # required_pipeline_parallel_size = 4
 required_pipeline_parallel_size = [4, 5, 4, 7, 4, 6, 4]
 required_data_parallel_size = []
@@ -25,10 +26,10 @@ for i, node_i in enumerate(required_nodes):
 required_micro_batch_size = [1, 1, 1, 1, 1, 1, 1]
 sequence_len = 1024
 
-hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46', '10.20.23.42', '10.20.23.47']
-# hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46']
-localhost_ip = '10.20.23.90'
-project_dir = '/home/ubuntu/project/bamboo'
+# hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46', '10.20.23.42', '10.20.23.47']
+hosts = ['localhost']
+localhost_ip = '172.31.4.114'
+project_dir = '/home/ubuntu/projects/bamboo'
 user = 'ubuntu'
 password = ''
 pkey = '/home/ubuntu/.ssh/id_rsa'
@@ -47,7 +48,7 @@ localhost = 'localhost'
 localhostclient = SSHClient(localhost, pkey=pkey, user=user, password=password)
 
 def clear_etcd():
-    output = localhostclient.run_command('etcdctl rm --dir --recursive /torchelastic')
+    output = localhostclient.run_command(project_dir + '/etcd/etcdctl rm --dir --recursive /torchelastic')
     localhostclient.wait_finished(output)
     for line in output.stdout:
         print(line)
@@ -61,9 +62,7 @@ for host in hosts:
 
 def preparation():
     output_git_pull = clients_hosts.run_command('cd ' + project_dir + ' && git pull origin main')
-    output_docker = clients_hosts.run_command('cd ' + project_dir + ' && docker build -t whatcanyousee/bamboo .')
     clients_hosts.join(output_git_pull)
-    clients_hosts.join(output_docker)
 
 # preparation()
 
@@ -71,13 +70,13 @@ def kill_all():
     for host in seperate_clients_hosts:
         print(host)
         output = host.run_command('ps aux | grep project_pactum | grep -v grep | awk "{print \$2}" | sudo xargs kill -9 ', sudo=True)
-        for host_out in output:
-            host_out.stdin.write('gzy2024\n')
-            host_out.stdin.flush()
+        # for host_out in output:
+        #     host_out.stdin.write('gzy2024\n')
+        #     host_out.stdin.flush()
         host.join(output)
-        for line in host_out.stdout:
+        for line in output.stdout:
             print(line)
-        for line in host_out.stderr:
+        for line in output.stderr:
             print(line)
     
 # kill_all()

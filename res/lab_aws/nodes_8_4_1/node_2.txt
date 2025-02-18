@@ -1,0 +1,327 @@
+ARGS localhost encoder 4 2 /home/ubuntu/projects/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/gpt3
+CUDA_VISIBLE_DEVICES 2 NCCL_DEBUG INFO NCCL_SOCKET_IFNAME ens5 GLOO_SOCKET_IFNAME ens5 LD_PRELOAD /usr/local/cuda-11.7/efa/lib/libnccl-net.so LD_LIBRARY_PATH /usr/local/cuda-11.7/efa/lib/:$LD_LIBRARY_PATH
+[1;33m[3.734 p137480/t139781164699648 WARNING project_pactum.agent.api][m [33m[default] 2025-02-18 07:54:14.489744 Rendezvous complete for workers. Result:
+  restart_count=0
+  master_addr=ip-172-31-4-114.ec2.internal
+  master_port=42301
+  group_rank=2
+  group_world_size=8
+  num_pipelines=2
+  num_stages=4
+  global_decision=[GlobalInfo(rank=6, previous_coordinates=[], active_coordinates=[[1, 2]]), GlobalInfo(rank=3, previous_coordinates=[], active_coordinates=[[0, 3]]), GlobalInfo(rank=1, previous_coordinates=[], active_coordinates=[[0, 1]]), GlobalInfo(rank=7, previous_coordinates=[], active_coordinates=[[1, 3]]), GlobalInfo(rank=2, previous_coordinates=[], active_coordinates=[[0, 2]]), GlobalInfo(rank=5, previous_coordinates=[], active_coordinates=[[1, 1]]), GlobalInfo(rank=0, previous_coordinates=[], active_coordinates=[[0, 0]]), GlobalInfo(rank=4, previous_coordinates=[], active_coordinates=[[1, 0]])]
+  local_ranks=[0]
+  role_ranks=[2]
+  global_ranks=[2]
+  role_world_sizes=[8]
+  global_world_sizes=[8]
+[m
+['/home/ubuntu/projects/bamboo/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism', '/home/ubuntu/projects/bamboo', '/home/ubuntu/projects/bamboo/${PYTHONPATH}', '/usr/lib/python38.zip', '/usr/lib/python3.8', '/usr/lib/python3.8/lib-dynload', '/home/ubuntu/.local/lib/python3.8/site-packages', '/home/ubuntu/projects/bamboo/project_pactum/external/deepspeed', '/usr/local/lib/python3.8/dist-packages', '/usr/lib/python3/dist-packages']
+parts: []
+self.parts: [0, 6, 12, 18, 26]
+layer num: 6
+finish pipeline module init
+build dataset
+initialize deepspeed
+ip-172-31-4-114:138061:138061 [0] NCCL INFO Bootstrap : Using ens5:172.31.4.114<0>
+ip-172-31-4-114:138061:138061 [0] NCCL INFO NET/Plugin: Failed to find ncclCollNetPlugin_v6 symbol.
+ip-172-31-4-114:138061:138061 [0] NCCL INFO NET/Plugin: Failed to find ncclCollNetPlugin symbol (v4 or v5).
+ip-172-31-4-114:138061:138061 [0] NCCL INFO cudaDriverVersion 12000
+NCCL version 2.14.3+cuda11.7
+ip-172-31-4-114:138061:138688 [0] NCCL INFO NET/OFI Using aws-ofi-nccl 1.5.0aws
+ip-172-31-4-114:138061:138688 [0] NCCL INFO NET/OFI Configuring AWS-specific options
+ip-172-31-4-114:138061:138688 [0] NCCL INFO NET/OFI Setting provider_filter to efa
+ip-172-31-4-114:138061:138688 [0] NCCL INFO NET/OFI Setting NCCL_PROTO to "simple"
+ip-172-31-4-114:138061:138688 [0] NCCL INFO NET/OFI Setting FI_EFA_FORK_SAFE environment variable to 1
+
+ip-172-31-4-114:138061:138688 [0] nccl_net_ofi_init:1415 NCCL WARN NET/OFI aws-ofi-nccl initialization failed
+ip-172-31-4-114:138061:138688 [0] NCCL INFO NET/IB : No device found.
+ip-172-31-4-114:138061:138688 [0] NCCL INFO NET/Socket : Using [0]ens5:172.31.4.114<0>
+ip-172-31-4-114:138061:138688 [0] NCCL INFO Using network Socket
+ip-172-31-4-114:138061:138688 [0] NCCL INFO Channel 00/02 :    0   1
+ip-172-31-4-114:138061:138688 [0] NCCL INFO Channel 01/02 :    0   1
+ip-172-31-4-114:138061:138688 [0] NCCL INFO Trees [0] 1/-1/-1->0->-1 [1] 1/-1/-1->0->-1
+ip-172-31-4-114:138061:138688 [0] NCCL INFO Channel 00/0 : 0[180] -> 1[1c0] via P2P/IPC
+ip-172-31-4-114:138061:138688 [0] NCCL INFO Channel 01/0 : 0[180] -> 1[1c0] via P2P/IPC
+ip-172-31-4-114:138061:138688 [0] NCCL INFO Connected all rings
+ip-172-31-4-114:138061:138688 [0] NCCL INFO Connected all trees
+ip-172-31-4-114:138061:138688 [0] NCCL INFO threadThresholds 8/8/64 | 16/8/64 | 512 | 512
+ip-172-31-4-114:138061:138688 [0] NCCL INFO 2 coll channels, 2 p2p channels, 2 p2p channels per peer
+ip-172-31-4-114:138061:138688 [0] NCCL INFO comm 0x4110b130 rank 0 nranks 2 cudaDev 0 busId 180 - Init COMPLETE
+2025-02-18 07:54:23.364541 - Start Op builder
+Using /home/ubuntu/.cache/torch_extensions/py38_cu117 as PyTorch extensions root...
+Loading extension module utils...
+2025-02-18 07:54:39.593488 - End Op builder
+Time to load utils op: 16.228955030441284 seconds
+[2025-02-18 07:54:39,593] [WARNING] [engine.py:155:__init__] CONFIG: micro_batches=1024
+micro_batch_size=1
+num_stages=4
+global_rank=2
+stage_id=2
+prev_stage=1
+next_stage=3
+stage_ids=[2]
+self.grid.data_parallel_size=2
+CONFIG: r_stage_ids=[] r_user_stage_ids=[]
+name: 12.self_attn.linears.0.weight, param.size: torch.Size([1024, 1024])
+name: 12.self_attn.linears.0.bias, param.size: torch.Size([1024])
+name: 12.self_attn.linears.1.weight, param.size: torch.Size([1024, 1024])
+name: 12.self_attn.linears.1.bias, param.size: torch.Size([1024])
+name: 12.self_attn.linears.2.weight, param.size: torch.Size([1024, 1024])
+name: 12.self_attn.linears.2.bias, param.size: torch.Size([1024])
+name: 12.self_attn.linears.3.weight, param.size: torch.Size([1024, 1024])
+name: 12.self_attn.linears.3.bias, param.size: torch.Size([1024])
+name: 12.src_attn.linears.0.weight, param.size: torch.Size([1024, 1024])
+name: 12.src_attn.linears.0.bias, param.size: torch.Size([1024])
+name: 12.src_attn.linears.1.weight, param.size: torch.Size([1024, 1024])
+name: 12.src_attn.linears.1.bias, param.size: torch.Size([1024])
+name: 12.src_attn.linears.2.weight, param.size: torch.Size([1024, 1024])
+name: 12.src_attn.linears.2.bias, param.size: torch.Size([1024])
+name: 12.src_attn.linears.3.weight, param.size: torch.Size([1024, 1024])
+name: 12.src_attn.linears.3.bias, param.size: torch.Size([1024])
+name: 12.feed_forward.w_1.weight, param.size: torch.Size([4096, 1024])
+name: 12.feed_forward.w_1.bias, param.size: torch.Size([4096])
+name: 12.feed_forward.w_2.weight, param.size: torch.Size([1024, 4096])
+name: 12.feed_forward.w_2.bias, param.size: torch.Size([1024])
+name: 12.sublayer.0.norm.a_2, param.size: torch.Size([1024])
+name: 12.sublayer.0.norm.b_2, param.size: torch.Size([1024])
+name: 12.sublayer.1.norm.a_2, param.size: torch.Size([1024])
+name: 12.sublayer.1.norm.b_2, param.size: torch.Size([1024])
+name: 12.sublayer.2.norm.a_2, param.size: torch.Size([1024])
+name: 12.sublayer.2.norm.b_2, param.size: torch.Size([1024])
+name: 13.self_attn.linears.0.weight, param.size: torch.Size([1024, 1024])
+name: 13.self_attn.linears.0.bias, param.size: torch.Size([1024])
+name: 13.self_attn.linears.1.weight, param.size: torch.Size([1024, 1024])
+name: 13.self_attn.linears.1.bias, param.size: torch.Size([1024])
+name: 13.self_attn.linears.2.weight, param.size: torch.Size([1024, 1024])
+name: 13.self_attn.linears.2.bias, param.size: torch.Size([1024])
+name: 13.self_attn.linears.3.weight, param.size: torch.Size([1024, 1024])
+name: 13.self_attn.linears.3.bias, param.size: torch.Size([1024])
+name: 13.src_attn.linears.0.weight, param.size: torch.Size([1024, 1024])
+name: 13.src_attn.linears.0.bias, param.size: torch.Size([1024])
+name: 13.src_attn.linears.1.weight, param.size: torch.Size([1024, 1024])
+name: 13.src_attn.linears.1.bias, param.size: torch.Size([1024])
+name: 13.src_attn.linears.2.weight, param.size: torch.Size([1024, 1024])
+name: 13.src_attn.linears.2.bias, param.size: torch.Size([1024])
+name: 13.src_attn.linears.3.weight, param.size: torch.Size([1024, 1024])
+name: 13.src_attn.linears.3.bias, param.size: torch.Size([1024])
+name: 13.feed_forward.w_1.weight, param.size: torch.Size([4096, 1024])
+name: 13.feed_forward.w_1.bias, param.size: torch.Size([4096])
+name: 13.feed_forward.w_2.weight, param.size: torch.Size([1024, 4096])
+name: 13.feed_forward.w_2.bias, param.size: torch.Size([1024])
+name: 13.sublayer.0.norm.a_2, param.size: torch.Size([1024])
+name: 13.sublayer.0.norm.b_2, param.size: torch.Size([1024])
+name: 13.sublayer.1.norm.a_2, param.size: torch.Size([1024])
+name: 13.sublayer.1.norm.b_2, param.size: torch.Size([1024])
+name: 13.sublayer.2.norm.a_2, param.size: torch.Size([1024])
+name: 13.sublayer.2.norm.b_2, param.size: torch.Size([1024])
+name: 14.self_attn.linears.0.weight, param.size: torch.Size([1024, 1024])
+name: 14.self_attn.linears.0.bias, param.size: torch.Size([1024])
+name: 14.self_attn.linears.1.weight, param.size: torch.Size([1024, 1024])
+name: 14.self_attn.linears.1.bias, param.size: torch.Size([1024])
+name: 14.self_attn.linears.2.weight, param.size: torch.Size([1024, 1024])
+name: 14.self_attn.linears.2.bias, param.size: torch.Size([1024])
+name: 14.self_attn.linears.3.weight, param.size: torch.Size([1024, 1024])
+name: 14.self_attn.linears.3.bias, param.size: torch.Size([1024])
+name: 14.src_attn.linears.0.weight, param.size: torch.Size([1024, 1024])
+name: 14.src_attn.linears.0.bias, param.size: torch.Size([1024])
+name: 14.src_attn.linears.1.weight, param.size: torch.Size([1024, 1024])
+name: 14.src_attn.linears.1.bias, param.size: torch.Size([1024])
+name: 14.src_attn.linears.2.weight, param.size: torch.Size([1024, 1024])
+name: 14.src_attn.linears.2.bias, param.size: torch.Size([1024])
+name: 14.src_attn.linears.3.weight, param.size: torch.Size([1024, 1024])
+name: 14.src_attn.linears.3.bias, param.size: torch.Size([1024])
+name: 14.feed_forward.w_1.weight, param.size: torch.Size([4096, 1024])
+name: 14.feed_forward.w_1.bias, param.size: torch.Size([4096])
+name: 14.feed_forward.w_2.weight, param.size: torch.Size([1024, 4096])
+name: 14.feed_forward.w_2.bias, param.size: torch.Size([1024])
+name: 14.sublayer.0.norm.a_2, param.size: torch.Size([1024])
+name: 14.sublayer.0.norm.b_2, param.size: torch.Size([1024])
+name: 14.sublayer.1.norm.a_2, param.size: torch.Size([1024])
+name: 14.sublayer.1.norm.b_2, param.size: torch.Size([1024])
+name: 14.sublayer.2.norm.a_2, param.size: torch.Size([1024])
+name: 14.sublayer.2.norm.b_2, param.size: torch.Size([1024])
+name: 15.self_attn.linears.0.weight, param.size: torch.Size([1024, 1024])
+name: 15.self_attn.linears.0.bias, param.size: torch.Size([1024])
+name: 15.self_attn.linears.1.weight, param.size: torch.Size([1024, 1024])
+name: 15.self_attn.linears.1.bias, param.size: torch.Size([1024])
+name: 15.self_attn.linears.2.weight, param.size: torch.Size([1024, 1024])
+name: 15.self_attn.linears.2.bias, param.size: torch.Size([1024])
+name: 15.self_attn.linears.3.weight, param.size: torch.Size([1024, 1024])
+name: 15.self_attn.linears.3.bias, param.size: torch.Size([1024])
+name: 15.src_attn.linears.0.weight, param.size: torch.Size([1024, 1024])
+name: 15.src_attn.linears.0.bias, param.size: torch.Size([1024])
+name: 15.src_attn.linears.1.weight, param.size: torch.Size([1024, 1024])
+name: 15.src_attn.linears.1.bias, param.size: torch.Size([1024])
+name: 15.src_attn.linears.2.weight, param.size: torch.Size([1024, 1024])
+name: 15.src_attn.linears.2.bias, param.size: torch.Size([1024])
+name: 15.src_attn.linears.3.weight, param.size: torch.Size([1024, 1024])
+name: 15.src_attn.linears.3.bias, param.size: torch.Size([1024])
+name: 15.feed_forward.w_1.weight, param.size: torch.Size([4096, 1024])
+name: 15.feed_forward.w_1.bias, param.size: torch.Size([4096])
+name: 15.feed_forward.w_2.weight, param.size: torch.Size([1024, 4096])
+name: 15.feed_forward.w_2.bias, param.size: torch.Size([1024])
+name: 15.sublayer.0.norm.a_2, param.size: torch.Size([1024])
+name: 15.sublayer.0.norm.b_2, param.size: torch.Size([1024])
+name: 15.sublayer.1.norm.a_2, param.size: torch.Size([1024])
+name: 15.sublayer.1.norm.b_2, param.size: torch.Size([1024])
+name: 15.sublayer.2.norm.a_2, param.size: torch.Size([1024])
+name: 15.sublayer.2.norm.b_2, param.size: torch.Size([1024])
+name: 16.self_attn.linears.0.weight, param.size: torch.Size([1024, 1024])
+name: 16.self_attn.linears.0.bias, param.size: torch.Size([1024])
+name: 16.self_attn.linears.1.weight, param.size: torch.Size([1024, 1024])
+name: 16.self_attn.linears.1.bias, param.size: torch.Size([1024])
+name: 16.self_attn.linears.2.weight, param.size: torch.Size([1024, 1024])
+name: 16.self_attn.linears.2.bias, param.size: torch.Size([1024])
+name: 16.self_attn.linears.3.weight, param.size: torch.Size([1024, 1024])
+name: 16.self_attn.linears.3.bias, param.size: torch.Size([1024])
+name: 16.src_attn.linears.0.weight, param.size: torch.Size([1024, 1024])
+name: 16.src_attn.linears.0.bias, param.size: torch.Size([1024])
+name: 16.src_attn.linears.1.weight, param.size: torch.Size([1024, 1024])
+name: 16.src_attn.linears.1.bias, param.size: torch.Size([1024])
+name: 16.src_attn.linears.2.weight, param.size: torch.Size([1024, 1024])
+name: 16.src_attn.linears.2.bias, param.size: torch.Size([1024])
+name: 16.src_attn.linears.3.weight, param.size: torch.Size([1024, 1024])
+name: 16.src_attn.linears.3.bias, param.size: torch.Size([1024])
+name: 16.feed_forward.w_1.weight, param.size: torch.Size([4096, 1024])
+name: 16.feed_forward.w_1.bias, param.size: torch.Size([4096])
+name: 16.feed_forward.w_2.weight, param.size: torch.Size([1024, 4096])
+name: 16.feed_forward.w_2.bias, param.size: torch.Size([1024])
+name: 16.sublayer.0.norm.a_2, param.size: torch.Size([1024])
+name: 16.sublayer.0.norm.b_2, param.size: torch.Size([1024])
+name: 16.sublayer.1.norm.a_2, param.size: torch.Size([1024])
+name: 16.sublayer.1.norm.b_2, param.size: torch.Size([1024])
+name: 16.sublayer.2.norm.a_2, param.size: torch.Size([1024])
+name: 16.sublayer.2.norm.b_2, param.size: torch.Size([1024])
+name: 17.self_attn.linears.0.weight, param.size: torch.Size([1024, 1024])
+name: 17.self_attn.linears.0.bias, param.size: torch.Size([1024])
+name: 17.self_attn.linears.1.weight, param.size: torch.Size([1024, 1024])
+name: 17.self_attn.linears.1.bias, param.size: torch.Size([1024])
+name: 17.self_attn.linears.2.weight, param.size: torch.Size([1024, 1024])
+name: 17.self_attn.linears.2.bias, param.size: torch.Size([1024])
+name: 17.self_attn.linears.3.weight, param.size: torch.Size([1024, 1024])
+name: 17.self_attn.linears.3.bias, param.size: torch.Size([1024])
+name: 17.src_attn.linears.0.weight, param.size: torch.Size([1024, 1024])
+name: 17.src_attn.linears.0.bias, param.size: torch.Size([1024])
+name: 17.src_attn.linears.1.weight, param.size: torch.Size([1024, 1024])
+name: 17.src_attn.linears.1.bias, param.size: torch.Size([1024])
+name: 17.src_attn.linears.2.weight, param.size: torch.Size([1024, 1024])
+name: 17.src_attn.linears.2.bias, param.size: torch.Size([1024])
+name: 17.src_attn.linears.3.weight, param.size: torch.Size([1024, 1024])
+name: 17.src_attn.linears.3.bias, param.size: torch.Size([1024])
+name: 17.feed_forward.w_1.weight, param.size: torch.Size([4096, 1024])
+name: 17.feed_forward.w_1.bias, param.size: torch.Size([4096])
+name: 17.feed_forward.w_2.weight, param.size: torch.Size([1024, 4096])
+name: 17.feed_forward.w_2.bias, param.size: torch.Size([1024])
+name: 17.sublayer.0.norm.a_2, param.size: torch.Size([1024])
+name: 17.sublayer.0.norm.b_2, param.size: torch.Size([1024])
+name: 17.sublayer.1.norm.a_2, param.size: torch.Size([1024])
+name: 17.sublayer.1.norm.b_2, param.size: torch.Size([1024])
+name: 17.sublayer.2.norm.a_2, param.size: torch.Size([1024])
+name: 17.sublayer.2.norm.b_2, param.size: torch.Size([1024])
+ip-172-31-4-114:138061:138771 [0] NCCL INFO Using network Socket
+ip-172-31-4-114:138061:138771 [0] NCCL INFO Channel 00/04 :    0   1
+ip-172-31-4-114:138061:138771 [0] NCCL INFO Channel 01/04 :    0   1
+ip-172-31-4-114:138061:138771 [0] NCCL INFO Channel 02/04 :    0   1
+ip-172-31-4-114:138061:138771 [0] NCCL INFO Channel 03/04 :    0   1
+ip-172-31-4-114:138061:138771 [0] NCCL INFO Trees [0] 1/-1/-1->0->-1 [1] 1/-1/-1->0->-1 [2] 1/-1/-1->0->-1 [3] 1/-1/-1->0->-1
+ip-172-31-4-114:138061:138771 [0] NCCL INFO Channel 00/0 : 0[180] -> 1[190] via P2P/IPC
+ip-172-31-4-114:138061:138771 [0] NCCL INFO Channel 01/0 : 0[180] -> 1[190] via P2P/IPC
+ip-172-31-4-114:138061:138771 [0] NCCL INFO Channel 02/0 : 0[180] -> 1[190] via P2P/IPC
+ip-172-31-4-114:138061:138771 [0] NCCL INFO Channel 03/0 : 0[180] -> 1[190] via P2P/IPC
+ip-172-31-4-114:138061:138771 [0] NCCL INFO Connected all rings
+ip-172-31-4-114:138061:138771 [0] NCCL INFO Connected all trees
+ip-172-31-4-114:138061:138771 [0] NCCL INFO threadThresholds 8/8/64 | 16/8/64 | 512 | 512
+ip-172-31-4-114:138061:138771 [0] NCCL INFO 4 coll channels, 4 p2p channels, 4 p2p channels per peer
+ip-172-31-4-114:138061:138771 [0] NCCL INFO comm 0x419c7e30 rank 0 nranks 2 cudaDev 0 busId 180 - Init COMPLETE
+ip-172-31-4-114:138061:138892 [0] NCCL INFO Channel 00/1 : 0[180] -> 1[190] via P2P/IPC
+ip-172-31-4-114:138061:138892 [0] NCCL INFO Channel 01/1 : 0[180] -> 1[190] via P2P/IPC
+ip-172-31-4-114:138061:138892 [0] NCCL INFO Channel 02/1 : 0[180] -> 1[190] via P2P/IPC
+ip-172-31-4-114:138061:138892 [0] NCCL INFO Channel 03/1 : 0[180] -> 1[190] via P2P/IPC
+ip-172-31-4-114:138061:138905 [0] NCCL INFO Using network Socket
+ip-172-31-4-114:138061:138905 [0] NCCL INFO Trees [0] -1/-1/-1->1->0 [1] -1/-1/-1->1->0 [2] -1/-1/-1->1->0 [3] -1/-1/-1->1->0
+ip-172-31-4-114:138061:138905 [0] NCCL INFO Channel 00/0 : 1[180] -> 0[170] via P2P/IPC
+ip-172-31-4-114:138061:138905 [0] NCCL INFO Channel 01/0 : 1[180] -> 0[170] via P2P/IPC
+ip-172-31-4-114:138061:138905 [0] NCCL INFO Channel 02/0 : 1[180] -> 0[170] via P2P/IPC
+ip-172-31-4-114:138061:138905 [0] NCCL INFO Channel 03/0 : 1[180] -> 0[170] via P2P/IPC
+ip-172-31-4-114:138061:138905 [0] NCCL INFO Connected all rings
+ip-172-31-4-114:138061:138905 [0] NCCL INFO Connected all trees
+ip-172-31-4-114:138061:138905 [0] NCCL INFO threadThresholds 8/8/64 | 16/8/64 | 512 | 512
+ip-172-31-4-114:138061:138905 [0] NCCL INFO 4 coll channels, 4 p2p channels, 4 p2p channels per peer
+ip-172-31-4-114:138061:138905 [0] NCCL INFO comm 0x419da8d0 rank 1 nranks 2 cudaDev 0 busId 180 - Init COMPLETE
+2025-02-18 07:54:40.002220 - START TRAIN 0
+[ 02|00 ] 2025-02-18 07:54:40.002343 - START BATCH 0
+[ 02|00 ] 2025-02-18 07:54:40.007350 - START LOCAL MODEL TRAIN 0
+[ 02|00 ] 2025-02-18 07:54:40.009240 - FINISH LOCAL MODEL TRAIN 0
+[ 02|00 ] 2025-02-18 07:54:40.011833 - START FIRST TRY TO SCHEDULE 0
+ip-172-31-4-114:138061:139026 [0] NCCL INFO Channel 00/1 : 1[180] -> 0[170] via P2P/IPC
+ip-172-31-4-114:138061:139026 [0] NCCL INFO Channel 01/1 : 1[180] -> 0[170] via P2P/IPC
+ip-172-31-4-114:138061:139026 [0] NCCL INFO Channel 02/1 : 1[180] -> 0[170] via P2P/IPC
+ip-172-31-4-114:138061:139026 [0] NCCL INFO Channel 03/1 : 1[180] -> 0[170] via P2P/IPC
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Using network Socket
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Trees [0] 1/-1/-1->2->3 [1] 3/-1/-1->2->1 [2] 1/-1/-1->2->3 [3] 3/-1/-1->2->1 [4] 1/-1/-1->2->3 [5] 3/-1/-1->2->1 [6] 1/-1/-1->2->3 [7] 3/-1/-1->2->1
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Channel 00/0 : 2[180] -> 3[190] via P2P/IPC
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Channel 04/0 : 2[180] -> 3[190] via P2P/IPC
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Channel 02/0 : 2[180] -> 0[160] via P2P/IPC
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Channel 06/0 : 2[180] -> 0[160] via P2P/IPC
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Channel 01/0 : 2[180] -> 1[170] via P2P/IPC
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Channel 03/0 : 2[180] -> 1[170] via P2P/IPC
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Channel 05/0 : 2[180] -> 1[170] via P2P/IPC
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Channel 07/0 : 2[180] -> 1[170] via P2P/IPC
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Connected all rings
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Channel 01/0 : 2[180] -> 3[190] via P2P/IPC
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Channel 02/0 : 2[180] -> 3[190] via P2P/IPC
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Channel 03/0 : 2[180] -> 3[190] via P2P/IPC
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Channel 05/0 : 2[180] -> 3[190] via P2P/IPC
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Channel 06/0 : 2[180] -> 3[190] via P2P/IPC
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Channel 07/0 : 2[180] -> 3[190] via P2P/IPC
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Channel 00/0 : 2[180] -> 1[170] via P2P/IPC
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Channel 02/0 : 2[180] -> 1[170] via P2P/IPC
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Channel 04/0 : 2[180] -> 1[170] via P2P/IPC
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Channel 06/0 : 2[180] -> 1[170] via P2P/IPC
+ip-172-31-4-114:138061:139211 [0] NCCL INFO Connected all trees
+ip-172-31-4-114:138061:139211 [0] NCCL INFO threadThresholds 8/8/64 | 32/8/64 | 512 | 512
+ip-172-31-4-114:138061:139211 [0] NCCL INFO 8 coll channels, 8 p2p channels, 2 p2p channels per peer
+ip-172-31-4-114:138061:139211 [0] NCCL INFO comm 0x59d75860 rank 2 nranks 4 cudaDev 0 busId 180 - Init COMPLETE
+[2025-02-18 07:57:04,482] [WARNING] [logging.py:68:log_dist] [Rank 2] rank=2 time (ms) | overflow_check: 315.53
+[2025-02-18 07:57:04,483] [WARNING] [logging.py:68:log_dist] [Rank 2] rank=2 time (ms) | forward_microstep: 11.57 | backward_microstep: 21.55 | backward_inner_microstep: 21.51 | backward_allreduce_microstep: 0.01 | optimizer_step_microstep: 317.18
+[2025-02-18 07:57:04,483] [WARNING] [logging.py:68:log_dist] [Rank 2] rank=2 time (ms) | forward: 11.55 | backward: 21.53 | backward_inner: 21.49 | backward_allreduce: 0.01 | optimizer_step: 317.17
+[ 02|01 ] 2025-02-18 07:57:04.483364 - FINISH FIRST TRY TO SCHEDULE 0
+[ 02|01 ] 2025-02-18 07:57:04.483402 - SCHEDULE NO ERROR 0
+[2025-02-18 07:57:04,483] [WARNING] [logging.py:68:log_dist] [Rank 2] rank=2 time (ms) | pipe_send_output: 10.20 | pipe_send_grad: 10.24 | pipe_recv_input: 10.30 | pipe_recv_grad: 0.14
+[ 02|01 ] 2025-02-18 07:57:04.483548 - FINISH BATCH 0 took 144.47621393203735 s
+2025-02-18 07:57:04.483576 - FINISH TRAIN 0
+2025-02-18 07:57:04.483585 - START TRAIN 1
+[ 02|01 ] 2025-02-18 07:57:04.483600 - START BATCH 1
+[ 02|01 ] 2025-02-18 07:57:04.486745 - START LOCAL MODEL TRAIN 1
+[ 02|01 ] 2025-02-18 07:57:04.488525 - FINISH LOCAL MODEL TRAIN 1
+[ 02|01 ] 2025-02-18 07:57:04.491852 - START FIRST TRY TO SCHEDULE 1
+[2025-02-18 07:59:22,035] [WARNING] [logging.py:68:log_dist] [Rank 2] rank=2 time (ms) | overflow_check: 41.16
+[2025-02-18 07:59:22,036] [WARNING] [logging.py:68:log_dist] [Rank 2] rank=2 time (ms) | forward_microstep: 12.54 | backward_microstep: 21.60 | backward_inner_microstep: 21.56 | backward_allreduce_microstep: 0.00 | optimizer_step_microstep: 42.07
+[2025-02-18 07:59:22,036] [WARNING] [logging.py:68:log_dist] [Rank 2] rank=2 time (ms) | forward: 12.51 | backward: 21.58 | backward_inner: 21.54 | backward_allreduce: 0.00 | optimizer_step: 42.07
+[ 02|02 ] 2025-02-18 07:59:22.036231 - FINISH FIRST TRY TO SCHEDULE 1
+[ 02|02 ] 2025-02-18 07:59:22.036265 - SCHEDULE NO ERROR 1
+[2025-02-18 07:59:22,036] [WARNING] [logging.py:68:log_dist] [Rank 2] rank=2 time (ms) | pipe_send_output: 10.20 | pipe_send_grad: 10.28 | pipe_recv_input: 20.46 | pipe_recv_grad: 10.22
+[ 02|02 ] 2025-02-18 07:59:22.036395 - FINISH BATCH 1 took 137.54966115951538 s
+2025-02-18 07:59:22.036417 - FINISH TRAIN 1
+2025-02-18 07:59:22.036426 - START TRAIN 2
+[ 02|02 ] 2025-02-18 07:59:22.036442 - START BATCH 2
+[ 02|02 ] 2025-02-18 07:59:22.040413 - START LOCAL MODEL TRAIN 2
+[ 02|02 ] 2025-02-18 07:59:22.041106 - FINISH LOCAL MODEL TRAIN 2
+[ 02|02 ] 2025-02-18 07:59:22.053410 - START FIRST TRY TO SCHEDULE 2
+[2025-02-18 08:01:46,054] [WARNING] [logging.py:68:log_dist] [Rank 2] rank=2 time (ms) | overflow_check: 51.14
+[2025-02-18 08:01:46,055] [WARNING] [logging.py:68:log_dist] [Rank 2] rank=2 time (ms) | forward_microstep: 13.50 | backward_microstep: 21.53 | backward_inner_microstep: 21.49 | backward_allreduce_microstep: 0.00 | optimizer_step_microstep: 51.97
+[2025-02-18 08:01:46,055] [WARNING] [logging.py:68:log_dist] [Rank 2] rank=2 time (ms) | forward: 13.47 | backward: 21.51 | backward_inner: 21.46 | backward_allreduce: 0.00 | optimizer_step: 51.97
+[ 02|03 ] 2025-02-18 08:01:46.055138 - FINISH FIRST TRY TO SCHEDULE 2
+[ 02|03 ] 2025-02-18 08:01:46.055170 - SCHEDULE NO ERROR 2
+[2025-02-18 08:01:46,055] [WARNING] [logging.py:68:log_dist] [Rank 2] rank=2 time (ms) | pipe_send_output: 10.25 | pipe_send_grad: 10.22 | pipe_recv_input: 10.31 | pipe_recv_grad: 0.13
+[ 02|03 ] 2025-02-18 08:01:46.055305 - FINISH BATCH 2 took 144.01489734649658 s
+2025-02-18 08:01:46.055328 - FINISH TRAIN 2
+finish all
+ip-172-31-4-114:138061:139001 [0] NCCL INFO [Service thread] Connection closed by localRank 1
+ip-172-31-4-114:138061:138061 [0] NCCL INFO comm 0x419da8d0 rank 1 nranks 2 cudaDev 0 busId 180 - Abort COMPLETE
+ip-172-31-4-114:138061:138786 [0] NCCL INFO [Service thread] Connection closed by localRank 0
+ip-172-31-4-114:138061:138061 [0] NCCL INFO comm 0x419c7e30 rank 0 nranks 2 cudaDev 0 busId 180 - Abort COMPLETE
+ip-172-31-4-114:138061:139218 [0] NCCL INFO [Service thread] Connection closed by localRank 2
+ip-172-31-4-114:138061:138061 [0] NCCL INFO comm 0x59d75860 rank 2 nranks 4 cudaDev 0 busId 180 - Abort COMPLETE
+ip-172-31-4-114:138061:138698 [0] NCCL INFO [Service thread] Connection closed by localRank 0
+ip-172-31-4-114:138061:138061 [0] NCCL INFO comm 0x4110b130 rank 0 nranks 2 cudaDev 0 busId 180 - Abort COMPLETE

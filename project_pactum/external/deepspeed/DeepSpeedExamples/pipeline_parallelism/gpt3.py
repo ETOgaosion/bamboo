@@ -284,6 +284,8 @@ def train():
     def init_dist(args):
         import json
         import os
+        import sys
+        print(sys.path)
         from torch.distributed.elastic.rendezvous import RendezvousParameters
         from project_pactum.rendezvous.etcd import create_rdzv_handler
 

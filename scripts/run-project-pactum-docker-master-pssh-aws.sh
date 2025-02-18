@@ -19,13 +19,6 @@ LAYERS=${7:-24}
 
 mkdir -p "res/lab_aws/nodes_${NUM_NODES}_${NUM_STAGES}_${MICRO_BATCH_SIZE}"
 
-cmd="""export CUDA_VISIBLE_DEVICES=$CUR_NODE && export NCCL_DEBUG=INFO && export NCCL_SOCKET_IFNAME=ens5 && export GLOO_SOCKET_IFNAME=ens5 && \
-    export LD_PRELOAD=/usr/local/cuda-11.7/efa/lib/libnccl-net.so && export LD_LIBRARY_PATH=/usr/local/cuda-11.7/efa/lib/:$LD_LIBRARY_PATH && \
-    ./scripts/run-project-pactum-master.sh $NUM_NODES $NUM_STAGES $GLOBAL_RANK $MICRO_BATCH_SIZE $SEQ_LEN $LAYERS > res/lab_aws/nodes_${NUM_NODES}_${NUM_STAGES}_${MICRO_BATCH_SIZE}/node_$CUR_NODE.txt 2>&1"""
-
-# cmd="""docker run --rm -it --net "host" --gpus 'device=$CUR_NODE' -w '/workspace' whatcanyousee/bamboo \
-#     /bin/bash -c './scripts/run-project-pactum-master.sh $NUM_NODES $NUM_STAGES'"""
-
-echo "RUNNING CMD $cmd"
-
-eval $cmd
+source ~/.bashrc && export CUDA_VISIBLE_DEVICES=$CUR_NODE && export NCCL_DEBUG=INFO && export NCCL_SOCKET_IFNAME=ens5 && export GLOO_SOCKET_IFNAME=ens5 && \
+export LD_PRELOAD=/usr/local/cuda-11.7/efa/lib/libnccl-net.so && export LD_LIBRARY_PATH=/usr/local/cuda-11.7/efa/lib/:\$LD_LIBRARY_PATH && \
+./scripts/run-project-pactum-master.sh $NUM_NODES $NUM_STAGES $GLOBAL_RANK $MICRO_BATCH_SIZE $SEQ_LEN $LAYERS > res/lab_aws/nodes_${NUM_NODES}_${NUM_STAGES}_${MICRO_BATCH_SIZE}/node_$CUR_NODE.txt 2>&1

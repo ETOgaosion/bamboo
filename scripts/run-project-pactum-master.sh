@@ -16,11 +16,12 @@ MODEL=${CURRENT_PATH}/project_pactum/external/deepspeed/DeepSpeedExamples/pipeli
 
 echo "ARGS $RDZV_IP $ID $NUM_STAGES $GLOBAL_RANK $MODEL"
 
-cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-	export NCCL_SOCKET_IFNAME=enp216s0np0 \
-	export GLOBAL_RANK=$GLOBAL_RANK \
-	export PYTHONPATH=${CURRENT_PATH}/project-pactum:\${PYTHONPATH} && \
-	python -m project_pactum.run \
+echo "CUDA_VISIBLE_DEVICES $CUDA_VISIBLE_DEVICES NCCL_DEBUG $NCCL_DEBUG NCCL_SOCKET_IFNAME $NCCL_SOCKET_IFNAME GLOO_SOCKET_IFNAME $GLOO_SOCKET_IFNAME LD_PRELOAD $LD_PRELOAD LD_LIBRARY_PATH $LD_LIBRARY_PATH"
+
+export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
+export GLOBAL_RANK=$GLOBAL_RANK \
+export PYTHONPATH=${CURRENT_PATH}:\${PYTHONPATH} && \
+python -m project_pactum.run \
 	--rdzv_backend=etcd-v2 \
 	--rdzv_endpoint=$RDZV_IP:2379 \
 	--rdzv_id=$ID \
@@ -38,8 +39,4 @@ cmd="""export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
 	--redundancy_level=0 \
 	${@:9} \
 	--deepspeed \
-	--deepspeed_config ${MODEL}_${MICRO_BATCH_SIZE}.json"""
-
-echo "RUNNING CMD $cmd"
-
-eval $cmd
+	--deepspeed_config ${MODEL}_${MICRO_BATCH_SIZE}.json
