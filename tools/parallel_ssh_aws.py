@@ -15,7 +15,7 @@ gpus_per_nodes = 8
 # required_nodes = [8, 10, 12, 14, 16, 18, 20]
 required_nodes = [8]
 # required_pipeline_parallel_size = 4
-required_pipeline_parallel_size = [4, 5, 4, 7, 4, 6, 4]
+required_pipeline_parallel_size = [1, 5, 4, 7, 4, 6, 4]
 required_data_parallel_size = []
 for i, node_i in enumerate(required_nodes):
     required_data_parallel_size.append(node_i // required_pipeline_parallel_size[i])
@@ -23,7 +23,7 @@ for i, node_i in enumerate(required_nodes):
 # required_data_parallel_size = [1, 2, 2, 4, 2, 4, 4, 8, 4, 8]
 # required_micro_batch_size = [1, 2, 2, 2, 4, 1]
 # required_micro_batch_size = [2, 2, 4, 4, 4]
-required_micro_batch_size = [1, 1, 1, 1, 1, 1, 1]
+required_micro_batch_size = [32, 1, 1, 1, 1, 1, 1]
 sequence_len = 1024
 
 # hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46', '10.20.23.42', '10.20.23.47']

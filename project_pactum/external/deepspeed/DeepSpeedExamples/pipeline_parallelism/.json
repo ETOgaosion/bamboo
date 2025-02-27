@@ -1,0 +1,35 @@
+{
+    "train_batch_size": 2048,
+    "train_micro_batch_size_per_gpu": 16,
+    "fp16": {
+        "enabled": true,
+        "auto_cast": true,
+        "loss_scale": 0,
+        "initial_scale_power": 16,
+        "loss_scale_window": 1000,
+        "hysteresis": 2,
+        "consecutive_hysteresis": false,
+        "min_loss_scale": 1
+    },
+    "optimizer": {
+        "type": "Adam",
+        "params": {
+            "lr": 0.001,
+            "betas": [
+                0.9,
+                0.999
+            ],
+            "eps": 1e-8
+        }
+    },
+    "steps_per_print": 1,
+    "wall_clock_breakdown": true,
+    "activation_checkpointing": {
+        "partition_activations": true,
+        "cpu_checkpointing": true,
+        "contiguous_memory_optimization": true,
+        "number_checkpoints": 1000,
+        "synchronize_checkpoint_boundary": false,
+        "profile": false
+        }
+}
