@@ -1750,7 +1750,7 @@ class DeepSpeedEngine(Module):
             if self.gradient_predivide_factor() != 1.0:
                 tensor_to_allreduce.mul_(1. / self.gradient_predivide_factor())
 
-            dist.all_reduce(tensor_to_allreduce, group=self.data_parallel_group)
+            # dist.all_reduce(tensor_to_allreduce, group=self.data_parallel_group)
 
             if self.gradient_average:
                 if self.gradient_predivide_factor() != self.dp_world_size:

@@ -107,7 +107,7 @@ class PipelineEngine(DeepSpeedEngine):
     is provided.
     """
     def __init__(self, *super_args, redundancy_level=0, sync_save=False,
-                 eager_recovery=False, prev_state={}, **super_kwargs):
+                 eager_recovery=True, prev_state={}, **super_kwargs):
         super().__init__(*super_args, **super_kwargs)
         assert isinstance(self.module, PipelineModule), "model must base PipelineModule"
 
@@ -196,7 +196,7 @@ class PipelineEngine(DeepSpeedEngine):
         if eager_recovery and redundancy_level == 0:
             raise Exception(
                 "Must set redundancy level to enable eager recovery")
-        self.eager_recovery = eager_recovery
+        self.eager_recovery = self.redundancy_level > 0 and eager_recovery
 
         self.init_redundancy()
         

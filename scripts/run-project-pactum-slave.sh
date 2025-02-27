@@ -9,8 +9,9 @@ MICRO_BATCH_SIZE=${4:-8}
 SEQ_LEN=${5:-1024}
 NUM_NODES_MIN=${1:-$NUM_NODES}
 LAYERS=${6:-24}
-RDZV_IP=${7:-10.20.23.90}
-ID=encoder${8}
+$MODEL_SIZE=${7:-"350M"}
+RDZV_IP=${8:-172.31.47.132}
+ID=encoder${9}
 
 MODEL=${CURRENT_PATH}/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/gpt3
 
@@ -33,12 +34,13 @@ python -m project_pactum.run \
 	--max-pipe-parallel-size=24 \
 	--default-num-stages=${NUM_STAGES} \
 	${MODEL}.py \
-	-s 3 \
+	-s 5 \
 	--seq=$SEQ_LEN \
 	-N ${LAYERS} \
 	--nodes=${NUM_NODES} \
 	--backend=nccl \
-	--redundancy_level=0 \
-	${@:9} \
+	--redundancy_level=1 \
+	--model-size="$MODEL_SIZE" \
+	${@:10} \
 	--deepspeed \
 	--deepspeed_config ${MODEL}_${MICRO_BATCH_SIZE}.json

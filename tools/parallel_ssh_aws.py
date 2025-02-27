@@ -10,6 +10,7 @@ Hint: Modify these Configurations only
 All functions are extendable
 '''
 gpus_per_nodes = 8
+models = ['350M']
 # required_nodes = [4, 8, 12, 16, 20, 24]
 # required_nodes = [16, 20, 24, 28, 32]
 # required_nodes = [8, 10, 12, 14, 16, 18, 20]
@@ -100,56 +101,46 @@ all_clients = {}
 all_commands = {}
 cards_number = {}
 
-for k, nodes in enumerate(required_nodes):
-    all_hosts[nodes] = []
-    all_clients[nodes] = []
-    all_commands[nodes] = []
-    cards_number[nodes] = []
-    
-    required_hosts_int = (nodes // gpus_per_nodes)
-    required_hosts_left = (nodes % gpus_per_nodes)
-    required_hosts = math.ceil(nodes / gpus_per_nodes)
-    
-    if nodes == 4:
+for model_size in models:
+    for k, nodes in enumerate(required_nodes):
+        all_hosts[nodes] = []
+        all_clients[nodes] = []
+        all_commands[nodes] = []
+        cards_number[nodes] = []
+        
+        required_hosts_int = (nodes // gpus_per_nodes)
+        required_hosts_left = (nodes % gpus_per_nodes)
+        required_hosts = math.ceil(nodes / gpus_per_nodes)
+            
+        for i in range(required_hosts_int):
+            all_hosts[nodes].extend([hosts[i]] * gpus_per_nodes)
+            all_clients[nodes].extend(clients[hosts[i]])
+            for j in range(gpus_per_nodes):
+                role = 'slave'
+                if i == 0:
+                    role = 'master'
+                all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-' + role + '-pssh-aws.sh ' + 
+                                        str(j) + ' ' +                                           # cur gpu
+                                        str(nodes) + ' ' +                                       # num nodes
+                                        str(required_pipeline_parallel_size[k]) + ' ' +     # num stages
+                                        str(i * gpus_per_nodes + j) + ' ' +                      # global rank
+                                        str(required_micro_batch_size[k]) + ' ' +                # micro batch size
+                                        str(sequence_len) + ' ' +                                # sequence len
+                                        str(model_size))                                   # model size
         for i in range(required_hosts_left):
             all_hosts[nodes].append(hosts[required_hosts - 1])
             all_clients[nodes].append(clients[hosts[required_hosts - 1]][i])
-            all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-master-pssh-aws.sh ' + 
+            all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-slave-pssh-aws.sh ' + 
                                         str(i) + ' ' +                                           # cur gpu
                                         str(nodes) + ' ' +                                       # num nodes
                                         str(required_pipeline_parallel_size[k]) + ' ' +     # num stages
                                         str(required_hosts_int * gpus_per_nodes + i) + ' ' +     # global rank
                                         str(required_micro_batch_size[k]) + ' ' +                # micro batch size
-                                        str(sequence_len))                                       # sequence len
-        continue
-        
-    for i in range(required_hosts_int):
-        all_hosts[nodes].extend([hosts[i]] * gpus_per_nodes)
-        all_clients[nodes].extend(clients[hosts[i]])
-        for j in range(gpus_per_nodes):
-            role = 'slave'
-            if i == 0:
-                role = 'master'
-            all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-' + role + '-pssh-aws.sh ' + 
-                                       str(j) + ' ' +                                           # cur gpu
-                                       str(nodes) + ' ' +                                       # num nodes
-                                       str(required_pipeline_parallel_size[k]) + ' ' +     # num stages
-                                       str(i * gpus_per_nodes + j) + ' ' +                      # global rank
-                                       str(required_micro_batch_size[k]) + ' ' +                # micro batch size
-                                       str(sequence_len))                                       # sequence len
-    for i in range(required_hosts_left):
-        all_hosts[nodes].append(hosts[required_hosts - 1])
-        all_clients[nodes].append(clients[hosts[required_hosts - 1]][i])
-        all_commands[nodes].append('cd ' + project_dir + ' && ./scripts/run-project-pactum-docker-slave-pssh-aws.sh ' + 
-                                    str(i) + ' ' +                                           # cur gpu
-                                    str(nodes) + ' ' +                                       # num nodes
-                                    str(required_pipeline_parallel_size[k]) + ' ' +     # num stages
-                                    str(required_hosts_int * gpus_per_nodes + i) + ' ' +     # global rank
-                                    str(required_micro_batch_size[k]) + ' ' +                # micro batch size
-                                    str(sequence_len))                                       # sequence len
-    cards_number[nodes] = [gpus_per_nodes] * required_hosts_int
-    if required_hosts_left != 0:
-        cards_number[nodes].append(required_hosts_left)
+                                        str(sequence_len) + ' ' +                                # sequence len
+                                        str(model_size))                                   # model size
+        cards_number[nodes] = [gpus_per_nodes] * required_hosts_int
+        if required_hosts_left != 0:
+            cards_number[nodes].append(required_hosts_left)
 
 pprint.pp(all_hosts)
 pprint.pp(all_commands)
