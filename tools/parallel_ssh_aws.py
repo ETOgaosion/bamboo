@@ -199,7 +199,7 @@ def execute_command(model_size, nodes):
             print(line)
     print('Finish ', nodes, ' nodes')
 
-execute_command('1.3B', 10)
+execute_command('1.3B', 12)
 # execute_command('2.7B', 8)
 # execute_command('1.3B', 8)
 # execute_command('1.3B', 8)

@@ -898,8 +898,8 @@ class DeepSpeedEngine(Module):
                 groups.get_expert_data_parallel_group(),
                 0)
 
-        if not self.amp_enabled():
-            self._broadcast_model()
+        # if not self.amp_enabled():
+        #     self._broadcast_model()
 
     #check if parmaeters are duplicated in optimizer param_groups
     def _check_for_duplicates(self, optimizer):
