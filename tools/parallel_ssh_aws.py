@@ -13,12 +13,17 @@ gpus_per_nodes = 8
 model_sizes = ['1.3B', '2.7B', '6.7B', '13B']
 # required_nodes = [4, 8, 12, 16, 20, 24]
 # required_nodes = [16, 20, 24, 28, 32]
-# required_nodes = [8, 10, 12, 14, 16, 18, 20]
-required_nodes = {'350M': [8],
-                '1.3B': [8],
-                '2.7B': [8],
-                '6.7B': [8],
-                '13B': [8]}
+# # required_nodes = [8, 10, 12, 14, 16, 18, 20]
+# required_nodes = {'350M': [8],
+#                 '1.3B': [8],
+#                 '2.7B': [8],
+#                 '6.7B': [8],
+#                 '13B': [8]}
+required_nodes = {'350M': [8, 10, 12, 14, 16],
+                '1.3B': [8, 10, 12, 14, 16],
+                '2.7B': [8, 10, 12, 14, 16],
+                '6.7B': [8, 10, 12, 14, 16],
+                '13B': [8, 10, 12, 14, 16]}
 # required_nodes = {'350M': [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 32],
 #                 '1.3B': [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 32],
 #                 '2.7B': [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 32],
@@ -26,7 +31,7 @@ required_nodes = {'350M': [8],
 #                 '13B': [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 32]}
 # required_pipeline_parallel_size = 4
 required_pipeline_parallel_size = {'350M': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                                    '1.3B': [4, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], 
+                                    '1.3B': [4, 5, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], 
                                     '2.7B': [8, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
                                     '6.7B': [4, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
                                     '13B': [4, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]}
@@ -44,7 +49,7 @@ for model_size in model_sizes:
 # required_micro_batch_size = [1, 2, 2, 2, 4, 1]
 # required_micro_batch_size = [2, 2, 4, 4, 4]
 required_micro_batch_size = {'350M': [32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32],
-                            '1.3B': [1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4], 
+                            '1.3B': [1, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4], 
                             '2.7B': [1, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], 
                             '6.7B': [1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4], 
                             '13B': [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]}
@@ -52,6 +57,7 @@ sequence_len = 1024
 
 # hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46', '10.20.23.42', '10.20.23.47']
 hosts = ['localhost']
+hosts = ['localhost', '172.31.37.190']
 # hosts = ['localhost', '172.31.37.190', '172.31.37.190', '172.31.37.190']
 localhost_ip = '172.31.45.44'
 project_dir = '/home/ubuntu/projects/bamboo'
@@ -193,8 +199,8 @@ def execute_command(model_size, nodes):
             print(line)
     print('Finish ', nodes, ' nodes')
 
-# execute_command('1.3B', 8)
-execute_command('2.7B', 8)
+execute_command('1.3B', 10)
+# execute_command('2.7B', 8)
 # execute_command('1.3B', 8)
 # execute_command('1.3B', 8)
 
