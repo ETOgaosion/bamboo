@@ -10,7 +10,7 @@ SEQ_LEN=${5:-1024}
 NUM_NODES_MIN=${1:-$NUM_NODES}
 LAYERS=${6:-24}
 $MODEL_SIZE=${7:-"350M"}
-RDZV_IP=${8:-172.31.47.132}
+RDZV_IP=${8:-172.31.45.44}
 ID=encoder${9}
 
 MODEL=${CURRENT_PATH}/project_pactum/external/deepspeed/DeepSpeedExamples/pipeline_parallelism/gpt3
