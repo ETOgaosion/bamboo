@@ -22,4 +22,4 @@ mkdir -p "res/lab_aws/${MODEL_SIZE}/nodes_${NUM_NODES}_${NUM_STAGES}_${MICRO_BAT
 
 source ~/.bashrc && export CUDA_VISIBLE_DEVICES=$CUR_NODE && export NCCL_SOCKET_IFNAME=ens5 && export GLOO_SOCKET_IFNAME=ens5 && \
 export LD_PRELOAD=/usr/local/cuda-11.7/efa/lib/libnccl-net.so && export LD_LIBRARY_PATH=/usr/local/cuda-11.7/efa/lib/:\$LD_LIBRARY_PATH && \
-./scripts/run-project-pactum-slave.sh $NUM_NODES $NUM_STAGES $GLOBAL_RANK $MICRO_BATCH_SIZE $SEQ_LEN $LAYERS $MODEL_SIZE' > res/lab_aws/${MODEL_SIZE}//nodes_${NUM_NODES}_${NUM_STAGES}_${MICRO_BATCH_SIZE}/node_$CUR_NODE.txt 2>&1
+./scripts/run-project-pactum-slave.sh $NUM_NODES $NUM_STAGES $GLOBAL_RANK $MICRO_BATCH_SIZE $SEQ_LEN $LAYERS $MODEL_SIZE' > res/lab_aws/${MODEL_SIZE}/nodes_${NUM_NODES}_${NUM_STAGES}_${MICRO_BATCH_SIZE}/node_$CUR_NODE.txt 2>&1
