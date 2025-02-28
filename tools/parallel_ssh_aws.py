@@ -31,7 +31,7 @@ required_nodes = {'350M': [8, 10, 12, 14, 16],
 #                 '13B': [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 32]}
 # required_pipeline_parallel_size = 4
 required_pipeline_parallel_size = {'350M': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                                    '1.3B': [4, 5, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], 
+                                    '1.3B': [4, 5, 4, 7, 4, 3, 5, 11, 6, 7, 5, 4], 
                                     '2.7B': [8, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
                                     '6.7B': [4, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
                                     '13B': [4, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]}
@@ -49,7 +49,7 @@ for model_size in model_sizes:
 # required_micro_batch_size = [1, 2, 2, 2, 4, 1]
 # required_micro_batch_size = [2, 2, 4, 4, 4]
 required_micro_batch_size = {'350M': [32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32],
-                            '1.3B': [1, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4], 
+                            '1.3B': [1, 1, 2, 4, 2, 2, 2, 4, 2, 4, 2, 2], 
                             '2.7B': [1, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8], 
                             '6.7B': [1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4], 
                             '13B': [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]}
@@ -199,7 +199,7 @@ def execute_command(model_size, nodes):
             print(line)
     print('Finish ', nodes, ' nodes')
 
-execute_command('1.3B', 12)
+execute_command('1.3B', 14)
 # execute_command('2.7B', 8)
 # execute_command('1.3B', 8)
 # execute_command('1.3B', 8)

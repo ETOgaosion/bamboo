@@ -279,6 +279,7 @@ def train():
 
         parser = deepspeed.add_config_arguments(parser)
         args = parser.parse_args()
+        print(args)
         if args.model_size == '350M':
             args.N = 24
             args.d_model = 1024
@@ -309,6 +310,7 @@ def train():
             args.d_ff = 20480
             args.H = 40
             args.d_head = 128
+        print(' '.join(f'{k}={v}' for k, v in vars(args).items()))
         return args
     args = get_args()
     np.random.seed(args.seed)
