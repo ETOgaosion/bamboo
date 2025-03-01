@@ -24,20 +24,22 @@ model_sizes = ['1.3B', '2.7B', '6.7B', '13B']
 #                 '2.7B': [8, 10, 12, 14, 16],
 #                 '6.7B': [8, 10, 12, 14, 16],
 #                 '13B': [8, 10, 12, 14, 16]}
-required_nodes = {'350M': [8, 10, 12, 14, 16, 18, 20, 22, 24],
-                '1.3B': [8, 10, 12, 14, 16, 18, 20, 22, 24],
-                '2.7B': [8, 10, 12, 14, 16, 18, 20, 22, 24],
-                '6.7B': [8, 10, 12, 14, 16, 18, 20, 22, 24],
-                '13B': [8, 10, 12, 14, 16, 18, 20, 22, 24]}
-# required_nodes = {'350M': [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32],
-#                 '1.3B': [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32],
-#                 '2.7B': [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32],
-#                 '6.7B': [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32],
-#                 '13B': [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32]}
+# required_nodes = {'350M': [8, 10, 12, 14, 16, 18, 20, 22, 24],
+#                 '1.3B': [8, 10, 12, 14, 16, 18, 20, 22, 24],
+#                 '2.7B': [8, 10, 12, 14, 16, 18, 20, 22, 24],
+#                 '6.7B': [8, 10, 12, 14, 16, 18, 20, 22, 24],
+#                 '13B': [8, 10, 12, 14, 16, 18, 20, 22, 24]}
+required_nodes = {'350M': [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32],
+                '1.3B': [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32],
+                '2.7B': [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32],
+                '6.7B': [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32],
+                '13B': [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32]}
+failed_nodes = {'350M': [],
+                '1.3B': [14, 22, 26],}
 # required_pipeline_parallel_size = 4
 required_pipeline_parallel_size = {'350M': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
                                     '1.3B': [4, 5, 4, 7, 4, 6, 5, 11, 6, 13, 7, 5, 4], 
-                                    '2.7B': [8, 2, 2, 2, 2, 2, 2, 2, 2, 13, 2, 2, 2],
+                                    '2.7B': [4, 5, 4, 7, 4, 6, 5, 11, 6, 13, 7, 5, 32],
                                     '6.7B': [4, 2, 2, 2, 2, 2, 2, 2, 2, 13, 2, 2, 2],
                                     '13B': [4, 2, 2, 2, 2, 2, 2, 2, 2, 13, 2, 2, 2]}
 required_data_parallel_size = {'350M': [], 
@@ -54,8 +56,8 @@ for model_size in model_sizes:
 # required_micro_batch_size = [1, 2, 2, 2, 4, 1]
 # required_micro_batch_size = [2, 2, 4, 4, 4]
 required_micro_batch_size = {'350M': [32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32],
-                            '1.3B': [1, 1, 2, 2, 2, 2, 2, 4, 2, 4, 2, 2, 2], 
-                            '2.7B': [1, 1, 2, 2, 2, 2, 2, 4, 2, 4, 2, 2, 2], 
+                            '1.3B': [1, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2], 
+                            '2.7B': [1, 1, 2, 2, 2, 2, 2, 4, 2, 4, 2, 2, 1], 
                             '6.7B': [1, 1, 2, 2, 2, 2, 2, 4, 2, 4, 2, 2, 2], 
                             '13B': [1, 1, 2, 2, 2, 2, 2, 4, 2, 4, 2, 2, 2]}
 sequence_len = 1024
@@ -63,8 +65,8 @@ sequence_len = 1024
 # hosts = ['localhost', '10.20.23.91', '10.20.23.92', '10.20.23.46', '10.20.23.42', '10.20.23.47']
 # hosts = ['localhost']
 # hosts = ['localhost', '172.31.43.6']
-hosts = ['localhost', '172.31.43.6', '172.31.37.128']
-# hosts = ['localhost', '172.31.37.190', '172.31.37.190', '172.31.37.190']
+# hosts = ['localhost', '172.31.43.6', '172.31.37.128']
+hosts = ['localhost', '172.31.43.6', '172.31.37.128', '172.31.42.8']
 localhost_ip = '172.31.34.202'
 project_dir = '/home/ubuntu/projects/bamboo'
 user = 'ubuntu'
@@ -153,9 +155,13 @@ for model_size in model_sizes:
         required_hosts = math.ceil(nodes / gpus_per_nodes)
             
         for i in range(required_hosts_int):
-            all_hosts[model_size][nodes].extend([hosts[i]] * gpus_per_nodes)
-            all_clients[model_size][nodes].extend(clients[hosts[i]])
-            for j in range(gpus_per_nodes):
+            actual_gpus_per_nodes = gpus_per_nodes
+            if nodes % 7 == 0:
+                actual_gpus_per_nodes = 7
+            start_global_rank_base = i * actual_gpus_per_nodes
+            all_hosts[model_size][nodes].extend([hosts[i]] * actual_gpus_per_nodes)
+            all_clients[model_size][nodes].extend(clients[hosts[i]][:actual_gpus_per_nodes])
+            for j in range(actual_gpus_per_nodes):
                 role = 'slave'
                 if i == 0:
                     role = 'master'
@@ -163,10 +169,14 @@ for model_size in model_sizes:
                                         str(j) + ' ' +                                           # cur gpu
                                         str(nodes) + ' ' +                                       # num nodes
                                         str(required_pipeline_parallel_size[model_size][k]) + ' ' +     # num stages
-                                        str(i * gpus_per_nodes + j) + ' ' +                      # global rank
+                                        str(start_global_rank_base + j) + ' ' +                      # global rank
                                         str(required_micro_batch_size[model_size][k]) + ' ' +                # micro batch size
                                         str(sequence_len) + ' ' +                                # sequence len
                                         str(model_size))                                   # model size
+        left_global_rank_base = required_hosts_int * gpus_per_nodes
+        if nodes % 7 == 0:
+            required_hosts_left = 7
+            left_global_rank_base = required_hosts_int * 7
         for i in range(required_hosts_left):
             all_hosts[model_size][nodes].append(hosts[required_hosts - 1])
             all_clients[model_size][nodes].append(clients[hosts[required_hosts - 1]][i])
@@ -174,7 +184,7 @@ for model_size in model_sizes:
                                         str(i) + ' ' +                                           # cur gpu
                                         str(nodes) + ' ' +                                       # num nodes
                                         str(required_pipeline_parallel_size[model_size][k]) + ' ' +     # num stages
-                                        str(required_hosts_int * gpus_per_nodes + i) + ' ' +     # global rank
+                                        str(left_global_rank_base + i) + ' ' +     # global rank
                                         str(required_micro_batch_size[model_size][k]) + ' ' +                # micro batch size
                                         str(sequence_len) + ' ' +                                # sequence len
                                         str(model_size))                                   # model size
@@ -205,8 +215,8 @@ def execute_command(model_size, nodes):
             print(line)
     print('Finish ', nodes, ' nodes')
 
-execute_command('1.3B', 18)
-# execute_command('2.7B', 8)
+execute_command('1.3B', 32)
+# execute_command('2.7B', 32)
 # execute_command('1.3B', 8)
 # execute_command('1.3B', 8)
 
