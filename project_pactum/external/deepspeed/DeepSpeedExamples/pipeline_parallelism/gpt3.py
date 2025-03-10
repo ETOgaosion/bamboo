@@ -231,6 +231,8 @@ def train():
                             action='store_true',
                             default=False)
         parser.add_argument('--seed', type=int, default=1138, help='PRNG seed')
+        
+        parser.add_argument('--model-size', type=str, default='350M')
 
         # Model config args
         # GPT-3 6.7B
@@ -277,6 +279,38 @@ def train():
 
         parser = deepspeed.add_config_arguments(parser)
         args = parser.parse_args()
+        print(args)
+        if args.model_size == '350M':
+            args.N = 24
+            args.d_model = 1024
+            args.d_ff = 4096
+            args.H = 16
+            args.d_head = 64
+        elif args.model_size == '1.3B':
+            args.N = 24
+            args.d_model = 2048
+            args.d_ff = 8192
+            args.H = 32
+            args.d_head = 64
+        elif args.model_size == '2.7B':
+            args.N = 32
+            args.d_model = 2560
+            args.d_ff = 10240
+            args.H = 32
+            args.d_head = 80
+        elif args.model_size == '6.7B':
+            args.N = 32
+            args.d_model = 4096
+            args.d_ff = 16384
+            args.H = 32
+            args.d_head = 128
+        elif args.model_size == '13B':
+            args.N = 48
+            args.d_model = 5120
+            args.d_ff = 20480
+            args.H = 40
+            args.d_head = 128
+        print(' '.join(f'{k}={v}' for k, v in vars(args).items()))
         return args
     args = get_args()
     np.random.seed(args.seed)
@@ -284,6 +318,8 @@ def train():
     def init_dist(args):
         import json
         import os
+        import sys
+        print(sys.path)
         from torch.distributed.elastic.rendezvous import RendezvousParameters
         from project_pactum.rendezvous.etcd import create_rdzv_handler
 

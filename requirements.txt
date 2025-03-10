@@ -18,10 +18,10 @@ matplotlib==3.5.3
 ninja==1.11.1.1
 numpy==1.24.4
 nvidia-cublas-cu11==11.10.3.66
-nvidia-cuda-nvrtc-cu116==11.6.124
-nvidia-cuda-runtime-cu116==11.6.55
+nvidia-pyindex
+nvidia-cuda-nvrtc-cu117
+nvidia-cuda-runtime-cu117
 nvidia-cudnn-cu11==8.5.0.96
-nvidia-pyindex==1.0.9
 packaging==24.0
 pandas==2.0.3
 parallel-ssh==2.12.0
@@ -44,9 +44,9 @@ ssh-python==1.0.0
 ssh2-python==1.0.0
 statsmodels==0.14.1
 tensorboardX
-torch==1.13.1+cu116
-torchaudio==0.13.1+cu116
-torchvision==0.14.1+cu116
+torch==1.13.1+cu117
+torchaudio==0.13.1+cu117
+torchvision==0.14.1+cu117
 tqdm==4.66.2
 triton==2.2.0
 typing_extensions==4.11.0

@@ -898,8 +898,8 @@ class DeepSpeedEngine(Module):
                 groups.get_expert_data_parallel_group(),
                 0)
 
-        if not self.amp_enabled():
-            self._broadcast_model()
+        # if not self.amp_enabled():
+        #     self._broadcast_model()
 
     #check if parmaeters are duplicated in optimizer param_groups
     def _check_for_duplicates(self, optimizer):
@@ -1750,7 +1750,7 @@ class DeepSpeedEngine(Module):
             if self.gradient_predivide_factor() != 1.0:
                 tensor_to_allreduce.mul_(1. / self.gradient_predivide_factor())
 
-            dist.all_reduce(tensor_to_allreduce, group=self.data_parallel_group)
+            # dist.all_reduce(tensor_to_allreduce, group=self.data_parallel_group)
 
             if self.gradient_average:
                 if self.gradient_predivide_factor() != self.dp_world_size:

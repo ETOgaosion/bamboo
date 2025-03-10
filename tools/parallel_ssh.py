@@ -14,7 +14,7 @@ gpus_per_nodes = 4
 # required_nodes = [16, 20, 24, 28, 32]
 required_nodes = [8, 10, 12, 14, 16, 18, 20]
 # required_pipeline_parallel_size = 4
-required_pipeline_parallel_size = [4, 5, 4, 7, 4, 6, 4]
+required_pipeline_parallel_size = [1, 5, 4, 7, 4, 6, 4]
 required_data_parallel_size = []
 for i, node_i in enumerate(required_nodes):
     required_data_parallel_size.append(node_i // required_pipeline_parallel_size[i])
@@ -75,9 +75,9 @@ def kill_all():
             host_out.stdin.write('gzy2024\n')
             host_out.stdin.flush()
         host.join(output)
-        for line in host_out.stdout:
+        for line in output.stdout:
             print(line)
-        for line in host_out.stderr:
+        for line in output.stderr:
             print(line)
     
 # kill_all()
