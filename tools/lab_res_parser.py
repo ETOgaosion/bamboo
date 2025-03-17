@@ -8,6 +8,7 @@ import statistics
 import statsmodels.api as sm
 import numpy as np
 from itertools import chain
+import pprint
 
 # valid file
 valid_file = re.compile(r'node_\d+\.log')
@@ -40,7 +41,7 @@ mid_data_tags = ['delta_batch_times', 'delta_local_model_train_times', 'delta_ne
 tags = ['delta_local_model_train_time', 'delta_next_stage_exception_time', 'delta_prev_stage_exception_time', 'delta_save_shadow_node_time', 'delta_reconfigure_time', 'delta_reconfigure_cluster_time', 'delta_batch_time']
 
 def res_parser(file):
-    print(f'processing: {file}')
+    # print(f'processing: {file}')
     raw_data = {
         'start_batch_times': {},
         'finish_batch_times': {},
@@ -299,38 +300,49 @@ def handle_data(pre_handled_data, append_points, fail_point):
 #     print(data[0]['delta_batch_time'], data[1]['delta_batch_time'])
 
 
-required_nodes = [12, 14, 16, 18, 20]
-required_pipeline_parallel_size = [4, 7, 4, 6, 4]
-required_micro_batch_size = [1, 1, 1, 1, 1]
+required_nodes = [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32]
+required_pipeline_parallel_size = [4, 5, 4, 7, 4, 6, 5, 11, 6, 13, 7, 5, 4]
+required_micro_batch_size = [1, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2]
 
+iter_times = {}
 iter_time_list = []
 redundant_iter_time_list = []
 avg_time_ratio_list = []
 
-for i, node in enumerate(required_nodes):
-    pp_size = required_pipeline_parallel_size[i]
-    mbs = required_micro_batch_size[i]
-    file = f'res/lab/nodes_{node}_{pp_size}_{mbs}/node_0.txt'
-    raw_data, append_points, fail_point = res_parser(file)
-    mid_data, data, maxi = pre_handle_data(raw_data)
-    iteration_time = statistics.mean([mid_data['delta_batch_times'][1], mid_data['delta_batch_times'][2]])
-    # iteration_time = mid_data['delta_batch_times'][2]
-    print(iteration_time)
-    iter_time_list.append(iteration_time)
+import csv
 
-for i, node in enumerate(required_nodes):
-    pp_size = required_pipeline_parallel_size[i]
-    mbs = required_micro_batch_size[i]
-    file = f'res/lab_noredundancy/nodes_{node}_{pp_size}_{mbs}/node_0.txt'
-    raw_data, append_points, fail_point = res_parser(file)
-    mid_data, data, maxi = pre_handle_data(raw_data)
-    iteration_time = statistics.mean([mid_data['delta_batch_times'][1], mid_data['delta_batch_times'][2]])
-    # iteration_time = mid_data['delta_batch_times'][2]
-    print(iteration_time)
-    redundant_iter_time_list.append(iteration_time)
+with open('res.csv', 'w', newline='') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['models', 'nodes', 'pp_size', 'mbs', 'iteration_time'])
+    for i, node in enumerate(required_nodes):
+        pp_size = required_pipeline_parallel_size[i]
+        mbs = required_micro_batch_size[i]
+        file = f'res/lab_aws/1.3B/nodes_{node}_{pp_size}_{mbs}/node_0.txt'
+        raw_data, append_points, fail_point = res_parser(file)
+        if len(raw_data["batch_times"]) == 0:
+            continue
+        # mid_data, data, maxi = pre_handle_data(raw_data)
+        iteration_time = statistics.mean([raw_data['batch_times'][1], raw_data['batch_times'][2]])
+        iter_times[f'nodes_{node}_{pp_size}_{mbs}'] = iteration_time
+        writer.writerow(['1.3B', node, pp_size, mbs, iteration_time])
+        # iteration_time = mid_data['delta_batch_times'][2]
+        # print(iteration_time)
+        iter_time_list.append(iteration_time)
 
-for (iter_time, redundant_iter_time) in zip(iter_time_list, redundant_iter_time_list):
-    avg_time_ratio_list.append(redundant_iter_time / iter_time)
-    print(avg_time_ratio_list[-1])
+# for i, node in enumerate(required_nodes):
+#     pp_size = required_pipeline_parallel_size[i]
+#     mbs = required_micro_batch_size[i]
+#     file = f'res/lab_noredundancy/nodes_{node}_{pp_size}_{mbs}/node_0.txt'
+#     raw_data, append_points, fail_point = res_parser(file)
+#     mid_data, data, maxi = pre_handle_data(raw_data)
+#     iteration_time = statistics.mean([mid_data['delta_batch_times'][1], mid_data['delta_batch_times'][2]])
+#     # iteration_time = mid_data['delta_batch_times'][2]
+#     print(iteration_time)
+#     redundant_iter_time_list.append(iteration_time)
 
-print(f'avg: {statistics.mean(avg_time_ratio_list)}')
+# for (iter_time, redundant_iter_time) in zip(iter_time_list, redundant_iter_time_list):
+#     avg_time_ratio_list.append(redundant_iter_time / iter_time)
+#     print(avg_time_ratio_list[-1])
+
+# print(f'avg: {statistics.mean(avg_time_ratio_list)}')
+pprint.pp(iter_times)
